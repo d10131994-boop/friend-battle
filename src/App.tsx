@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 const tg = (window as Window & {
@@ -29,9 +29,15 @@ function App() {
   const userPhoto = tg?.initDataUnsafe?.user?.photo_url
 
   const [score, setScore] = useState(0)
-  const [best, setBest] = useState(0)
+ const [best, setBest] = useState(() => {
+  const savedBest = localStorage.getItem('friendBattleBest')
+  return savedBest ? Number(savedBest) : 0
+})
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(10)
+  useEffect(() => {
+  localStorage.setItem('friendBattleBest', String(best))
+}, [best])
 
   function startGame() {
     setScore(0)
