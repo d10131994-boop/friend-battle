@@ -29,6 +29,10 @@ function App() {
   const userPhoto = tg?.initDataUnsafe?.user?.photo_url
 
   const [score, setScore] = useState(0)
+  const [rounds, setRounds] = useState(() => {
+  const savedRounds = localStorage.getItem('friendBattleRounds')
+  return savedRounds ? Number(savedRounds) : 0
+})
  const [best, setBest] = useState(() => {
   const savedBest = localStorage.getItem('friendBattleBest')
   return savedBest ? Number(savedBest) : 0
@@ -38,6 +42,9 @@ function App() {
   useEffect(() => {
   localStorage.setItem('friendBattleBest', String(best))
 }, [best])
+useEffect(() => {
+  localStorage.setItem('friendBattleRounds', String(rounds))
+}, [rounds])
 
   function startGame() {
     setScore(0)
@@ -50,9 +57,10 @@ function App() {
       setTime(remaining)
 
       if (remaining <= 0) {
-        window.clearInterval(timer)
-        setPlaying(false)
-      }
+  window.clearInterval(timer)
+  setPlaying(false)
+  setRounds((previous) => previous + 1)
+}
     }, 1000)
   }
 
@@ -94,19 +102,26 @@ function App() {
 
   <div className="profile-level-badge">LVL 1</div>
 
-  <div className="profile-stats">
-    <div className="profile-stat">
-      <span>⚡</span>
-      <strong>{score}</strong>
-      <small>ОЧКИ</small>
-    </div>
-    <div className="profile-stat">
-      <span>🏆</span>
-      <strong>{best}</strong>
-      <small>РЕКОРД</small>
-    </div>
+  
+<div className="profile-stats">
+  <div className="profile-stat">
+    <span>⚡</span>
+    <strong>{score}</strong>
+    <small>ОЧКИ</small>
+  </div>
+  <div className="profile-stat">
+    <span>🏆</span>
+    <strong>{best}</strong>
+    <small>РЕКОРД</small>
+  </div>
+  <div className="profile-stat">
+    <span>🎮</span>
+    <strong>{rounds}</strong>
+    <small>РАУНДЫ</small>
   </div>
 </div>
+</div>
+
 
         <p>Докажи, кто здесь лучший!</p>
       </section>
