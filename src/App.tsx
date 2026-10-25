@@ -10,7 +10,8 @@ const tg = (window as Window & {
       initDataUnsafe?: {
         user?: {
           first_name?: string
-          username?: string
+username?: string
+photo_url?: string
         }
       }
     }
@@ -25,6 +26,7 @@ if (tg) {
 function App() {
     const userName = tg?.initDataUnsafe?.user?.first_name
   const userUsername = tg?.initDataUnsafe?.user?.username
+  const userPhoto = tg?.initDataUnsafe?.user?.photo_url
 
   const [score, setScore] = useState(0)
   const [best, setBest] = useState(0)
@@ -66,13 +68,40 @@ function App() {
       </header>
 
       <section className="hero">
-        <div className="eyebrow">YOUR FRIENDS. YOUR BATTLE.</div>
-        <h1>FRIEND<br /><span>BATTLE</span></h1>
-        
-        <div className="player-name">
-  Привет, {userName || 'Игрок'}!
-  {userUsername && <div>@{userUsername}</div>}
+       
+<div className="profile-card">
+  <div className="profile-avatar">
+    {userPhoto ? (
+      <img src={userPhoto} alt="Аватар игрока" />
+    ) : (
+      <span>{(userName || 'И').charAt(0).toUpperCase()}</span>
+    )}
+  </div>
+
+  <div className="profile-info">
+    <div className="profile-greeting">ТВОЙ ПРОФИЛЬ</div>
+    <div className="profile-name">{userName || 'Игрок'}</div>
+    <div className="profile-username">
+      {userUsername ? `@${userUsername}` : 'Игрок Friend Battle'}
+    </div>
+  </div>
+
+  <div className="profile-level-badge">LVL 1</div>
+
+  <div className="profile-stats">
+    <div className="profile-stat">
+      <span>⚡</span>
+      <strong>{score}</strong>
+      <small>ОЧКИ</small>
+    </div>
+    <div className="profile-stat">
+      <span>🏆</span>
+      <strong>{best}</strong>
+      <small>РЕКОРД</small>
+    </div>
+  </div>
 </div>
+
         <p>Докажи, кто здесь лучший!</p>
       </section>
 
