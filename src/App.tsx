@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import './App.css'
 
@@ -8,6 +8,7 @@ const tg = (window as Window & {
     WebApp: {
       ready: () => void
       expand: () => void
+        initData?: string
       initDataUnsafe?: {
         user?: {
           first_name?: string
@@ -32,12 +33,39 @@ type LeaderboardPlayer = {
 }
 
 function App() {
+  
+  async function saveScore(finalScore: number) {
+    if (!tg?.initData) {
+      console.warn('Telegram initData недоступен. Открой игру через Telegram.');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('save-score', {
+        body: {
+          initData: tg.initData,
+          score: finalScore,
+        },
+      });
+
+      if (error) {
+        console.error('Не удалось сохранить рекорд:', error.message);
+        return;
+      }
+
+      console.log('Результат сохранён:', data);
+    } catch (error) {
+      console.error('Ошибка сохранения результата:', error);
+    }
+  }
+
   const user = tg?.initDataUnsafe?.user
   const userName = user?.first_name
   const userUsername = user?.username
   const userPhoto = user?.photo_url
 
   const [score, setScore] = useState(0)
+  const scoreRef = useRef(0)
 
   const [rounds, setRounds] = useState(() => {
     const savedRounds = localStorage.getItem('friendBattleRounds')
@@ -92,11 +120,13 @@ function App() {
 
   function startGame() {
     setScore(0)
+    scoreRef.current = 0
     setTime(10)
     setPlaying(true)
 
     let remaining = 10
 
+    
     const timer = window.setInterval(() => {
       remaining -= 1
       setTime(remaining)
@@ -105,8 +135,10 @@ function App() {
         window.clearInterval(timer)
         setPlaying(false)
         setRounds((previous) => previous + 1)
+        void saveScore(scoreRef.current)
       }
     }, 1000)
+
   }
 
   function tap() {
@@ -114,6 +146,7 @@ function App() {
 
     setScore((previous) => {
       const next = previous + 1
+      scoreRef.current = next
       setBest((oldBest) => Math.max(oldBest, next))
       return next
     })

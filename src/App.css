@@ -406,3 +406,70 @@ h1 span {
     font-size: 16px;
   }
 }
+
+
+.leaderboard-button {
+  display: block;
+  width: 100%;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid rgba(160, 120, 255, 0.5);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #713cff, #a044ff);
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(113, 60, 255, 0.25);
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.leaderboard-button:active {
+  transform: scale(0.98);
+  opacity: 0.85;
+}
+
+
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(160, 120, 255, 0.25);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.leaderboard-row > span {
+  font-size: 26px;
+}
+
+.leaderboard-row > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leaderboard-row > div strong {
+  color: white;
+  font-size: 15px;
+}
+
+.leaderboard-row small {
+  color: #a7a0ba;
+  font-size: 12px;
+}
+
+.leaderboard-row > strong {
+  color: #c2a2ff;
+  font-size: 20px;
+}
