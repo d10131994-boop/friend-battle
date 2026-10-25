@@ -1,0 +1,261 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  font-family: 'Inter', sans-serif;
+  color: #f5f5ff;
+  background: #090914;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-optical-sizing: auto;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 50% 0%, #282052 0%, transparent 48%),
+    #090914;
+}
+
+button {
+  font: inherit;
+}
+
+.app {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 22px 20px 100px;
+  overflow: hidden;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font: 900 26px 'Orbitron', sans-serif;
+  letter-spacing: -2px;
+}
+
+.logo span {
+  color: #a78bfa;
+  margin-left: 5px;
+}
+
+.player-level {
+  padding: 9px 12px;
+  border: 1px solid #49406d;
+  border-radius: 20px;
+  color: #c6b8ff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.hero {
+  padding: 52px 0 26px;
+  text-align: center;
+}
+
+.eyebrow {
+  color: #a78bfa;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+h1 {
+  margin: 15px 0 12px;
+  font: 900 clamp(42px, 12vw, 58px)/1.05 'Orbitron', sans-serif;
+  letter-spacing: -2px;
+}
+
+h1 span {
+  color: #a78bfa;
+  text-shadow: 0 0 30px #8b5cf677;
+}
+
+.hero p,
+.game-card p {
+  color: #aaa7c4;
+  font-size: 13px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px;
+  background: #151425;
+  border: 1px solid #2b2844;
+  border-radius: 16px;
+}
+
+.stat-card > span {
+  font-size: 25px;
+}
+
+.stat-card small,
+.stat-card strong {
+  display: block;
+}
+
+.stat-card small {
+  color: #aaa7c4;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.stat-card strong {
+  margin-top: 6px;
+  font-size: 23px;
+}
+
+.game-card {
+  position: relative;
+  padding: 24px 20px;
+  text-align: center;
+  border: 1px solid #51417d;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #21183b, #121120 70%);
+  box-shadow: 0 10px 50px #7c3aed15;
+}
+
+.game-label {
+  color: #b9a6ff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.game-icon {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  margin: 24px auto 18px;
+  border: 1px solid #a78bfa;
+  border-radius: 26px;
+  background: #6d28d922;
+  box-shadow: 0 0 35px #8b5cf633;
+  font-size: 47px;
+}
+
+.game-card h2 {
+  margin: 0;
+  font: 800 21px 'Orbitron', sans-serif;
+}
+
+.game-card p {
+  min-height: 20px;
+  line-height: 1.6;
+}
+
+.play-button {
+  width: 100%;
+  margin-top: 16px;
+  padding: 17px;
+  border: 0;
+  border-radius: 13px;
+  background: linear-gradient(90deg, #8b5cf6, #6366f1);
+  color: white;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 5px 24px #8b5cf644;
+}
+
+.play-button:active {
+  transform: scale(0.98);
+}
+
+.invite-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 16px 12px;
+  border: 1px solid #29263d;
+  border-radius: 16px;
+  background: #12111f;
+}
+
+.invite-icon {
+  font-size: 27px;
+}
+
+.invite-text {
+  flex: 1;
+}
+
+.invite-text strong {
+  font-size: 13px;
+}
+
+.invite-text p {
+  margin: 5px 0 0;
+  color: #aaa7c4;
+  font-size: 10px;
+}
+
+.coming-soon {
+  color: #a78bfa;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  max-width: 480px;
+  padding: 14px 10px 22px;
+  transform: translateX(-50%);
+  border-top: 1px solid #29263d;
+  background: #0e0d19f5;
+  backdrop-filter: blur(15px);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  color: #77748f;
+  font-size: 20px;
+}
+
+.nav-item span {
+  font-size: 10px;
+}
+
+.nav-item.active {
+  color: #b9a6ff;
+}
+
+@media (min-width: 600px) {
+  .app {
+    padding-top: 32px;
+  }
+}
