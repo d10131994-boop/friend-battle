@@ -2,7 +2,14 @@
 import { useState } from 'react'
 import './App.css'
 
-const tg = window.Telegram?.WebApp
+const tg = (window as Window & {
+  Telegram?: {
+    WebApp: {
+      ready: () => void
+      expand: () => void
+    }
+  }
+}).Telegram?.WebApp
 
 if (tg) {
   tg.ready()
