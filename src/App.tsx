@@ -7,6 +7,12 @@ const tg = (window as Window & {
     WebApp: {
       ready: () => void
       expand: () => void
+      initDataUnsafe?: {
+        user?: {
+          first_name?: string
+          username?: string
+        }
+      }
     }
   }
 }).Telegram?.WebApp
@@ -17,6 +23,9 @@ if (tg) {
 }
 
 function App() {
+    const userName = tg?.initDataUnsafe?.user?.first_name
+  const userUsername = tg?.initDataUnsafe?.user?.username
+
   const [score, setScore] = useState(0)
   const [best, setBest] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -59,6 +68,11 @@ function App() {
       <section className="hero">
         <div className="eyebrow">YOUR FRIENDS. YOUR BATTLE.</div>
         <h1>FRIEND<br /><span>BATTLE</span></h1>
+        
+        <div className="player-name">
+  Привет, {userName || 'Игрок'}!
+  {userUsername && <div>@{userUsername}</div>}
+</div>
         <p>Докажи, кто здесь лучший!</p>
       </section>
 
