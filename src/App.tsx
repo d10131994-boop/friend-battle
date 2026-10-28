@@ -35,6 +35,7 @@ type LeaderboardPlayer = {
 function App() {
   
   async function saveScore(finalScore: number) {
+    console.log('SAVE SCORE ВЫЗВАНА:', finalScore, 'Telegram initData:', Boolean(tg?.initData));
     if (!tg?.initData) {
       console.warn('Telegram initData недоступен. Открой игру через Telegram.');
       return;
