@@ -351,14 +351,27 @@ function App() {
         )}
       </section>
 
-      <section className="invite-card">
-        <div className="invite-icon">👥</div>
-        <div className="invite-text">
-          <strong>Вызови друга!</strong>
-          <p>Скоро здесь появятся дуэли и рейтинг.</p>
-        </div>
-        <span className="coming-soon">SOON</span>
-      </section>
+     
+<section className="invite-card">
+  <div className="invite-icon">⚔️</div>
+  <div className="invite-text">
+    <strong>Вызови друга!</strong>
+    <p>Отправь приглашение и выясни, кто быстрее!</p>
+  </div>
+  <button
+    className="invite-button"
+    onClick={() => {
+  const inviteUrl = "https://t.me/yourpartygame_bot"
+  const shareUrl =
+    `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent("Сразись со мной в Friend Battle! ⚔️")}`
+
+  window.open(shareUrl, "_blank")
+}}
+  >
+    ВЫЗВАТЬ
+  </button>
+</section>
+
 
       <nav className="bottom-nav">
         <div className="nav-item active">
