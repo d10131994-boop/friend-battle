@@ -474,7 +474,7 @@ async function joinDuel(inviteCode: string) {
       onClick={() => {
         
 const inviteUrl =
-  `https://t.me/yourpartygame_bot?startapp=duel_${duel.invite_code}`
+  `https://t.me/yourpartygame_bot/FriendBattle?startapp=duel_${duel.invite_code}`
 
         const shareUrl =
           `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent('Сразись со мной в Friend Battle! ⚔️')}`
