@@ -10,6 +10,7 @@ const tg = (window as Window & {
       expand: () => void
         initData?: string
       initDataUnsafe?: {
+        start_param?: string
         user?: {
           first_name?: string
           username?: string
@@ -96,6 +97,24 @@ function App() {
 const [duel, setDuel] = useState<Duel | null>(null)
 const [duelLoading, setDuelLoading] = useState(false)
 const [duelMessage, setDuelMessage] = useState('')
+
+const [inviteHandled, setInviteHandled] = useState(false)
+
+useEffect(() => {
+  if (inviteHandled || !tg?.initData) return
+
+  const startParam = tg.initDataUnsafe?.start_param
+
+  if (!startParam?.startsWith('duel_')) return
+
+  const inviteCode = startParam.slice('duel_'.length)
+
+  if (!inviteCode) return
+
+  setInviteHandled(true)
+  void joinDuel(inviteCode)
+}, [inviteHandled])
+
   const [leaderboard, setLeaderboard] = useState<LeaderboardPlayer[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
   const [leaderboardError, setLeaderboardError] = useState('')
@@ -163,6 +182,45 @@ async function createDuel() {
     setDuelLoading(false)
   }
 }
+
+async function joinDuel(inviteCode: string) {
+  if (!tg?.initData) {
+    setDuelMessage('Открой игру через Telegram, чтобы присоединиться к дуэли.')
+    return
+  }
+
+  setDuelLoading(true)
+  setDuelMessage('Подключаемся к дуэли...')
+
+  try {
+    const { data, error } = await supabase.functions.invoke('duels', {
+      body: {
+        initData: tg.initData,
+        action: 'join',
+        inviteCode,
+      },
+    })
+
+    if (error) throw error
+
+    if (!data?.success || !data?.duel) {
+      throw new Error(data?.error || 'Не удалось присоединиться к дуэли')
+    }
+
+    setDuel(data.duel as Duel)
+    setDuelMessage('Ты присоединился к дуэли! Удачи в битве!')
+  } catch (error) {
+    console.error('Ошибка подключения к дуэли:', error)
+    setDuelMessage(
+      error instanceof Error
+        ? error.message
+        : 'Не удалось присоединиться к дуэли.',
+    )
+  } finally {
+    setDuelLoading(false)
+  }
+}
+
   function startGame() {
     setScore(0)
     scoreRef.current = 0
