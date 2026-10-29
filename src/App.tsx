@@ -100,21 +100,23 @@ const [duelMessage, setDuelMessage] = useState('')
 
 const [inviteHandled, setInviteHandled] = useState(false)
 
+
 useEffect(() => {
-  if (inviteHandled || !tg?.initData) return
+  if (!tg?.initData) return
 
   const startParam = tg.initDataUnsafe?.start_param
   console.log('Параметр приглашения:', startParam)
 
   if (!startParam?.startsWith('duel_')) return
+  if (inviteHandled) return
 
   const inviteCode = startParam.slice('duel_'.length)
-
   if (!inviteCode) return
 
   setInviteHandled(true)
   void joinDuel(inviteCode)
-}, [inviteHandled])
+}, [inviteHandled, tg?.initData])
+
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardPlayer[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
