@@ -118,6 +118,17 @@ useEffect(() => {
   void joinDuel(inviteCode)
 }, [inviteHandled, tg?.initData])
 
+useEffect(() => {
+  if (!duel || duel.status !== 'waiting') return
+
+  const intervalId = window.setInterval(() => {
+    void refreshDuel()
+  }, 2000)
+
+  return () => window.clearInterval(intervalId)
+}, [duel?.invite_code, duel?.status])
+
+
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardPlayer[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
@@ -184,6 +195,32 @@ async function createDuel() {
     setDuelMessage('Не удалось создать дуэль. Попробуй ещё раз.')
   } finally {
     setDuelLoading(false)
+  }
+}
+
+async function refreshDuel() {
+  if (!tg?.initData || !duel?.invite_code) return
+
+  try {
+    const { data, error } = await supabase.functions.invoke('duels', {
+      body: {
+        initData: tg.initData,
+        action: 'get',
+        inviteCode: duel.invite_code,
+      },
+    })
+
+    if (error) throw error
+
+    if (data?.success && data?.duel) {
+      setDuel(data.duel as Duel)
+
+      if (data.duel.status === 'playing') {
+        setDuelMessage('Друг присоединился! Можно начинать битву!')
+      }
+    }
+  } catch (error) {
+    console.error('Ошибка обновления дуэли:', error)
   }
 }
 
