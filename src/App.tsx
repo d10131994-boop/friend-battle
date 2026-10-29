@@ -104,6 +104,7 @@ useEffect(() => {
   if (inviteHandled || !tg?.initData) return
 
   const startParam = tg.initDataUnsafe?.start_param
+  console.log('Параметр приглашения:', startParam)
 
   if (!startParam?.startsWith('duel_')) return
 
@@ -471,8 +472,10 @@ async function joinDuel(inviteCode: string) {
     <button
       className="invite-button"
       onClick={() => {
-        const inviteUrl =
-          `https://t.me/yourpartygame_bot?startapp=duel_${duel.invite_code}`
+        
+const inviteUrl =
+  `https://t.me/yourpartygame_bot?startapp=duel_${duel.invite_code}`
+
         const shareUrl =
           `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent('Сразись со мной в Friend Battle! ⚔️')}`
         window.open(shareUrl, '_blank')
