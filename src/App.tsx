@@ -31,6 +31,18 @@ type LeaderboardPlayer = {
   first_name: string
   best_score: number
 }
+type Duel = {
+  id: string
+  invite_code: string
+  status: 'waiting' | 'playing' | 'finished'
+  player1_telegram_id: string
+  player1_name: string
+  player1_score: number | null
+  player2_telegram_id: string | null
+  player2_name: string | null
+  player2_score: number | null
+  winner_telegram_id: string | null
+}
 
 function App() {
   
@@ -81,7 +93,9 @@ function App() {
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(10)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
-
+const [duel, setDuel] = useState<Duel | null>(null)
+const [duelLoading, setDuelLoading] = useState(false)
+const [duelMessage, setDuelMessage] = useState('')
   const [leaderboard, setLeaderboard] = useState<LeaderboardPlayer[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
   const [leaderboardError, setLeaderboardError] = useState('')
@@ -118,7 +132,37 @@ function App() {
       setLeaderboardLoading(false)
     }
   }
+async function createDuel() {
+  if (!tg?.initData) {
+    setDuelMessage('Открой игру через Telegram, чтобы вызвать друга.')
+    return
+  }
 
+  setDuelLoading(true)
+  setDuelMessage('Создаём дуэль...')
+
+  try {
+    const { data, error } = await supabase.functions.invoke('duels', {
+      body: {
+        initData: tg.initData,
+        action: 'create',
+      },
+    })
+
+    if (error) throw error
+    if (!data?.success || !data?.duel) {
+      throw new Error(data?.error || 'Не удалось создать дуэль')
+    }
+
+    setDuel(data.duel as Duel)
+    setDuelMessage('Дуэль создана! Пригласи друга по ссылке.')
+  } catch (error) {
+    console.error('Ошибка создания дуэли:', error)
+    setDuelMessage('Не удалось создать дуэль. Попробуй ещё раз.')
+  } finally {
+    setDuelLoading(false)
+  }
+}
   function startGame() {
     setScore(0)
     scoreRef.current = 0
@@ -352,25 +396,30 @@ function App() {
       </section>
 
      
+
 <section className="invite-card">
   <div className="invite-icon">⚔️</div>
   <div className="invite-text">
     <strong>Вызови друга!</strong>
-    <p>Отправь приглашение и выясни, кто быстрее!</p>
+    <p>
+      {duelMessage ||
+        'Создай дуэль и узнай, кто быстрее!'}
+    </p>
+    {duel && (
+      <p>
+        Код дуэли: <strong>{duel.invite_code}</strong>
+      </p>
+    )}
   </div>
   <button
     className="invite-button"
-    onClick={() => {
-  const inviteUrl = "https://t.me/yourpartygame_bot"
-  const shareUrl =
-    `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent("Сразись со мной в Friend Battle! ⚔️")}`
-
-  window.open(shareUrl, "_blank")
-}}
+    disabled={duelLoading}
+    onClick={createDuel}
   >
-    ВЫЗВАТЬ
+    {duelLoading ? 'СОЗДАЁМ...' : 'ВЫЗВАТЬ'}
   </button>
 </section>
+
 
 
       <nav className="bottom-nav">
