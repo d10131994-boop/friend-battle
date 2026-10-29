@@ -106,6 +106,7 @@ useEffect(() => {
 
   const startParam = tg.initDataUnsafe?.start_param
   console.log('Параметр приглашения:', startParam)
+  setDuelMessage(`Параметр приглашения: ${startParam ?? 'не получен'}`)
 
   if (!startParam?.startsWith('duel_')) return
   if (inviteHandled) return
