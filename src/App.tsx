@@ -406,10 +406,24 @@ async function createDuel() {
         'Создай дуэль и узнай, кто быстрее!'}
     </p>
     {duel && (
-      <p>
-        Код дуэли: <strong>{duel.invite_code}</strong>
-      </p>
-    )}
+  <>
+    <p>
+      Код дуэли: <strong>{duel.invite_code}</strong>
+    </p>
+    <button
+      className="invite-button"
+      onClick={() => {
+        const inviteUrl =
+          `https://t.me/yourpartygame_bot?startapp=duel_${duel.invite_code}`
+        const shareUrl =
+          `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent('Сразись со мной в Friend Battle! ⚔️')}`
+        window.open(shareUrl, '_blank')
+      }}
+    >
+      ОТПРАВИТЬ ДРУГУ
+    </button>
+  </>
+)}
   </div>
   <button
     className="invite-button"
