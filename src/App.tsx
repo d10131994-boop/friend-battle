@@ -612,9 +612,9 @@ async function submitDuelScore(finalScore: number) {
   ) : (
     <main className="app">
       <header className="topbar">
-        <div className="logo">
-          FB<span>⚡</span>
-        </div>
+       <div className="logo">
+  FRIEND <span>BATTLE</span>
+</div>
         <div className="player-level">НОВИЧОК · LVL 1</div>
       </header>
 
