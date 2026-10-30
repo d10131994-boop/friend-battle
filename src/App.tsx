@@ -12,6 +12,7 @@ const tg = (window as Window & {
       initDataUnsafe?: {
         start_param?: string
         user?: {
+          id?: number
           first_name?: string
           username?: string
           photo_url?: string
@@ -32,6 +33,7 @@ type LeaderboardPlayer = {
   first_name: string
   best_score: number
 }
+
 type Duel = {
   id: string
   invite_code: string
@@ -43,7 +45,12 @@ type Duel = {
   player2_name: string | null
   player2_score: number | null
   winner_telegram_id: string | null
+  player1_ready: boolean
+  player2_ready: boolean
+  started_at: string | null
+  ends_at: string | null
 }
+
 
 function App() {
   
@@ -95,6 +102,7 @@ function App() {
   const [time, setTime] = useState(10)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
 const [duel, setDuel] = useState<Duel | null>(null)
+const duelRoundStartedRef = useRef(false)
 const [duelLoading, setDuelLoading] = useState(false)
 const [duelMessage, setDuelMessage] = useState('')
 
@@ -118,8 +126,9 @@ useEffect(() => {
   void joinDuel(inviteCode)
 }, [inviteHandled, tg?.initData])
 
+
 useEffect(() => {
-  if (!duel || duel.status !== 'waiting') return
+  if (!duel || duel.status === 'finished') return
 
   const intervalId = window.setInterval(() => {
     void refreshDuel()
@@ -127,6 +136,66 @@ useEffect(() => {
 
   return () => window.clearInterval(intervalId)
 }, [duel?.invite_code, duel?.status])
+
+useEffect(() => {
+  if (
+    !duel ||
+    duel.status !== 'playing' ||
+    !duel.started_at ||
+    !duel.ends_at
+  ) {
+    if (!duel?.started_at || duel.status !== 'playing') {
+      duelRoundStartedRef.current = false
+    }
+    return
+  }
+
+  if (duelRoundStartedRef.current) return
+
+  const startAt = new Date(duel.started_at).getTime()
+  const endAt = new Date(duel.ends_at).getTime()
+
+  let intervalId: number | undefined
+
+  const timeoutId = window.setTimeout(() => {
+    if (duelRoundStartedRef.current) return
+
+    duelRoundStartedRef.current = true
+    scoreRef.current = 0
+    setScore(0)
+    setTime(Math.max(0, Math.ceil((endAt - Date.now()) / 1000)))
+    setPlaying(true)
+
+    intervalId = window.setInterval(() => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((endAt - Date.now()) / 1000)
+      )
+
+      setTime(remaining)
+
+      if (remaining <= 0) {
+        if (intervalId !== undefined) {
+          window.clearInterval(intervalId)
+        }
+
+        setPlaying(false)
+        setRounds((previous) => previous + 1)
+        void submitDuelScore(scoreRef.current)
+      }
+    }, 100)
+  }, Math.max(0, startAt - Date.now()))
+
+  return () => {
+    window.clearTimeout(timeoutId)
+
+    if (intervalId !== undefined) {
+      window.clearInterval(intervalId)
+    }
+  }
+}, [duel?.invite_code, duel?.status, duel?.started_at, duel?.ends_at])
+
+
 
 
 
@@ -198,6 +267,7 @@ async function createDuel() {
   }
 }
 
+
 async function refreshDuel() {
   if (!tg?.initData || !duel?.invite_code) return
 
@@ -213,16 +283,72 @@ async function refreshDuel() {
     if (error) throw error
 
     if (data?.success && data?.duel) {
-      setDuel(data.duel as Duel)
+      const currentDuel = data.duel as Duel
+      setDuel(currentDuel)
 
-      if (data.duel.status === 'playing') {
-        setDuelMessage('Друг присоединился! Можно начинать битву!')
-      }
+      if (currentDuel.status === 'waiting') {
+        setDuelMessage('Ждём второго игрока...')
+      } else if (currentDuel.status === 'playing') {
+        if (!currentDuel.started_at) {
+          setDuelMessage('Друг присоединился! Оба игрока должны нажать «Готов»!')
+        } else if (Date.now() < new Date(currentDuel.started_at).getTime()) {
+          setDuelMessage('Приготовься! Скоро начало!')
+        } else if (currentDuel.ends_at && Date.now() < new Date(currentDuel.ends_at).getTime()) {
+          setDuelMessage('Битва идёт! Жми как можно быстрее!')
+        } else {
+          setDuelMessage('Время вышло! Ожидаем результат...')
+        }
+      } else if (currentDuel.status === 'finished') {
+  const myId = String(tg?.initDataUnsafe?.user?.id)
+
+  if (currentDuel.winner_telegram_id === null) {
+    setDuelMessage('Ничья! ⚔️')
+  } else if (currentDuel.winner_telegram_id === myId) {
+    setDuelMessage('Ты победил! 🏆')
+  } else {
+    setDuelMessage('Ты проиграл! Попробуй ещё раз!')
+  }
+}
     }
   } catch (error) {
     console.error('Ошибка обновления дуэли:', error)
   }
 }
+
+async function readyDuel() {
+  if (!tg?.initData || !duel?.invite_code || duel.status !== 'playing') {
+    return
+  }
+
+  setDuelLoading(true)
+  setDuelMessage('Отправляем готовность...')
+
+  try {
+    const { data, error } = await supabase.functions.invoke('duels', {
+      body: {
+        initData: tg.initData,
+        action: 'ready',
+        inviteCode: duel.invite_code,
+      },
+    })
+
+    if (error) throw error
+
+    if (data?.success && data?.duel) {
+      setDuel(data.duel as Duel)
+      await refreshDuel()
+    } else {
+      setDuelMessage(data?.error || 'Не удалось начать дуэль')
+    }
+  } catch (error) {
+    console.error('Ошибка готовности к дуэли:', error)
+    setDuelMessage('Не удалось отправить готовность. Попробуй ещё раз.')
+  } finally {
+    setDuelLoading(false)
+  }
+}
+
+
 
 async function joinDuel(inviteCode: string) {
   if (!tg?.initData) {
@@ -262,28 +388,74 @@ async function joinDuel(inviteCode: string) {
   }
 }
 
-  function startGame() {
+
+function startGame() {
+  if (duel?.status === 'playing') {
+    if (!duel.started_at || !duel.ends_at) {
+      setDuelMessage('Оба игрока должны нажать «Готов»!')
+      return
+    }
+
+    const startAt = new Date(duel.started_at).getTime()
+    const endAt = new Date(duel.ends_at).getTime()
+    const now = Date.now()
+
+    if (now < startAt) {
+      setDuelMessage('Приготовься! Битва скоро начнётся.')
+      return
+    }
+
+    if (now >= endAt) {
+      setDuelMessage('Время вышло! Отправляем результат...')
+      setPlaying(false)
+      void submitDuelScore(scoreRef.current)
+      return
+    }
+
     setScore(0)
     scoreRef.current = 0
-    setTime(10)
+    setTime(Math.ceil((endAt - now) / 1000))
     setPlaying(true)
 
-    let remaining = 10
-
-    
     const timer = window.setInterval(() => {
-      remaining -= 1
+      const remaining = Math.max(
+        0,
+        Math.ceil((endAt - Date.now()) / 1000)
+      )
+
       setTime(remaining)
 
       if (remaining <= 0) {
         window.clearInterval(timer)
         setPlaying(false)
         setRounds((previous) => previous + 1)
-        void saveScore(scoreRef.current)
+        void submitDuelScore(scoreRef.current)
       }
-    }, 1000)
+    }, 200)
 
+    return
   }
+
+  setScore(0)
+  scoreRef.current = 0
+  setTime(10)
+  setPlaying(true)
+
+  let remaining = 10
+
+  const timer = window.setInterval(() => {
+    remaining -= 1
+    setTime(remaining)
+
+    if (remaining <= 0) {
+      window.clearInterval(timer)
+      setPlaying(false)
+      setRounds((previous) => previous + 1)
+      void saveScore(scoreRef.current)
+    }
+  }, 1000)
+}
+
 
   function tap() {
     if (!playing) return
@@ -295,6 +467,51 @@ async function joinDuel(inviteCode: string) {
       return next
     })
   }
+
+async function submitDuelScore(finalScore: number) {
+  if (!tg?.initData || !duel?.invite_code) {
+    setDuelMessage('Не удалось отправить результат дуэли.')
+    return
+  }
+
+  setDuelLoading(true)
+
+  try {
+    const { data, error } = await supabase.functions.invoke('duels', {
+      body: {
+        initData: tg.initData,
+        action: 'submit',
+        inviteCode: duel.invite_code,
+        score: finalScore,
+      },
+    })
+
+    if (error) throw error
+
+    if (data?.success && data?.duel) {
+      setDuel(data.duel as Duel)
+
+      if (data.duel.status === 'finished') {
+        setDuelMessage(
+          data.duel.winner_telegram_id === null
+            ? 'Ничья! ⚔️'
+            : data.duel.winner_telegram_id === String(tg.initDataUnsafe?.user?.id)
+              ? 'Ты победил! 🏆'
+              : 'Друг победил! Попробуй ещё раз!'
+        )
+      } else {
+        setDuelMessage('Результат отправлен! Ждём соперника...')
+      }
+    } else {
+      setDuelMessage(data?.error || 'Не удалось отправить результат.')
+    }
+  } catch (error) {
+    console.error('Ошибка отправки результата дуэли:', error)
+    setDuelMessage('Не удалось отправить результат. Попробуй обновить игру.')
+  } finally {
+    setDuelLoading(false)
+  }
+}
 
   function openLeaderboard() {
     setShowLeaderboard(true)
@@ -488,9 +705,21 @@ async function joinDuel(inviteCode: string) {
             ЖМИ! ⚡
           </button>
         ) : (
-          <button className="play-button" onClick={startGame}>
-            {score > 0 ? 'ИГРАТЬ ЕЩЁ' : 'НАЧАТЬ ИГРУ'}
-          </button>
+          
+<button
+  className="play-button"
+  onClick={startGame}
+  disabled={playing || duel?.status === 'playing'}
+>
+  {playing
+    ? 'БИТВА ИДЁТ!'
+    : duel?.status === 'playing'
+      ? 'ОЖИДАЕМ РЕЗУЛЬТАТ'
+      : score > 0
+        ? 'ИГРАТЬ ЕЩЁ'
+        : 'НАЧАТЬ ИГРУ'}
+</button>
+
         )}
       </section>
 
@@ -509,6 +738,27 @@ async function joinDuel(inviteCode: string) {
     <p>
       Код дуэли: <strong>{duel.invite_code}</strong>
     </p>
+    
+    {duel.status === 'playing' && (
+      <>
+        <p>
+          Игрок 1: {duel.player1_ready ? '✅ Готов' : '⏳ Ожидает'}
+          <br />
+          Игрок 2: {duel.player2_ready ? '✅ Готов' : '⏳ Ожидает'}
+        </p>
+
+        {!duel.started_at && (
+          <button
+            className="invite-button"
+            disabled={duelLoading || (duel.player1_telegram_id === String(tg?.initDataUnsafe?.user?.id) ? duel.player1_ready : duel.player2_ready)}
+            onClick={readyDuel}
+          >
+            {duelLoading ? 'ОЖИДАЙ...' : 'ГОТОВ К БИТВЕ ⚔️'}
+          </button>
+        )}
+      </>
+    )}
+
     <button
       className="invite-button"
       onClick={() => {
