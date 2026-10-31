@@ -1,6 +1,8 @@
+
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import './App.css'
+import { useReactionRush } from './games/ReactionRush/useReactionRush'
 
 import {
   telegramUser,
@@ -62,21 +64,23 @@ function App() {
   const userUsername = user?.username
   const userPhoto = user?.photo_url
 
-  const [score, setScore] = useState(0)
-  const scoreRef = useRef(0)
-
-  const [rounds, setRounds] = useState(() => {
-    const savedRounds = localStorage.getItem('friendBattleRounds')
-    return savedRounds ? Number(savedRounds) : 0
+  const {
+    score,
+    setScore,
+    scoreRef,
+    rounds,
+    setRounds,
+    best,
+    playing,
+    setPlaying,
+    time,
+    setTime,
+    startSoloGame,
+    tap,
+  } = useReactionRush({
+    onSaveScore: saveScore,
   })
 
-  const [best, setBest] = useState(() => {
-    const savedBest = localStorage.getItem('friendBattleBest')
-    return savedBest ? Number(savedBest) : 0
-  })
-
-  const [playing, setPlaying] = useState(false)
-  const [time, setTime] = useState(10)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [duel, setDuel] = useState<Duel | null>(null)
   const duelRoundStartedRef = useRef(false)
@@ -172,14 +176,6 @@ function App() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardPlayer[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
   const [leaderboardError, setLeaderboardError] = useState('')
-
-  useEffect(() => {
-    localStorage.setItem('friendBattleBest', String(best))
-  }, [best])
-
-  useEffect(() => {
-    localStorage.setItem('friendBattleRounds', String(rounds))
-  }, [rounds])
 
   async function loadLeaderboard() {
     setLeaderboardLoading(true)
@@ -370,35 +366,7 @@ function App() {
       return
     }
 
-    setScore(0)
-    scoreRef.current = 0
-    setTime(10)
-    setPlaying(true)
-
-    let remaining = 10
-
-    const timer = window.setInterval(() => {
-      remaining -= 1
-      setTime(remaining)
-
-      if (remaining <= 0) {
-        window.clearInterval(timer)
-        setPlaying(false)
-        setRounds((previous) => previous + 1)
-        void saveScore(scoreRef.current)
-      }
-    }, 1000)
-  }
-
-  function tap() {
-    if (!playing) return
-
-    setScore((previous) => {
-      const next = previous + 1
-      scoreRef.current = next
-      setBest((oldBest) => Math.max(oldBest, next))
-      return next
-    })
+    startSoloGame()
   }
 
   async function submitDuelScore(finalScore: number) {
