@@ -68,16 +68,25 @@ button { font: inherit; }
 }
 
 .logo {
-  color: #fff8e6;
-  font: 900 27px/1 'Baloo 2', sans-serif;
-  letter-spacing: -1px;
-  text-shadow: 0 3px 0 #783c20, 0 5px 0 rgba(56, 30, 15, .35);
+  color: #fff3cf;
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 23px;
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: -0.8px;
+  white-space: nowrap;
+  text-shadow:
+    0 2px 0 #783c20,
+    0 4px 0 #a45b20,
+    0 6px 5px rgba(56, 30, 15, .4);
 }
 
 .logo span {
-  margin-left: 4px;
+  margin-left: 3px;
   color: #ffe16c;
-  text-shadow: 0 2px 0 #a45b20;
+  text-shadow:
+    0 2px 0 #a45b20,
+    0 4px 0 #783c20;
 }
 
 .player-level {
