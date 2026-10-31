@@ -3,29 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import './App.css'
 
-const tg = (window as Window & {
-  Telegram?: {
-    WebApp: {
-      ready: () => void
-      expand: () => void
-        initData?: string
-      initDataUnsafe?: {
-        start_param?: string
-        user?: {
-          id?: number
-          first_name?: string
-          username?: string
-          photo_url?: string
-        }
-      }
-    }
-  }
-}).Telegram?.WebApp
-
-if (tg) {
-  tg.ready()
-  tg.expand()
-}
+import {
+  telegramUser,
+  telegramInitData,
+  telegramStartParam,
+} from './services/telegram'
 
 type LeaderboardPlayer = {
   telegram_id: string
@@ -55,35 +37,41 @@ type Duel = {
 function App() {
   
   async function saveScore(finalScore: number) {
-    console.log('SAVE SCORE ВЫЗВАНА:', finalScore, 'Telegram initData:', Boolean(tg?.initData));
-    if (!tg?.initData) {
-      console.warn('Telegram initData недоступен. Открой игру через Telegram.');
-      return;
-    }
+  console.log(
+    'SAVE SCORE ВЫЗВАНА:',
+    finalScore,
+    'Telegram initData:',
+    Boolean(telegramInitData)
+  )
 
-    try {
-      const { data, error } = await supabase.functions.invoke('save-score', {
-        body: {
-          initData: tg.initData,
-          score: finalScore,
-        },
-      });
-
-      if (error) {
-        console.error('Не удалось сохранить рекорд:', error.message);
-        return;
-      }
-
-      console.log('Результат сохранён:', data);
-    } catch (error) {
-      console.error('Ошибка сохранения результата:', error);
-    }
+  if (!telegramInitData) {
+    console.warn('Telegram initData недоступен. Открой игру через Telegram.')
+    return
   }
 
-  const user = tg?.initDataUnsafe?.user
-  const userName = user?.first_name
-  const userUsername = user?.username
-  const userPhoto = user?.photo_url
+  try {
+    const { data, error } = await supabase.functions.invoke('save-score', {
+      body: {
+        initData: telegramInitData,
+        score: finalScore,
+      },
+    })
+
+    if (error) {
+      console.error('Не удалось сохранить рекорд:', error.message)
+      return
+    }
+
+    console.log('Результат сохранён:', data)
+  } catch (error) {
+    console.error('Ошибка сохранения результата:', error)
+  }
+}
+
+const user = telegramUser
+const userName = user?.first_name
+const userUsername = user?.username
+const userPhoto = user?.photo_url
 
   const [score, setScore] = useState(0)
   const scoreRef = useRef(0)
@@ -110,9 +98,9 @@ const [inviteHandled, setInviteHandled] = useState(false)
 
 
 useEffect(() => {
-  if (!tg?.initData) return
+  if (!telegramInitData) return
 
-  const startParam = tg.initDataUnsafe?.start_param
+  const startParam = telegramStartParam
   console.log('Параметр приглашения:', startParam)
   setDuelMessage(`Параметр приглашения: ${startParam ?? 'не получен'}`)
 
@@ -124,7 +112,7 @@ useEffect(() => {
 
   setInviteHandled(true)
   void joinDuel(inviteCode)
-}, [inviteHandled, tg?.initData])
+}, [inviteHandled, telegramInitData])
 
 
 useEffect(() => {
@@ -236,7 +224,7 @@ useEffect(() => {
     }
   }
 async function createDuel() {
-  if (!tg?.initData) {
+if (!telegramInitData) {
     setDuelMessage('Открой игру через Telegram, чтобы вызвать друга.')
     return
   }
@@ -247,7 +235,7 @@ async function createDuel() {
   try {
     const { data, error } = await supabase.functions.invoke('duels', {
       body: {
-        initData: tg.initData,
+        initData: telegramInitData,
         action: 'create',
       },
     })
@@ -269,12 +257,12 @@ async function createDuel() {
 
 
 async function refreshDuel() {
-  if (!tg?.initData || !duel?.invite_code) return
+  if (!telegramInitData || !duel?.invite_code) return
 
   try {
     const { data, error } = await supabase.functions.invoke('duels', {
       body: {
-        initData: tg.initData,
+        initData: telegramInitData,
         action: 'get',
         inviteCode: duel.invite_code,
       },
@@ -299,7 +287,7 @@ async function refreshDuel() {
           setDuelMessage('Время вышло! Ожидаем результат...')
         }
       } else if (currentDuel.status === 'finished') {
-  const myId = String(tg?.initDataUnsafe?.user?.id)
+  const myId = String(telegramUser?.id)
 
   if (currentDuel.winner_telegram_id === null) {
     setDuelMessage('Ничья! ⚔️')
@@ -316,8 +304,9 @@ async function refreshDuel() {
 }
 
 async function readyDuel() {
-  if (!tg?.initData || !duel?.invite_code || duel.status !== 'playing') {
-    return
+  if (!telegramInitData || !duel?.invite_code || duel.status !== 'playing') {
+
+  return
   }
 
   setDuelLoading(true)
@@ -326,7 +315,7 @@ async function readyDuel() {
   try {
     const { data, error } = await supabase.functions.invoke('duels', {
       body: {
-        initData: tg.initData,
+        initData: telegramInitData,
         action: 'ready',
         inviteCode: duel.invite_code,
       },
@@ -351,7 +340,7 @@ async function readyDuel() {
 
 
 async function joinDuel(inviteCode: string) {
-  if (!tg?.initData) {
+  if (!telegramInitData) {
     setDuelMessage('Открой игру через Telegram, чтобы присоединиться к дуэли.')
     return
   }
@@ -362,7 +351,7 @@ async function joinDuel(inviteCode: string) {
   try {
     const { data, error } = await supabase.functions.invoke('duels', {
       body: {
-        initData: tg.initData,
+        initData: telegramInitData,
         action: 'join',
         inviteCode,
       },
@@ -469,7 +458,7 @@ function startGame() {
   }
 
 async function submitDuelScore(finalScore: number) {
-  if (!tg?.initData || !duel?.invite_code) {
+  if (!telegramInitData || !duel?.invite_code) {
     setDuelMessage('Не удалось отправить результат дуэли.')
     return
   }
@@ -479,7 +468,7 @@ async function submitDuelScore(finalScore: number) {
   try {
     const { data, error } = await supabase.functions.invoke('duels', {
       body: {
-        initData: tg.initData,
+       initData: telegramInitData,
         action: 'submit',
         inviteCode: duel.invite_code,
         score: finalScore,
@@ -495,7 +484,7 @@ async function submitDuelScore(finalScore: number) {
         setDuelMessage(
           data.duel.winner_telegram_id === null
             ? 'Ничья! ⚔️'
-            : data.duel.winner_telegram_id === String(tg.initDataUnsafe?.user?.id)
+            : data.duel.winner_telegram_id === String(telegramUser?.id)
               ? 'Ты победил! 🏆'
               : 'Друг победил! Попробуй ещё раз!'
         )
@@ -750,7 +739,7 @@ async function submitDuelScore(finalScore: number) {
         {!duel.started_at && (
           <button
             className="invite-button"
-            disabled={duelLoading || (duel.player1_telegram_id === String(tg?.initDataUnsafe?.user?.id) ? duel.player1_ready : duel.player2_ready)}
+            disabled={duelLoading || (duel.player1_telegram_id === String(telegramUser?.id) ? duel.player1_ready : duel.player2_ready)}
             onClick={readyDuel}
           >
             {duelLoading ? 'ОЖИДАЙ...' : 'ГОТОВ К БИТВЕ ⚔️'}
