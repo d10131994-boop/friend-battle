@@ -458,3 +458,219 @@ h1 span {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; }
 }
+/* GAME CATALOG */
+.catalog-heading {
+  padding: 14px 0 18px;
+  text-align: center;
+}
+
+.catalog-heading h1 {
+  margin: 10px 0 6px;
+  font-size: clamp(30px, 8vw, 40px);
+  line-height: 1.05;
+}
+
+.catalog-heading > p {
+  margin: 8px 0 0;
+  color: #fff9e8;
+  font-size: 12px;
+  font-weight: 900;
+  text-shadow: 0 2px 3px rgba(37, 48, 25, .65);
+}
+
+.catalog-games {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.catalog-game-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 18px;
+  border: 3px solid #f8d77d;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #fff8df, #f5dca6);
+  color: #57351f;
+  font-family: 'Nunito', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #995a2c, 0 10px 20px rgba(42, 34, 17, .25);
+}
+
+.catalog-game-card:active {
+  transform: translateY(3px);
+}
+
+.catalog-game-number {
+  padding: 5px 12px;
+  border-radius: 15px;
+  background: #df5547;
+  color: white;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+}
+
+.catalog-game-icon {
+  margin: 12px 0 5px;
+  font-size: 42px;
+}
+
+.catalog-game-card > strong {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 23px;
+  font-weight: 900;
+}
+
+.catalog-game-description {
+  margin-top: 3px;
+  color: #8a603e;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.catalog-game-status {
+  margin-top: 13px;
+  padding: 7px 15px;
+  border-radius: 12px;
+  background: #65b94d;
+  color: white;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.brain-card .catalog-game-status {
+  background: #9b8b78;
+}
+
+/* BOTTOM NAVIGATION */
+.nav-item {
+  flex: 1;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font-family: 'Nunito', sans-serif;
+  line-height: 1.2;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid #ffe16a;
+  outline-offset: 3px;
+}
+
+/* BRAIN BATTLE — QUESTION PROGRESS */
+.brain-progress {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  margin: 12px 0 18px;
+}
+
+.brain-progress-segment {
+  flex: 1;
+  height: 9px;
+  border: 1px solid rgba(255, 255, 255, .8);
+  border-radius: 8px;
+  background: rgba(255, 244, 215, .45);
+  box-shadow: inset 0 1px 2px rgba(73, 48, 31, .15);
+}
+
+.brain-progress-segment.completed {
+  background: linear-gradient(180deg, #ffe477, #f3a92e);
+  box-shadow:
+    0 2px 0 #b66a1e,
+    inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+
+.brain-progress-segment.current {
+  background: linear-gradient(180deg, #79d45e, #48a83c);
+  box-shadow:
+    0 2px 0 #34752b,
+    inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+
+/* BRAIN BATTLE — TIMER */
+.brain-timer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin: 10px 0 18px;
+  padding: 12px;
+  border: 2px solid #fff0b7;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #fff8e5, #f4d99e);
+  box-shadow: 0 4px 0 #a96a32, 0 7px 12px rgba(49, 34, 18, .18);
+  color: #34752b;
+  font-size: 23px;
+  font-weight: 900;
+}
+
+.brain-timer.warning {
+  color: #bd7920;
+}
+
+.brain-timer.danger {
+  color: #df5145;
+  animation: brain-timer-pulse .7s infinite alternate;
+}
+
+@keyframes brain-timer-pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.035); }
+}
+/* BRAIN BATTLE — ANSWER STATES */
+
+ .brain-answer {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 14px 12px;
+  border: 2px solid #fff0b7;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ed7160, #cb443b);
+  color: white;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: left;
+  cursor: pointer;
+  white-space: normal;
+  box-shadow:
+    0 3px 0 #91352e,
+    inset 0 1px 0 rgba(255,255,255,.35);
+  transition: transform .15s, filter .15s, background .15s;
+}
+
+.brain-answer.correct {
+  border-color: #b9f5a7;
+  background: linear-gradient(180deg, #79d45e, #48a83c);
+  box-shadow: 0 4px 0 #34752b;
+}
+
+.brain-answer.incorrect {
+  border-color: #ffc0b8;
+  background: linear-gradient(180deg, #ed7160, #b93232);
+  box-shadow: 0 4px 0 #842b2b;
+}
+
+.brain-answer.dimmed {
+  opacity: .55;
+  filter: grayscale(.35);
+}
+
+.brain-answer:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brain-answer {
+    transition: none;
+  }
+}

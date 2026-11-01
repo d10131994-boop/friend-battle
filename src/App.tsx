@@ -2,8 +2,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import './App.css'
+
 import { useReactionRush } from './games/ReactionRush/useReactionRush'
+import ReactionRushMenu from './games/ReactionRush/ReactionRushMenu'
+import ReactionRush from './games/ReactionRush/ReactionRush'
+import GameCatalog from './components/GameCatalog/GameCatalog'
+import BottomNavigation from './components/BottomNavigation/BottomNavigation'
 import PlayerProfile from './components/PlayerProfile/PlayerProfile'
+import BrainBattleMenu from './games/BrainBattle/BrainBattleMenu'
+import BrainBattle from './games/BrainBattle/BrainBattle'
+import BrainBattleRoom from './games/BrainBattle/BrainBattleRoom'
 
 import {
   telegramUser,
@@ -27,17 +35,30 @@ type LeaderboardPlayer = {
   best_score: number
 }
 
-function App() {
-  async function saveScore(finalScore: number) {
-    console.log(
-      'SAVE SCORE ВЫЗВАНА:',
-      finalScore,
-      'Telegram initData:',
-      Boolean(telegramInitData)
-    )
+type Screen =
+  | 'games'
+  | 'reaction-menu'
+  | 'brain-menu'
+  | 'reaction-game'
+  | 'brain-game'
+  | 'brain-battle-room'
+  | 'rating'
+  | 'profile'
 
+type GameMode = 'solo' | 'multiplayer'
+
+function App() {
+  const [screen, setScreen] = useState<Screen>('games')
+  const [gameMode, setGameMode] = useState<GameMode>('solo')
+
+  const user = telegramUser
+  const userName = user?.first_name
+  const userUsername = user?.username
+  const userPhoto = user?.photo_url
+
+  async function saveScore(finalScore: number) {
     if (!telegramInitData) {
-      console.warn('Telegram initData недоступен. Открой игру через Telegram.')
+      console.warn('Telegram initData недоступен.')
       return
     }
 
@@ -60,11 +81,6 @@ function App() {
     }
   }
 
-  const user = telegramUser
-  const userName = user?.first_name
-  const userUsername = user?.username
-  const userPhoto = user?.photo_url
-
   const {
     score,
     setScore,
@@ -82,97 +98,11 @@ function App() {
     onSaveScore: saveScore,
   })
 
-  const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [duel, setDuel] = useState<Duel | null>(null)
   const duelRoundStartedRef = useRef(false)
   const [duelLoading, setDuelLoading] = useState(false)
   const [duelMessage, setDuelMessage] = useState('')
   const [inviteHandled, setInviteHandled] = useState(false)
-
-  useEffect(() => {
-    if (!telegramInitData) return
-
-    const startParam = telegramStartParam
-    console.log('Параметр приглашения:', startParam)
-    setDuelMessage(`Параметр приглашения: ${startParam ?? 'не получен'}`)
-
-    if (!startParam?.startsWith('duel_')) return
-    if (inviteHandled) return
-
-    const inviteCode = startParam.slice('duel_'.length)
-    if (!inviteCode) return
-
-    setInviteHandled(true)
-    void joinDuel(inviteCode)
-  }, [inviteHandled, telegramInitData])
-
-  useEffect(() => {
-    if (!duel || duel.status === 'finished') return
-
-    const intervalId = window.setInterval(() => {
-      void refreshDuel()
-    }, 2000)
-
-    return () => window.clearInterval(intervalId)
-  }, [duel?.invite_code, duel?.status])
-
-  useEffect(() => {
-    if (
-      !duel ||
-      duel.status !== 'playing' ||
-      !duel.started_at ||
-      !duel.ends_at
-    ) {
-      if (!duel?.started_at || duel.status !== 'playing') {
-        duelRoundStartedRef.current = false
-      }
-      return
-    }
-
-    if (duelRoundStartedRef.current) return
-
-    const startAt = new Date(duel.started_at).getTime()
-    const endAt = new Date(duel.ends_at).getTime()
-
-    let intervalId: number | undefined
-
-    const timeoutId = window.setTimeout(() => {
-      if (duelRoundStartedRef.current) return
-
-      duelRoundStartedRef.current = true
-      scoreRef.current = 0
-      setScore(0)
-      setTime(Math.max(0, Math.ceil((endAt - Date.now()) / 1000)))
-      setPlaying(true)
-
-      intervalId = window.setInterval(() => {
-        const remaining = Math.max(
-          0,
-          Math.ceil((endAt - Date.now()) / 1000)
-        )
-
-        setTime(remaining)
-
-        if (remaining <= 0) {
-          if (intervalId !== undefined) {
-            window.clearInterval(intervalId)
-          }
-
-          setPlaying(false)
-          setRounds((previous) => previous + 1)
-          void submitDuelScore(scoreRef.current)
-        }
-      }, 100)
-    }, Math.max(0, startAt - Date.now()))
-
-    return () => {
-      window.clearTimeout(timeoutId)
-
-      if (intervalId !== undefined) {
-        window.clearInterval(intervalId)
-      }
-    }
-  }, [duel?.invite_code, duel?.status, duel?.started_at, duel?.ends_at])
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardPlayer[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
@@ -231,7 +161,7 @@ function App() {
     try {
       const currentDuel = await getDuelRequest(
         telegramInitData,
-        duel.invite_code
+        duel.invite_code,
       )
 
       setDuel(currentDuel)
@@ -278,7 +208,7 @@ function App() {
     try {
       const updatedDuel = await readyDuelRequest(
         telegramInitData,
-        duel.invite_code
+        duel.invite_code,
       )
 
       setDuel(updatedDuel)
@@ -303,10 +233,12 @@ function App() {
     try {
       const joinedDuel = await joinDuelRequest(
         telegramInitData,
-        inviteCode
+        inviteCode,
       )
 
       setDuel(joinedDuel)
+      setGameMode('multiplayer')
+      setScreen('reaction-game')
       setDuelMessage('Ты присоединился к дуэли! Удачи в битве!')
     } catch (error) {
       console.error('Ошибка подключения к дуэли:', error)
@@ -315,59 +247,11 @@ function App() {
           ? error.message
           : 'Не удалось присоединиться к дуэли.',
       )
+      setScreen('reaction-game')
+      setGameMode('multiplayer')
     } finally {
       setDuelLoading(false)
     }
-  }
-
-  function startGame() {
-    if (duel?.status === 'playing') {
-      if (!duel.started_at || !duel.ends_at) {
-        setDuelMessage('Оба игрока должны нажать «Готов»!')
-        return
-      }
-
-      const startAt = new Date(duel.started_at).getTime()
-      const endAt = new Date(duel.ends_at).getTime()
-      const now = Date.now()
-
-      if (now < startAt) {
-        setDuelMessage('Приготовься! Битва скоро начнётся.')
-        return
-      }
-
-      if (now >= endAt) {
-        setDuelMessage('Время вышло! Отправляем результат...')
-        setPlaying(false)
-        void submitDuelScore(scoreRef.current)
-        return
-      }
-
-      setScore(0)
-      scoreRef.current = 0
-      setTime(Math.ceil((endAt - now) / 1000))
-      setPlaying(true)
-
-      const timer = window.setInterval(() => {
-        const remaining = Math.max(
-          0,
-          Math.ceil((endAt - Date.now()) / 1000)
-        )
-
-        setTime(remaining)
-
-        if (remaining <= 0) {
-          window.clearInterval(timer)
-          setPlaying(false)
-          setRounds((previous) => previous + 1)
-          void submitDuelScore(scoreRef.current)
-        }
-      }, 200)
-
-      return
-    }
-
-    startSoloGame()
   }
 
   async function submitDuelScore(finalScore: number) {
@@ -382,7 +266,7 @@ function App() {
       const updatedDuel = await submitDuelScoreRequest(
         telegramInitData,
         duel.invite_code,
-        finalScore
+        finalScore,
       )
 
       setDuel(updatedDuel)
@@ -393,7 +277,7 @@ function App() {
             ? 'Ничья! ⚔️'
             : updatedDuel.winner_telegram_id === String(telegramUser?.id)
               ? 'Ты победил! 🏆'
-              : 'Друг победил! Попробуй ещё раз!'
+              : 'Друг победил! Попробуй ещё раз!',
         )
       } else {
         setDuelMessage('Результат отправлен! Ждём соперника...')
@@ -406,189 +290,152 @@ function App() {
     }
   }
 
-  function openLeaderboard() {
-    setShowLeaderboard(true)
+  useEffect(() => {
+    if (!telegramInitData) return
+
+    if (!telegramStartParam?.startsWith('duel_')) return
+    if (inviteHandled) return
+
+    const inviteCode = telegramStartParam.slice('duel_'.length)
+    if (!inviteCode) return
+
+    setInviteHandled(true)
+    setGameMode('multiplayer')
+    setScreen('reaction-game')
+    void joinDuel(inviteCode)
+  }, [inviteHandled, telegramInitData, telegramStartParam])
+
+  useEffect(() => {
+    if (!duel || duel.status === 'finished') return
+
+    const intervalId = window.setInterval(() => {
+      void refreshDuel()
+    }, 2000)
+
+    return () => window.clearInterval(intervalId)
+  }, [duel?.invite_code, duel?.status])
+
+  useEffect(() => {
+    if (
+      !duel ||
+      duel.status !== 'playing' ||
+      !duel.started_at ||
+      !duel.ends_at
+    ) {
+      if (!duel?.started_at || duel.status !== 'playing') {
+        duelRoundStartedRef.current = false
+      }
+      return
+    }
+
+    if (duelRoundStartedRef.current) return
+
+    const startAt = new Date(duel.started_at).getTime()
+    const endAt = new Date(duel.ends_at).getTime()
+
+    let intervalId: number | undefined
+
+    const timeoutId = window.setTimeout(() => {
+      if (duelRoundStartedRef.current) return
+
+      duelRoundStartedRef.current = true
+      scoreRef.current = 0
+      setScore(0)
+      setTime(Math.max(0, Math.ceil((endAt - Date.now()) / 1000)))
+      setPlaying(true)
+
+      intervalId = window.setInterval(() => {
+        const remaining = Math.max(
+          0,
+          Math.ceil((endAt - Date.now()) / 1000),
+        )
+
+        setTime(remaining)
+
+        if (remaining <= 0) {
+          if (intervalId !== undefined) {
+            window.clearInterval(intervalId)
+          }
+
+          setPlaying(false)
+          setRounds((previous) => previous + 1)
+          void submitDuelScore(scoreRef.current)
+        }
+      }, 100)
+    }, Math.max(0, startAt - Date.now()))
+
+    return () => {
+      window.clearTimeout(timeoutId)
+
+      if (intervalId !== undefined) {
+        window.clearInterval(intervalId)
+      }
+    }
+  }, [duel?.invite_code, duel?.status, duel?.started_at, duel?.ends_at])
+
+  function openReactionRush() {
+    setScreen('reaction-menu')
+  }
+  function openBrainBattle() {
+  setScreen('brain-menu')
+}
+
+  function startSelectedGame() {
+    if (gameMode === 'solo') {
+      setDuel(null)
+      setDuelMessage('')
+      setScreen('reaction-game')
+      startSoloGame()
+      return
+    }
+
+    setScreen('reaction-game')
+
+    if (duel?.status === 'playing') {
+      if (!duel.started_at) {
+        void readyDuel()
+      } else {
+        setDuelMessage('Битва уже запущена. Жми как можно быстрее!')
+      }
+    } else if (!duel || duel.status === 'finished') {
+      setDuelMessage('Создай дуэль или открой приглашение друга.')
+    }
+  }
+
+  function openRating() {
+    setScreen('rating')
     void loadLeaderboard()
   }
 
-  function closeLeaderboard() {
-    setShowLeaderboard(false)
+  function openProfile() {
+    setScreen('profile')
   }
 
-  return showLeaderboard ? (
-    <main className="app">
-      <header className="topbar">
-        <div className="logo">
-          FB<span>⚡</span>
-        </div>
+  function backToGames() {
+    if (playing) return
+    setScreen('games')
+  }
 
-        <button
-          className="leaderboard-button"
-          onClick={closeLeaderboard}
-        >
-          ← Назад к игре
-        </button>
-      </header>
+  function shareDuel() {
+    if (!duel?.invite_code) return
 
-      <section className="hero">
-        <div className="eyebrow">FRIEND BATTLE</div>
-        <h1>
-          ТАБЛИЦА<br />
-          <span>ЛИДЕРОВ</span>
-        </h1>
-        <p>Соревнуйся с лучшими игроками!</p>
-      </section>
+    const inviteUrl =
+      `https://t.me/yourpartygame_bot/FriendBattle?startapp=duel_${duel.invite_code}`
 
-      <section className="stats">
-        <div className="stat-card">
-          <span>🏆</span>
-          <div>
-            <small>ТВОЙ РЕКОРД</small>
-            <strong>{best}</strong>
-          </div>
-        </div>
-      </section>
+    const shareUrl =
+      `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent('Сразись со мной в Friend Battle! ⚔️')}`
 
-      <section className="leaderboard-list">
-        {leaderboardLoading && (
-          <p>Загружаем рейтинг...</p>
-        )}
+    window.open(shareUrl, '_blank')
+  }
 
-        {!leaderboardLoading && leaderboardError && (
-          <p>{leaderboardError}</p>
-        )}
-
-        {!leaderboardLoading &&
-          !leaderboardError &&
-          leaderboard.length === 0 && (
-            <p>Пока игроков нет. Стань первым!</p>
-          )}
-
-        {!leaderboardLoading &&
-          !leaderboardError &&
-          leaderboard.map((player, index) => (
-            <div
-              className="leaderboard-row"
-              key={player.telegram_id}
-            >
-              <span>
-                {index === 0
-                  ? '🥇'
-                  : index === 1
-                    ? '🥈'
-                    : index === 2
-                      ? '🥉'
-                      : `${index + 1}.`}
-              </span>
-
-              <div>
-                <strong>{player.first_name || 'Игрок'}</strong>
-                <small>
-                  {player.username
-                    ? `@${player.username}`
-                    : 'Игрок Friend Battle'}
-                </small>
-              </div>
-
-              <strong>{player.best_score}</strong>
-            </div>
-          ))}
-      </section>
-
-      <button
-        className="leaderboard-button"
-        onClick={() => void loadLeaderboard()}
-      >
-        ↻ Обновить рейтинг
-      </button>
-    </main>
-  ) : (
-    <main className="app">
-      <header className="topbar">
-        <div className="logo">
-          FRIEND <span>BATTLE</span>
-        </div>
-        <div className="player-level">НОВИЧОК · LVL 1</div>
-      </header>
-
-      <section className="hero">
-        <PlayerProfile
-          userName={userName}
-          userUsername={userUsername}
-          userPhoto={userPhoto}
-          score={score}
-          best={best}
-          rounds={rounds}
-        />
-
-        <p>Докажи, кто здесь лучший!</p>
-      </section>
-
-      <section className="stats">
-        <div className="stat-card">
-          <span>🏆</span>
-          <div>
-            <small>ТВОЙ РЕКОРД</small>
-            <strong>{best}</strong>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <span>⚡</span>
-          <div>
-            <small>ОЧКИ МАТЧА</small>
-            <strong>{score}</strong>
-          </div>
-        </div>
-      </section>
-
-      <button
-        className="leaderboard-button"
-        onClick={openLeaderboard}
-      >
-        🏆 Таблица лидеров
-      </button>
-
-      <section className="game-card">
-        <div className="game-label">MINI GAME #01</div>
-        <div className="game-icon">⚡</div>
-        <h2>REACTION RUSH</h2>
-
-        <p>
-          {playing
-            ? `Жми как можно быстрее! Осталось: ${time} сек.`
-            : 'Набери максимум очков за 10 секунд.'}
-        </p>
-
-        {playing ? (
-          <button className="play-button" onClick={tap}>
-            ЖМИ! ⚡
-          </button>
-        ) : (
-          <button
-            className="play-button"
-            onClick={startGame}
-            disabled={playing || duel?.status === 'playing'}
-          >
-            {playing
-              ? 'БИТВА ИДЁТ!'
-              : duel?.status === 'playing'
-                ? 'ОЖИДАЕМ РЕЗУЛЬТАТ'
-                : score > 0
-                  ? 'ИГРАТЬ ЕЩЁ'
-                  : 'НАЧАТЬ ИГРУ'}
-          </button>
-        )}
-      </section>
-
+  function renderMultiplayerPanel() {
+    return (
       <section className="invite-card">
         <div className="invite-icon">⚔️</div>
+
         <div className="invite-text">
-          <strong>Вызови друга!</strong>
-          <p>
-            {duelMessage ||
-              'Создай дуэль и узнай, кто быстрее!'}
-          </p>
+          <strong>Битва с другом</strong>
+          <p>{duelMessage || 'Создай дуэль и узнай, кто быстрее!'}</p>
 
           {duel && (
             <>
@@ -613,7 +460,7 @@ function App() {
                           ? duel.player1_ready
                           : duel.player2_ready)
                       }
-                      onClick={readyDuel}
+                      onClick={() => void readyDuel()}
                     >
                       {duelLoading ? 'ОЖИДАЙ...' : 'ГОТОВ К БИТВЕ ⚔️'}
                     </button>
@@ -623,15 +470,7 @@ function App() {
 
               <button
                 className="invite-button"
-                onClick={() => {
-                  const inviteUrl =
-                    `https://t.me/yourpartygame_bot/FriendBattle?startapp=duel_${duel.invite_code}`
-
-                  const shareUrl =
-                    `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent('Сразись со мной в Friend Battle! ⚔️')}`
-
-                  window.open(shareUrl, '_blank')
-                }}
+                onClick={shareDuel}
               >
                 ОТПРАВИТЬ ДРУГУ
               </button>
@@ -642,25 +481,216 @@ function App() {
         <button
           className="invite-button"
           disabled={duelLoading}
-          onClick={createDuel}
+          onClick={() => void createDuel()}
         >
           {duelLoading ? 'СОЗДАЁМ...' : 'ВЫЗВАТЬ'}
         </button>
       </section>
+    )
+  }
 
-      <nav className="bottom-nav">
-        <div className="nav-item active">
-          ⚔️<span>Игра</span>
+  return (
+    <main className="app">
+      <header className="topbar">
+        <div className="logo">
+          FRIEND <span>BATTLE</span>
         </div>
 
-        <div className="nav-item" onClick={openLeaderboard}>
-          🏆<span>Рейтинг</span>
-        </div>
+        <div className="player-level">НОВИЧОК · LVL 1</div>
+      </header>
 
-        <div className="nav-item">
-          👤<span>Профиль</span>
-        </div>
-      </nav>
+      {screen === 'games' && (
+        <>
+          <section className="hero">
+            <PlayerProfile
+              userName={userName}
+              userUsername={userUsername}
+              userPhoto={userPhoto}
+              score={score}
+              best={best}
+              rounds={rounds}
+            />
+            <p>Докажи, кто здесь лучший!</p>
+          </section>
+
+        <GameCatalog
+  onOpenReactionRush={openReactionRush}
+  onOpenBrainBattle={openBrainBattle}
+/>
+
+        </>
+      )}
+
+      {screen === 'reaction-menu' && (
+        <ReactionRushMenu
+          onSoloGame={() => {
+            setGameMode('solo')
+            setScreen('reaction-game')
+          }}
+          onMultiplayerGame={() => {
+            setGameMode('multiplayer')
+            setScreen('reaction-game')
+          }}
+          onBack={backToGames}
+        />
+      )}
+
+      {screen === 'brain-menu' && (
+  <BrainBattleMenu
+    onSoloGame={() => {
+      setScreen('brain-game')
+    }}
+    onMultiplayerGame={() => {
+  setScreen('brain-battle-room')
+}}
+    onBack={backToGames}
+  />
+)}
+{screen === 'brain-game' && (
+  <BrainBattle
+    onBack={() => setScreen('brain-menu')}
+  />
+)}
+{screen === 'brain-battle-room' && (
+  <BrainBattleRoom
+    onBack={() => setScreen('brain-menu')}
+  />
+)}
+
+      {screen === 'reaction-game' && (
+        <>
+          <ReactionRush
+            score={score}
+            time={time}
+            playing={playing}
+            mode={gameMode}
+            disabled={
+              gameMode === 'multiplayer' &&
+              (duelLoading || duel?.status !== 'playing')
+            }
+            message={
+              gameMode === 'multiplayer'
+                ? duelMessage || 'Создай дуэль или присоединись к другу.'
+                : undefined
+            }
+            onStart={startSelectedGame}
+            onTap={tap}
+            onBack={() => {
+              if (playing) return
+              setScreen('reaction-menu')
+            }}
+          />
+
+          {gameMode === 'multiplayer' && renderMultiplayerPanel()}
+        </>
+      )}
+
+      {screen === 'rating' && (
+        <>
+          <section className="hero">
+            <div className="eyebrow">FRIEND BATTLE</div>
+            <h1>
+              ТАБЛИЦА<br />
+              <span>ЛИДЕРОВ</span>
+            </h1>
+            <p>Соревнуйся с лучшими игроками!</p>
+          </section>
+
+          <section className="stats">
+            <div className="stat-card">
+              <span>🏆</span>
+              <div>
+                <small>ТВОЙ РЕКОРД</small>
+                <strong>{best}</strong>
+              </div>
+            </div>
+          </section>
+
+          <section className="leaderboard-list">
+            {leaderboardLoading && <p>Загружаем рейтинг...</p>}
+
+            {!leaderboardLoading && leaderboardError && (
+              <p>{leaderboardError}</p>
+            )}
+
+            {!leaderboardLoading &&
+              !leaderboardError &&
+              leaderboard.length === 0 && (
+                <p>Пока игроков нет. Стань первым!</p>
+              )}
+
+            {!leaderboardLoading &&
+              !leaderboardError &&
+              leaderboard.map((player, index) => (
+                <div
+                  className="leaderboard-row"
+                  key={player.telegram_id}
+                >
+                  <span>
+                    {index === 0
+                      ? '🥇'
+                      : index === 1
+                        ? '🥈'
+                        : index === 2
+                          ? '🥉'
+                          : `${index + 1}.`}
+                  </span>
+
+                  <div>
+                    <strong>{player.first_name || 'Игрок'}</strong>
+                    <small>
+                      {player.username
+                        ? `@${player.username}`
+                        : 'Игрок Friend Battle'}
+                    </small>
+                  </div>
+
+                  <strong>{player.best_score}</strong>
+                </div>
+              ))}
+          </section>
+
+          <button
+            className="leaderboard-button"
+            onClick={() => void loadLeaderboard()}
+          >
+            ↻ Обновить рейтинг
+          </button>
+        </>
+      )}
+
+      {screen === 'profile' && (
+        <>
+          <section className="hero">
+            <div className="eyebrow">FRIEND BATTLE</div>
+            <h1>
+              ТВОЙ <span>ПРОФИЛЬ</span>
+            </h1>
+          </section>
+
+          <PlayerProfile
+            userName={userName}
+            userUsername={userUsername}
+            userPhoto={userPhoto}
+            score={score}
+            best={best}
+            rounds={rounds}
+          />
+        </>
+      )}
+
+      <BottomNavigation
+        activeTab={
+          screen === 'rating'
+            ? 'rating'
+            : screen === 'profile'
+              ? 'profile'
+              : 'games'
+        }
+        onGames={() => setScreen('games')}
+        onRating={openRating}
+        onProfile={openProfile}
+      />
     </main>
   )
 }
