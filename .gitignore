@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Temporary development files
+App.backup.tsx
+App.original.txt
+app-diff.txt
+cloudflared.exe
+# Supabase local temporary files
+supabase/.temp/
