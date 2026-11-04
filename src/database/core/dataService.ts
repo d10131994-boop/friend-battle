@@ -4,6 +4,20 @@ import type { DatabaseRecord } from '../types/database.types'
 import type { QueryOptions } from '../types/query.types'
 import { applyFilters, applyOrder } from './queryHelpers'
 
+const DEFAULT_PAGE_SIZE = 1000
+
+function validatePagination(options: QueryOptions): void {
+  if (options.limit !== undefined &&
+    (!Number.isSafeInteger(options.limit) || options.limit < 0)) {
+    throw new RangeError('Query limit must be a non-negative safe integer.')
+  }
+
+  if (options.offset !== undefined &&
+    (!Number.isSafeInteger(options.offset) || options.offset < 0)) {
+    throw new RangeError('Query offset must be a non-negative safe integer.')
+  }
+}
+
 function withErrorHandling<T>(operation: string, action: () => Promise<T>): Promise<T> {
   return action().catch((error: unknown) => {
     throw normalizeDatabaseError(error, operation)
@@ -16,8 +30,20 @@ export const dataService = {
     options: QueryOptions = {},
   ): Promise<TRecord | null> {
     return withErrorHandling(`getOne:${table}`, async () => {
+      validatePagination(options)
+      if (options.limit === 0) return null
+
       let query = supabaseClient.from(table).select(options.columns ?? '*')
       query = applyFilters(query, options.filters)
+      query = applyOrder(query, options.orderBy)
+
+      if (options.offset !== undefined) {
+        const end = options.offset + (options.limit ?? 1) - 1
+        query = query.range(options.offset, end)
+      } else if (options.limit !== undefined) {
+        query = query.limit(options.limit)
+      }
+
       const { data, error } = await query.maybeSingle()
       if (error) throw error
       return data as TRecord | null
@@ -30,7 +56,7 @@ export const dataService = {
     idColumn = 'id',
     columns = '*',
   ): Promise<TRecord | null> {
-    return this.getOne<TRecord>(table, {
+    return dataService.getOne<TRecord>(table, {
       columns,
       filters: [{ column: idColumn, operator: 'eq', value: id }],
     })
@@ -41,14 +67,16 @@ export const dataService = {
     options: QueryOptions = {},
   ): Promise<TRecord[]> {
     return withErrorHandling(`getMany:${table}`, async () => {
+      validatePagination(options)
+      if (options.limit === 0) return []
+
       let query = supabaseClient.from(table).select(options.columns ?? '*')
       query = applyFilters(query, options.filters)
       query = applyOrder(query, options.orderBy)
 
-      if (options.offset !== undefined && options.limit !== undefined) {
-        query = query.range(options.offset, options.offset + options.limit - 1)
-      } else if (options.offset !== undefined) {
-        query = query.range(options.offset, options.offset + 999)
+      if (options.offset !== undefined) {
+        const pageSize = options.limit ?? DEFAULT_PAGE_SIZE
+        query = query.range(options.offset, options.offset + pageSize - 1)
       } else if (options.limit !== undefined) {
         query = query.limit(options.limit)
       }
