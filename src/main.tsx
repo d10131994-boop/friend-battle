@@ -16,7 +16,7 @@ if (!supabaseUrl || !supabasePublishableKey) {
   const missingVariables = [
     !supabaseUrl && 'VITE_SUPABASE_URL',
     !supabasePublishableKey && 'VITE_SUPABASE_PUBLISHABLE_KEY',
-  ].filter(Boolean)
+  ].filter((variable): variable is string => Boolean(variable))
 
   root.render(
     <div className="startup-error" role="alert">
