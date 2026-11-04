@@ -6,6 +6,33 @@ import { applyFilters, applyOrder } from './queryHelpers'
 
 const DEFAULT_PAGE_SIZE = 1000
 
+function validateMutationFilters(
+  table: string,
+  operation: 'update' | 'delete',
+  filters: unknown,
+): asserts filters is NonNullable<QueryOptions['filters']> {
+  if (!Array.isArray(filters) || filters.length === 0) {
+    throw normalizeDatabaseError(
+      new Error(`${operation} requires at least one filter to prevent an accidental full-table change.`),
+      `${operation}:${table}`,
+    )
+  }
+
+  const hasInvalidFilter = filters.some((filter) =>
+    !filter ||
+    typeof filter.column !== 'string' ||
+    filter.column.trim().length === 0 ||
+    typeof filter.operator !== 'string',
+  )
+
+  if (hasInvalidFilter) {
+    throw normalizeDatabaseError(
+      new Error(`${operation} received an invalid filter. Each filter must specify a column and operator.`),
+      `${operation}:${table}`,
+    )
+  }
+}
+
 function validatePagination(options: QueryOptions): void {
   if (options.limit !== undefined &&
     (!Number.isSafeInteger(options.limit) || options.limit < 0)) {
@@ -144,12 +171,7 @@ export const dataService = {
     values: DatabaseRecord,
     filters: NonNullable<QueryOptions['filters']>,
   ): Promise<TRecord[]> {
-    if (filters.length === 0) {
-      throw normalizeDatabaseError(
-        new Error('Update requires at least one filter to prevent an accidental full-table update.'),
-        `update:${table}`,
-      )
-    }
+    validateMutationFilters(table, 'update', filters)
 
     return withErrorHandling(`update:${table}`, async () => {
       let query = supabaseClient.from(table).update(values)
@@ -179,12 +201,7 @@ export const dataService = {
     table: string,
     filters: NonNullable<QueryOptions['filters']>,
   ): Promise<TRecord[]> {
-    if (filters.length === 0) {
-      throw normalizeDatabaseError(
-        new Error('Delete requires at least one filter to prevent an accidental full-table delete.'),
-        `delete:${table}`,
-      )
-    }
+    validateMutationFilters(table, 'delete', filters)
 
     return withErrorHandling(`delete:${table}`, async () => {
       let query = supabaseClient.from(table).delete()
