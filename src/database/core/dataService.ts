@@ -16,6 +16,13 @@ function validatePagination(options: QueryOptions): void {
     (!Number.isSafeInteger(options.offset) || options.offset < 0)) {
     throw new RangeError('Query offset must be a non-negative safe integer.')
   }
+
+  if (options.offset !== undefined && options.limit !== 0) {
+    const pageSize = options.limit ?? DEFAULT_PAGE_SIZE
+    if (!Number.isSafeInteger(options.offset + pageSize - 1)) {
+      throw new RangeError('Query offset and limit exceed the safe integer range.')
+    }
+  }
 }
 
 function withErrorHandling<T>(operation: string, action: () => Promise<T>): Promise<T> {
