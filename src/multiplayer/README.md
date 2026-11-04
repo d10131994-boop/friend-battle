@@ -46,6 +46,11 @@ The current shared Multiplayer storage consists of two existing tables in the
   include `service_role`; the browser should not access these tables directly.
   Trusted server-side code must validate Telegram `initData` and authorize
   every operation.
+- A live check of `pg_publication_tables` confirmed that neither table is
+  currently included in a Realtime publication. Do not add them yet: first
+  agree on a client-side authorization model and the required RLS policies.
+  Enabling Postgres Changes without that access design would not provide a
+  usable or adequately specified room subscription contract.
 
 The schema currently has no room creator column separate from the player list:
 the host is represented by the player row with `is_host = true`. It also has
@@ -147,9 +152,12 @@ propagate through the adapter.
 ## Realtime
 
 The Database module exposes a generic Realtime API, but Multiplayer does not
-yet define a subscription contract or assume that these tables are enabled in
-the Realtime publication. Add room/player subscriptions only after the event
-payload, authorization model, and client lifecycle are agreed.
+yet define a subscription contract. Neither shared table is currently in the
+Realtime publication, and both have RLS enabled without client policies.
+Therefore Multiplayer must not subscribe to these tables yet. Add room/player
+subscriptions only after the event payload, authorization model, required RLS
+policies, and client lifecycle are agreed. Do not enable publication membership
+as a standalone fix.
 
 ## Scope
 
