@@ -151,13 +151,105 @@ propagate through the adapter.
 
 ## Realtime
 
-The Database module exposes a generic Realtime API, but Multiplayer does not
-yet define a subscription contract. Neither shared table is currently in the
-Realtime publication, and both have RLS enabled without client policies.
-Therefore Multiplayer must not subscribe to these tables yet. Add room/player
-subscriptions only after the event payload, authorization model, required RLS
-policies, and client lifecycle are agreed. Do not enable publication membership
-as a standalone fix.
+### Current state and prerequisites
+
+The Database module exposes a generic Realtime API, but the shared Multiplayer
+tables are not currently in a Realtime publication. Both tables have RLS enabled
+without client policies. Therefore this contract is a design specification
+only: Multiplayer must not open subscriptions to these tables until the
+authorization model, RLS policies, and publication membership have been
+reviewed and explicitly approved. Do not change Supabase as part of this
+documentation.
+
+The browser must never receive broad access to room/player rows merely to make
+Realtime work. The trusted server-side Multiplayer API remains responsible for
+validating Telegram `initData` and authorizing room membership. The Realtime
+authorization design must ensure that a client can observe only rooms it is
+allowed to join.
+
+### Purpose and source of truth
+
+Realtime events are invalidation signals, not authoritative room state.
+A Postgres Changes payload must never be cast directly to `MultiplayerRoom`
+or merged into the public room model. The trusted `get_room` operation remains
+the source of truth and returns the complete normalized room plus its players.
+
+When a relevant event arrives, the client should request a fresh room snapshot
+through the existing Multiplayer service. This also handles events arriving
+out of order, duplicate notifications, and partial row payloads.
+
+### Proposed subscriptions
+
+Once security and publication prerequisites are approved, a room watcher needs
+these subscriptions:
+
+| Table | Events | Filter | Purpose |
+| --- | --- | --- | --- |
+| `common_multiplayer_rooms` | `UPDATE` | `id=eq.<roomId>` | Room status and lifecycle changes |
+| `common_multiplayer_players` | `INSERT`, `UPDATE` | `room_id=eq.<roomId>` | Player joins and readiness/host-field changes |
+
+Use the Database module's existing `realtime.subscribe(table, callback, options)`
+API with schema `public`. Keep the two channel handles together as one logical
+room watcher and release both with `realtime.unsubscribe(channel)` when the
+watcher is stopped.
+
+**Player deletion is an explicit unresolved case.** The current schema
+represents leaving by deleting a player row; it has no `left_at` or equivalent
+soft-delete field. Postgres Changes DELETE events do not support the same
+server-side row filtering guarantees as INSERT/UPDATE, so do not add an
+unfiltered DELETE listener as a workaround. Before implementing leave
+notifications, agree on a secure signal (for example, an authorized server
+broadcast or a schema/event design change). Until then, a deleted player may
+not trigger an immediate client refresh through the proposed filtered
+subscriptions.
+
+### Snapshot and reconnect lifecycle
+
+1. Create the room watcher and register both subscriptions.
+2. Wait until both channels report `SUBSCRIBED`; do not treat the watcher as
+   live before that.
+3. Fetch `get_room` after subscription setup and publish that complete snapshot.
+   This closes the gap between initial room loading and subscription readiness.
+4. On each relevant INSERT/UPDATE event, schedule a fresh `get_room` request.
+   Coalesce bursts so several row changes cause at most one in-flight refresh
+   plus one follow-up refresh if another event arrives during it.
+5. On a channel `TIMED_OUT` or `CHANNEL_ERROR`, expose the degraded state to
+   the caller. Do not synthesize room state from the failed channel.
+6. When the channel returns to `SUBSCRIBED`, fetch a new full snapshot. This
+   reconciles changes missed while disconnected.
+7. On `CLOSED`, stop treating that channel as active. A deliberate stop should
+   unsubscribe both channels and prevent late callbacks from publishing state.
+
+The existing Database Realtime status callback exposes `SUBSCRIBED`,
+`TIMED_OUT`, `CLOSED`, and `CHANNEL_ERROR`. A logical room watcher should
+report per-channel status (or a derived aggregate status) so callers can
+distinguish a fully connected watcher from a partially connected one.
+
+### Ordering, concurrency, and errors
+
+- Treat duplicate events as normal; refreshes must be safe to repeat.
+- Do not apply optimistic changes from Realtime payloads to the canonical room.
+- Prevent older, slower `get_room` responses from overwriting a newer snapshot.
+  Use a monotonically increasing refresh generation or equivalent request
+  sequencing in the eventual implementation.
+- Keep subscription errors separate from `get_room` errors. Both should be
+  observable by the caller.
+- Stop/unsubscribe must be idempotent and must prevent callbacks or refresh
+  results from updating a stopped watcher.
+- Do not add polling, a new Edge Function action, new database columns, or
+  game-specific event adapters as part of this contract.
+
+### Out of scope until separately agreed
+
+- Enabling either table in `supabase_realtime`.
+- Creating or changing RLS policies, grants, or table schema.
+- Defining a new broadcast channel or server-side event publisher.
+- Implementing a Multiplayer subscription API or changing game integrations.
+- Changing the shared Edge Function request/response contract.
+
+This section records the proposed client contract only. The security design,
+player-leave signal, and operational approval are prerequisites for a later
+implementation.
 
 ## Scope
 
