@@ -12,6 +12,28 @@ function withStorageError<T>(operation: string, action: () => Promise<T>): Promi
   })
 }
 
+function validateBucketAndPath(bucket: string, path?: string): void {
+  if (typeof bucket !== 'string' || bucket.trim().length === 0) {
+    throw new TypeError('Storage bucket name must be a non-empty string.')
+  }
+
+  if (path !== undefined && (typeof path !== 'string' || path.trim().length === 0)) {
+    throw new TypeError('Storage path must be a non-empty string.')
+  }
+}
+
+function validateStoragePagination(options: StorageListOptions): void {
+  if (options.limit !== undefined &&
+    (!Number.isSafeInteger(options.limit) || options.limit < 0)) {
+    throw new RangeError('Storage list limit must be a non-negative safe integer.')
+  }
+
+  if (options.offset !== undefined &&
+    (!Number.isSafeInteger(options.offset) || options.offset < 0)) {
+    throw new RangeError('Storage list offset must be a non-negative safe integer.')
+  }
+}
+
 export const storage = {
   async upload(
     bucket: string,
@@ -19,6 +41,7 @@ export const storage = {
     file: File | Blob,
     options: StorageUploadOptions = {},
   ): Promise<string> {
+    validateBucketAndPath(bucket, path)
     return withStorageError(`storage.upload:${bucket}/${path}`, async () => {
       const { data, error } = await supabaseClient.storage
         .from(bucket)
@@ -34,6 +57,7 @@ export const storage = {
   },
 
   async download(bucket: string, path: string): Promise<Blob> {
+    validateBucketAndPath(bucket, path)
     return withStorageError(`storage.download:${bucket}/${path}`, async () => {
       const { data, error } = await supabaseClient.storage.from(bucket).download(path)
       if (error) throw error
@@ -42,6 +66,7 @@ export const storage = {
   },
 
   getPublicUrl(bucket: string, path: string): string {
+    validateBucketAndPath(bucket, path)
     const { data } = supabaseClient.storage.from(bucket).getPublicUrl(path)
     return data.publicUrl
   },
@@ -51,6 +76,11 @@ export const storage = {
     path: string,
     expiresInSeconds: number,
   ): Promise<string> {
+    validateBucketAndPath(bucket, path)
+    if (!Number.isSafeInteger(expiresInSeconds) || expiresInSeconds <= 0) {
+      throw new RangeError('Signed URL expiration must be a positive safe integer.')
+    }
+
     return withStorageError(`storage.createSignedUrl:${bucket}/${path}`, async () => {
       const { data, error } = await supabaseClient.storage
         .from(bucket)
@@ -62,6 +92,12 @@ export const storage = {
   },
 
   async remove(bucket: string, paths: string[]): Promise<void> {
+    validateBucketAndPath(bucket)
+    if (!Array.isArray(paths) || paths.length === 0 ||
+      paths.some((path) => typeof path !== 'string' || path.trim().length === 0)) {
+      throw new TypeError('Storage remove requires a non-empty list of valid paths.')
+    }
+
     return withStorageError(`storage.remove:${bucket}`, async () => {
       const { error } = await supabaseClient.storage.from(bucket).remove(paths)
       if (error) throw error
@@ -73,6 +109,12 @@ export const storage = {
     folder = '',
     options: StorageListOptions = {},
   ): Promise<StorageFileEntry[]> {
+    validateBucketAndPath(bucket)
+    validateStoragePagination(options)
+    if (folder.length > 0 && folder.trim().length === 0) {
+      throw new TypeError('Storage folder must be a valid path when provided.')
+    }
+
     return withStorageError(`storage.list:${bucket}/${folder}`, async () => {
       const { data, error } = await supabaseClient.storage.from(bucket).list(folder, {
         limit: options.limit,
