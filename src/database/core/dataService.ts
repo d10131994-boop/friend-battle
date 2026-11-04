@@ -65,6 +65,9 @@ export const dataService = {
   ): Promise<TRecord | null> {
     return withErrorHandling(`getOne:${table}`, async () => {
       validatePagination(options)
+      if (options.limit !== undefined && options.limit > 1) {
+        throw new RangeError('getOne limit must be 0 or 1.')
+      }
       if (options.limit === 0) return null
 
       let query = supabaseClient.from(table).select(options.columns ?? '*')
