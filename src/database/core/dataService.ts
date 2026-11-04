@@ -120,7 +120,9 @@ export const dataService = {
 
       const { data, error } = await query
       if (error) throw error
-      return (data ?? []) as TRecord[]
+      // The table name is dynamic, so Supabase cannot infer a concrete row type here.
+      // The public generic is the caller's declared record shape.
+      return (data ?? []) as unknown as TRecord[]
     })
   },
 
