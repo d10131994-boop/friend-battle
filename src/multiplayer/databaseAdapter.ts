@@ -5,9 +5,12 @@ import type {
   GetRoomParams,
   JoinRoomParams,
   MultiplayerAuth,
+  MultiplayerPlayer,
   MultiplayerRoom,
+  MultiplayerRoomStatus,
   SetPlayerReadyParams,
 } from './types'
+import { MultiplayerError } from './types'
 import type { RoomServiceAdapter } from './roomService'
 import type { InviteServiceAdapter } from './inviteService'
 import type { PlayerServiceAdapter } from './playerService'
@@ -37,7 +40,76 @@ const DEFAULT_ACTIONS: DatabaseMultiplayerActions = {
   setReady: 'set_ready',
 }
 
+const ROOM_STATUSES: readonly MultiplayerRoomStatus[] = [
+  'waiting',
+  'starting',
+  'playing',
+  'finished',
+  'cancelled',
+]
+
 type MultiplayerAction = keyof DatabaseMultiplayerActions
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function isNullableTimestamp(value: unknown): value is string | null {
+  return (
+    value === null ||
+    (typeof value === 'string' &&
+      value.trim().length > 0 &&
+      Number.isFinite(Date.parse(value)))
+  )
+}
+
+function isMultiplayerPlayer(value: unknown): value is MultiplayerPlayer {
+  if (!isRecord(value)) return false
+
+  return (
+    isNonEmptyString(value.userId) &&
+    isNonEmptyString(value.displayName) &&
+    typeof value.isReady === 'boolean' &&
+    typeof value.isHost === 'boolean' &&
+    isNullableTimestamp(value.joinedAt)
+  )
+}
+
+/**
+ * Supabase's generic invoke type is compile-time only. Validate the untrusted
+ * Edge Function payload before exposing it as a MultiplayerRoom.
+ */
+function parseMultiplayerRoom(value: unknown): MultiplayerRoom {
+  if (!isRecord(value)) {
+    throw new MultiplayerError('Сервер вернул некорректный ответ комнаты.')
+  }
+
+  const valid =
+    isNonEmptyString(value.roomId) &&
+    isNonEmptyString(value.gameId) &&
+    isNonEmptyString(value.inviteCode) &&
+    typeof value.status === 'string' &&
+    ROOM_STATUSES.includes(value.status as MultiplayerRoomStatus) &&
+    Array.isArray(value.players) &&
+    value.players.every(isMultiplayerPlayer) &&
+    (value.maxPlayers === null ||
+      (typeof value.maxPlayers === 'number' && Number.isInteger(value.maxPlayers))) &&
+    isNullableTimestamp(value.createdAt) &&
+    isNullableTimestamp(value.startedAt) &&
+    isNullableTimestamp(value.finishedAt)
+
+  if (!valid) {
+    throw new MultiplayerError(
+      'Сервер вернул комнату в формате, несовместимом с контрактом Multiplayer Core.',
+    )
+  }
+
+  return value as unknown as MultiplayerRoom
+}
 
 /**
  * Bridges the generic Multiplayer Core contracts to Database.invokeFunction.
@@ -46,31 +118,43 @@ type MultiplayerAction = keyof DatabaseMultiplayerActions
  * enforcing authorization. The browser only forwards initData; it must never
  * attempt to validate it or use a service-role key.
  *
- * The function is expected to return a normalized MultiplayerRoom object.
- * This adapter does not assume any PostgreSQL table names or schema.
+ * The function must return a normalized MultiplayerRoom object. Runtime
+ * validation protects the core from malformed or outdated server responses.
  */
 export function createDatabaseMultiplayerAdapter(
   options: DatabaseMultiplayerAdapterOptions,
 ): RoomServiceAdapter & InviteServiceAdapter & PlayerServiceAdapter {
-  if (!options.functionName.trim()) {
+  if (!isNonEmptyString(options.functionName)) {
     throw new TypeError('A multiplayer Edge Function name is required.')
   }
 
   const actions = { ...DEFAULT_ACTIONS, ...options.actions }
+
+  for (const [key, action] of Object.entries(actions)) {
+    if (!isNonEmptyString(action)) {
+      throw new TypeError(`A non-empty multiplayer action is required for ${key}.`)
+    }
+  }
 
   async function execute(
     action: MultiplayerAction,
     auth: MultiplayerAuth,
     params: DatabaseRecord,
   ): Promise<MultiplayerRoom> {
-    return database.invokeFunction<MultiplayerRoom, DatabaseRecord>(
-      options.functionName,
+    if (!isNonEmptyString(auth.initData)) {
+      throw new TypeError('Telegram initData is required for multiplayer requests.')
+    }
+
+    const response = await database.invokeFunction<unknown, DatabaseRecord>(
+      options.functionName.trim(),
       {
+        ...params,
         action: actions[action],
         initData: auth.initData,
-        ...params,
       },
     )
+
+    return parseMultiplayerRoom(response)
   }
 
   return {
