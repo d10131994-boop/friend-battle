@@ -36,7 +36,11 @@ export function normalizeDatabaseError(
 
   const message =
     asString(source.message) ??
-    (error instanceof Error ? error.message : 'An unknown database error occurred.')
+    (error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : 'An unknown database error occurred.')
 
   return new DatabaseError(message, options)
 }
