@@ -8,10 +8,18 @@ import type { DatabaseRecord } from '../types/database.types'
 
 export type RealtimeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*'
 
+export type RealtimeSubscriptionStatus =
+  | 'SUBSCRIBED'
+  | 'TIMED_OUT'
+  | 'CLOSED'
+  | 'CHANNEL_ERROR'
+
 export interface RealtimeSubscriptionOptions {
   schema?: string
   event?: RealtimeEvent
   filter?: string
+  /** Receives connection lifecycle updates and the underlying error, when present. */
+  onStatus?: (status: RealtimeSubscriptionStatus, error?: Error) => void
 }
 
 export type RealtimeCallback = (
@@ -25,28 +33,38 @@ export const realtime = {
     options: RealtimeSubscriptionOptions = {},
   ): RealtimeChannel {
     try {
-      const channel = supabaseClient.channel(`database:${options.schema ?? 'public'}:${table}:${crypto.randomUUID()}`)
+      if (typeof table !== 'string' || table.trim().length === 0) {
+        throw new TypeError('Realtime table name must be a non-empty string.')
+      }
+      if (typeof callback !== 'function') {
+        throw new TypeError('Realtime callback must be a function.')
+      }
+      if (options.schema !== undefined &&
+        (typeof options.schema !== 'string' || options.schema.trim().length === 0)) {
+        throw new TypeError('Realtime schema must be a non-empty string when provided.')
+      }
+
+      const schema = options.schema ?? 'public'
+      const channel = supabaseClient.channel(`database:${schema}:${table}:${crypto.randomUUID()}`)
 
       return channel
         .on(
           'postgres_changes',
           {
             event: options.event ?? '*',
-            schema: options.schema ?? 'public',
+            schema,
             table,
             filter: options.filter,
           },
           callback,
         )
         .subscribe((status, error) => {
-          if (error) {
-            console.error(
-              normalizeDatabaseError(error, `realtime.subscribe:${table}`),
-            )
-          }
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error(`Realtime subscription failed for table "${table}": ${status}`)
-          }
+          options.onStatus?.(
+            status,
+            error
+              ? normalizeDatabaseError(error, `realtime.subscribe:${table}`)
+              : undefined,
+          )
         })
     } catch (error) {
       throw normalizeDatabaseError(error, `realtime.subscribe:${table}`)
