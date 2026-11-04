@@ -30,7 +30,11 @@ export interface QueryOptions {
   columns?: string
   filters?: DatabaseFilter[]
   orderBy?: DatabaseOrder | DatabaseOrder[]
+  /** Maximum number of rows to return. Must be a non-negative safe integer. */
   limit?: number
-  /** Zero-based row offset. Prefer cursor pagination for large datasets. */
+  /**
+   * Zero-based row offset. If used without limit in getMany(), the default
+   * page size is 1000. Prefer cursor pagination for large datasets.
+   */
   offset?: number
 }
