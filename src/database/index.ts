@@ -41,4 +41,5 @@ export type {
   RealtimeCallback,
   RealtimeEvent,
   RealtimeSubscriptionOptions,
+  RealtimeSubscriptionStatus,
 } from './realtime/realtimeService'

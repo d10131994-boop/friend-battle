@@ -1,7 +1,12 @@
 # Database module
 
-All browser-side Supabase access should go through this module. Game UI and
-feature modules must not import the Supabase client directly.
+The target architecture is for all browser-side Supabase access to go
+through this module. New game and feature code should use this API and must
+not import the Supabase client directly.
+
+Some existing application code still uses the legacy `src/supabase.ts`
+client directly. Migrating those existing integrations is intentionally
+outside the scope of this foundational module task.
 
 ## Public API
 
