@@ -39,38 +39,79 @@ The server returns normalized room snapshots with `roomId`, `gameId`,
 `startedAt`, and `finishedAt`. Each player includes `userId`,
 `displayName`, `isReady`, `isHost`, `joinedAt`, and `lastSeenAt`.
 
-Normal game completion changes the room to `finished` through trusted
-game-server code, not a client-authorized action. `finished` is terminal:
-leaving or inactivity must never change it to `cancelled`.
+### Trusted game-server actions
+
+`start_game` and `finish_game` are deliberately not part of the
+Telegram-authenticated client API and are not exposed by
+`MultiplayerService`. A game module must call them from its trusted
+server-side component. A browser or Telegram client must never receive the
+game-server secret.
+
+The server calls the same Edge Function endpoint
+`POST /functions/v1/multiplayer` with the
+`x-multiplayer-game-server-secret` header:
+
+| Action | Input | Result |
+| --- | --- | --- |
+| `start_game` | `roomId` | Room snapshot with `status: playing` and a new `startedAt` |
+| `finish_game` | `roomId`, `startedAt` from the matching `start_game` response | Room snapshot with `status: finished` and `finishedAt` |
+
+The secret is configured as `MULTIPLAYER_GAME_SERVER_SECRET` in the
+Multiplayer Edge Function and in the trusted game-server environment. It must
+be a high-entropy value of at least 32 characters, kept out of source control
+and all client bundles. These actions are also protected by the database
+function's `service_role`-only execute permission.
+
+`start_game` succeeds only while the room is `waiting` or `finished`, and
+only when every current player is ready and has sent a heartbeat within the
+last 90 seconds. The returned `startedAt` identifies that particular game
+session. The game server must pass that exact value to `finish_game`; this
+prevents a delayed finish request from an older game from ending a newer game
+in the same room. Repeating `finish_game` for the same already-finished
+session is safe and idempotent.
+
+The game module owns game rules and result presentation. For example, it can
+show the final result for 10 seconds and then call `finish_game` from its
+server-side component. Multiplayer only changes the room lifecycle and
+notifies participants; it does not decide who won or when the result screen
+should disappear. The host has no special permission to finish a game.
+
+`finished` means the current game session ended, not that the room was
+destroyed. Players can return to the room menu, change readiness, invite
+players, and start another session in the same room. `cancelled` is the
+terminal room state. Leaving by the last player, host closure, or idle
+cleanup can cancel a room even after a game session has finished.
 
 ## Room lifecycle and reconnect
 
 - Creating a room inserts the creator as its first player and host.
-- Joining by invite code is allowed only while the room is `waiting` and has
-  capacity.
-- An existing member can re-enter a waiting room even when it is at capacity.
+- Joining by invite code is allowed while the room is `waiting` or
+  `finished` and has capacity. Existing members can reconnect in either
+  state even when the room is at capacity.
 - A player who explicitly calls `leave_room` is removed immediately.
 - If the host explicitly leaves and other players remain, the host role is
   transferred to the remaining player with the earliest `joined_at`. A stable
   player ID breaks timestamp ties.
-- If the last player explicitly leaves, the room becomes `cancelled`.
-- The host may call `close_room` to cancel an active room. A finished room
-  remains `finished`.
+- If the last player explicitly leaves, the room becomes `cancelled`,
+  including when the last game session had finished.
+- The host may call `close_room` to cancel the room, including after a game
+  session has finished. The host cannot call `finish_game`.
 - A network disconnect is not an explicit leave. The player row remains, and
   the host role is not transferred merely because the host lost connectivity.
-- The client sends a heartbeat every 30 seconds while the room is active and
-  the app is in the foreground. The server updates that member's
+- The client sends a heartbeat every 30 seconds while the room is in
+  `waiting`, `starting`, `playing`, or `finished` and the app is in the
+  foreground. The server updates that member's
   `last_seen_at`; clients never write this field directly.
 - A player is considered disconnected for presence display after 90 seconds
   without a heartbeat. The player row is retained so that the same player can
   reconnect.
 - If no room member has sent a heartbeat for 10 minutes, a server-side cleanup
-  task changes an active room (`waiting`, `starting`, or `playing`) to
-  `cancelled`. The cleanup runs every 30 seconds, so the effective timeout
+  task changes an active room (`waiting`, `starting`, `playing`, or
+  `finished`) to `cancelled`. The cleanup runs every 30 seconds, so the effective timeout
   may exceed 10 minutes by at most 30 seconds. A heartbeat received before
   cleanup prevents cancellation.
 - Reconnection is allowed only for an existing member while the room is in
-  `waiting`, `starting`, or `playing`. The server checks membership and
+  `waiting`, `starting`, `playing`, or `finished`. The server checks membership and
   room status; it does not inspect whether other players' JWTs are active.
 
 The heartbeat timestamp is stored per player as `last_seen_at`. The cleanup
@@ -117,7 +158,7 @@ the app stops refresh; on resume, the client checks expiry.
 
 The server issues or refreshes a token only if the caller's Telegram identity
 matches an existing room member and the room status is `waiting`,
-`starting`, or `playing`. It does not need to inspect other members' token
+`starting`, `playing`, or `finished`. It does not need to inspect other members' token
 states. An already-issued token may remain usable until its one-hour expiry
 after a player leaves or a room closes; immediate JWT revocation is not part
 of this design.
@@ -149,7 +190,8 @@ await watcher.stop()
 ```
 
 Supported events: `room_updated`, `player_joined`, `player_updated`,
-`player_left`, and `room_finished`. Payloads are invalidation signals only;
+`player_left`, and `room_finished`. A successful `start_game` broadcasts
+`room_updated`; a successful `finish_game` broadcasts `room_finished`. Payloads are invalidation signals only;
 the client never merges them into the canonical room model. The deployed
 function sends invalidation events after successful room mutations. A
 successful subscription triggers an initial snapshot fetch and a fresh fetch
@@ -158,8 +200,10 @@ responses cannot update a stopped watcher.
 
 ## Server and Supabase prerequisites
 
-The Edge Function validates Telegram `initData` and calls a single
-server-only PostgreSQL action function. Room mutations are serialized by
+The Edge Function validates Telegram `initData` for player actions and the
+separate game-server secret for `start_game` / `finish_game`. It calls a
+single server-only PostgreSQL action function. The RPC execute permission is
+restricted to `service_role`; browser roles cannot call it directly. Room mutations are serialized by
 locking the room row, including heartbeat updates, explicit leave, host
 transfer, and idle cleanup. The browser has no direct table privileges and
 cannot publish authoritative room events.
