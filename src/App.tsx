@@ -90,6 +90,7 @@ function App() {
 
   useEffect(() => {
     if (telegramStartParam?.startsWith('rr_')) setScreen('reaction-multiplayer')
+    if (telegramStartParam?.startsWith('bb_')) setScreen('brain-battle-room')
   }, [telegramStartParam])
 
   function openRating() {
@@ -160,7 +161,13 @@ function App() {
       )}
 
       {screen === 'brain-game' && <BrainBattle onBack={() => setScreen('brain-menu')} />}
-      {screen === 'brain-battle-room' && <BrainBattleRoom onBack={() => setScreen('brain-menu')} />}
+      {screen === 'brain-battle-room' && (
+        <BrainBattleRoom
+          initData={telegramInitData}
+          inviteCode={telegramStartParam?.startsWith('bb_') ? telegramStartParam.slice(3) : undefined}
+          onBack={() => setScreen('brain-menu')}
+        />
+      )}
 
       {screen === 'rating' && (
         <>
