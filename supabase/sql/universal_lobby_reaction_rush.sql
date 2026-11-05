@@ -31,8 +31,13 @@ CREATE TABLE IF NOT EXISTS public.games_reaction_rush_matches (
   status text NOT NULL DEFAULT 'playing' CHECK (status IN ('playing', 'completed', 'cancelled')),
   created_at timestamptz NOT NULL DEFAULT now(),
   completed_at timestamptz,
+  final_results jsonb,
+  winner_user_id text,
   UNIQUE (room_id, id)
 );
+ALTER TABLE public.games_reaction_rush_matches
+  ADD COLUMN IF NOT EXISTS final_results jsonb,
+  ADD COLUMN IF NOT EXISTS winner_user_id text;
 CREATE UNIQUE INDEX IF NOT EXISTS games_reaction_rush_one_active_match_per_room
   ON public.games_reaction_rush_matches(room_id) WHERE status = 'playing';
 
@@ -319,6 +324,8 @@ BEGIN
     pg_catalog.jsonb_build_object('roomId', p_room_id, 'gameId', 'reaction-rush')
   );
   v_started_at := (v_started->>'startedAt')::timestamptz;
+  DELETE FROM public.games_reaction_rush_matches
+  WHERE room_id = p_room_id AND status = 'completed';
   INSERT INTO public.games_reaction_rush_matches(room_id, started_at, round_started_at)
   VALUES (p_room_id, v_started_at, v_started_at) RETURNING id INTO v_match_id;
   RETURN pg_catalog.jsonb_build_object(
@@ -463,13 +470,15 @@ BEGIN
     best_match_score = GREATEST(public.games_reaction_rush_leaderboard.best_match_score, EXCLUDED.best_match_score),
     updated_at = now();
 
-  UPDATE public.games_reaction_rush_matches SET status = 'completed', completed_at = now() WHERE id = p_match_id;
+  UPDATE public.games_reaction_rush_matches
+  SET status = 'completed', completed_at = now(),
+      final_results = v_totals, winner_user_id = v_winner
+  WHERE id = p_match_id;
+  DELETE FROM public.games_reaction_rush_scores WHERE match_id = p_match_id;
   v_started := public.multiplayer_execute_action(
     'finish_game', '__game_server__', 'Game server',
     pg_catalog.jsonb_build_object('roomId', p_room_id, 'gameId', 'reaction-rush', 'startedAt', v_match.started_at)
   );
-  DELETE FROM public.games_reaction_rush_matches WHERE id = p_match_id;
-
   RETURN pg_catalog.jsonb_build_object(
     'completedRound', 3, 'roundResults', v_results, 'totals', v_totals,
     'winnerUserId', v_winner, 'matchFinished', true, 'room', v_started
@@ -503,12 +512,15 @@ BEGIN
     RAISE EXCEPTION 'Player is not a member of this room' USING ERRCODE = '42501';
   END IF;
   SELECT * INTO v_match FROM public.games_reaction_rush_matches
-  WHERE room_id = p_room_id AND status = 'playing';
+  WHERE room_id = p_room_id AND status IN ('playing', 'completed')
+  ORDER BY created_at DESC LIMIT 1;
   IF NOT FOUND THEN
     RETURN pg_catalog.jsonb_build_object('room', public.multiplayer_room_snapshot(p_room_id), 'match', NULL);
   END IF;
-  SELECT score INTO v_score FROM public.games_reaction_rush_scores
-  WHERE match_id = v_match.id AND user_id = p_user_id AND round_number = v_match.current_round;
+  IF v_match.status = 'playing' THEN
+    SELECT score INTO v_score FROM public.games_reaction_rush_scores
+    WHERE match_id = v_match.id AND user_id = p_user_id AND round_number = v_match.current_round;
+  END IF;
   RETURN pg_catalog.jsonb_build_object(
     'room', public.multiplayer_room_snapshot(p_room_id),
     'match', pg_catalog.jsonb_build_object(
@@ -516,6 +528,9 @@ BEGIN
       'roundNumber', v_match.current_round,
       'roundStartedAt', v_match.round_started_at,
       'startedAt', v_match.started_at,
+      'status', v_match.status,
+      'finalResults', v_match.final_results,
+      'winnerUserId', v_match.winner_user_id,
       'myScore', COALESCE(v_score, 0)
     )
   );
