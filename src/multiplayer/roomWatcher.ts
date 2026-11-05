@@ -12,7 +12,7 @@ export interface RoomWatcherOptions {
 export interface RoomWatcher { stop(): Promise<void> }
 
 export const ROOM_BROADCAST_EVENTS = [
-  'room_updated', 'player_joined', 'player_updated', 'player_left', 'room_finished',
+  'room_updated', 'player_joined', 'player_updated', 'player_left', 'room_finished', 'match_started', 'round_finished', 'match_finished',
 ] as const
 
 /**

@@ -110,7 +110,11 @@ function App() {
             <PlayerProfile userName={userName} userUsername={userUsername} userPhoto={userPhoto} score={score} best={best} rounds={rounds} />
             <p>Докажи, кто здесь лучший!</p>
           </section>
-          <GameCatalog onOpenReactionRush={() => setScreen('reaction-menu')} onOpenBrainBattle={() => setScreen('brain-menu')} />
+          <GameCatalog
+            onOpenReactionRush={() => setScreen('reaction-menu')}
+            onOpenBrainBattle={() => setScreen('brain-menu')}
+            onOpenMultiplayer={() => setScreen('reaction-multiplayer')}
+          />
         </>
       )}
 
@@ -143,7 +147,7 @@ function App() {
         <ReactionRushMultiplayer
           initData={telegramInitData}
           inviteCode={telegramStartParam?.startsWith('rr_') ? telegramStartParam.slice(3) : undefined}
-          onBack={() => setScreen('reaction-menu')}
+          onBack={() => setScreen('games')}
         />
       )}
 

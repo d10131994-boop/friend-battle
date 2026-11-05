@@ -1,11 +1,13 @@
 type GameCatalogProps = {
   onOpenReactionRush: () => void
   onOpenBrainBattle: () => void
+  onOpenMultiplayer: () => void
 }
 
 function GameCatalog({
   onOpenReactionRush,
   onOpenBrainBattle,
+  onOpenMultiplayer,
 }: GameCatalogProps) {
   return (
     <section className="game-catalog">
@@ -15,6 +17,9 @@ function GameCatalog({
           ВЫБИРАЙ <span>ИГРУ</span>
         </h1>
         <p>Соревнуйся с друзьями и докажи, кто лучший!</p>
+        <button className="invite-button" onClick={onOpenMultiplayer}>
+          ИГРАТЬ С ДРУЗЬЯМИ ⚔️
+        </button>
       </div>
 
       <div className="catalog-games">
