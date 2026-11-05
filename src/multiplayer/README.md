@@ -15,11 +15,12 @@ source of truth.
 
 ## Server API contract
 
-The `multiplayer` Supabase Edge Function is deployed. It accepts an action
-and Telegram `initData`. Supabase gateway JWT verification is disabled for
-this function because it authenticates each request by validating Telegram
-`initData` itself. The server derives the acting Telegram user and enforces
-membership and lifecycle rules; it never trusts a client-supplied Telegram ID.
+The `multiplayer` Supabase Edge Function is deployed. Public player actions
+authenticate Telegram `initData`; the trusted game-server actions use a
+separate per-game secret. Supabase gateway JWT verification is disabled for
+this function because it performs these checks itself. The server derives
+the acting Telegram user for player actions and enforces membership and
+lifecycle rules; it never trusts a client-supplied Telegram ID.
 
 Public client actions:
 
