@@ -64,8 +64,9 @@ leaving or inactivity must never change it to `cancelled`.
   reconnect.
 - If no room member has sent a heartbeat for 10 minutes, a server-side cleanup
   task changes an active room (`waiting`, `starting`, or `playing`) to
-  `cancelled`. The cleanup runs periodically (target: once per minute).
-  A heartbeat received before cleanup prevents cancellation.
+  `cancelled`. The cleanup runs every 30 seconds, so the effective timeout
+  may exceed 10 minutes by at most 30 seconds. A heartbeat received before
+  cleanup prevents cancellation.
 - Reconnection is allowed only for an existing member while the room is in
   `waiting`, `starting`, or `playing`. The server checks membership and
   room status; it does not inspect whether other players' JWTs are active.
