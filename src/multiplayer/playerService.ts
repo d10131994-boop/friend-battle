@@ -1,5 +1,6 @@
 import type {
   GetRoomParams,
+  GetRoomTokenParams,
   HeartbeatRoomParams,
   LeaveRoomParams,
   MultiplayerAuth,
@@ -16,7 +17,7 @@ export interface PlayerServiceAdapter {
   getRoom(auth: MultiplayerAuth, params: GetRoomParams): Promise<MultiplayerRoom>
   leaveRoom(auth: MultiplayerAuth, params: LeaveRoomParams): Promise<MultiplayerRoom>
   heartbeat(auth: MultiplayerAuth, params: HeartbeatRoomParams): Promise<MultiplayerHeartbeatResult>
-  getRoomToken(auth: MultiplayerAuth, params: GetRoomParams): Promise<MultiplayerRoomToken>
+  getRoomToken(auth: MultiplayerAuth, params: GetRoomTokenParams): Promise<MultiplayerRoomToken>
 }
 
 export function createPlayerService(adapter: PlayerServiceAdapter) {
