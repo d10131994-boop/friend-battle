@@ -59,6 +59,8 @@ export default function DevMultiplayerSmokeTest() {
     const initialSnapshot = new Promise<void>((resolve) => { resolveInitialSnapshot = resolve })
     const readySnapshot = new Promise<void>((resolve) => { resolveReadySnapshot = resolve })
     const watcherError = new Promise<never>((_, reject) => { rejectWatcher = reject })
+    // The watcher can fail before the first await below; mark the rejection handled immediately.
+    void watcherError.catch(() => undefined)
 
     try {
       addStep('Создаём отдельную тестовую комнату…')
@@ -92,7 +94,7 @@ export default function DevMultiplayerSmokeTest() {
 
       addStep('Получаем JWT и подключаемся к приватному Realtime-каналу…')
       await session.start()
-      await withTimeout(Promise.all([subscribed, initialSnapshot]), 'подписка Realtime')
+      await withTimeout(Promise.race([Promise.all([subscribed, initialSnapshot]), watcherError]), 'подписка Realtime')
       addStep('Realtime SUBSCRIBED; начальный снимок комнаты получен.')
 
       addStep('Меняем готовность игрока и ждём Broadcast → обновлённый снимок…')
