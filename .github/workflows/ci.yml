@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**-AI*'
+  pull_request:
+    branches:
+      - main
+      - friend-battle-01-release
+      - 'friend-battle-01/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and lint common modules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint common modules
+        shell: bash
+        run: |
+          paths=()
+          for path in src/database src/multiplayer; do
+            if [ -d "$path" ]; then
+              paths+=("$path")
+            fi
+          done
+
+          if [ "${#paths[@]}" -gt 0 ]; then
+            npx eslint "${paths[@]}"
+          else
+            echo "No common modules are present yet; scoped lint is skipped."
+          fi
