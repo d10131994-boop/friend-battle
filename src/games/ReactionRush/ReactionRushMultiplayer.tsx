@@ -239,6 +239,7 @@ export default function ReactionRushMultiplayer({
       setResults([])
       setMessage('')
       setLoading(false)
+      onBack()
     } else {
       onBack()
     }
