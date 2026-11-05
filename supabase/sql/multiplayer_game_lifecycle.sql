@@ -166,6 +166,11 @@ BEGIN
           finished_at = NULL
       WHERE id = v_room_id;
 
+      -- Readiness is consumed by this round; players confirm again for the next one.
+      UPDATE public.common_multiplayer_players
+      SET is_ready = false
+      WHERE room_id = v_room_id;
+
       RETURN public.multiplayer_room_snapshot(v_room_id);
     END IF;
 
