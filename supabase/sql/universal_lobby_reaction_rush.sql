@@ -22,6 +22,24 @@ CREATE TABLE IF NOT EXISTS public.common_multiplayer_room_stats (
   PRIMARY KEY (room_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS public.common_multiplayer_game_rules (
+  game_id text PRIMARY KEY CHECK (length(btrim(game_id)) > 0),
+  min_players integer NOT NULL CHECK (min_players >= 1),
+  max_players integer NOT NULL CHECK (max_players >= min_players AND max_players <= 4),
+  is_enabled boolean NOT NULL DEFAULT true,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+INSERT INTO public.common_multiplayer_game_rules(game_id, min_players, max_players, is_enabled)
+VALUES ('reaction-rush', 2, 4, true)
+ON CONFLICT (game_id) DO UPDATE SET
+  min_players = EXCLUDED.min_players,
+  max_players = EXCLUDED.max_players,
+  is_enabled = EXCLUDED.is_enabled,
+  updated_at = now();
+ALTER TABLE public.common_multiplayer_game_rules ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.common_multiplayer_game_rules FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.common_multiplayer_game_rules TO service_role;
+
 CREATE TABLE IF NOT EXISTS public.games_reaction_rush_matches (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   room_id uuid NOT NULL REFERENCES public.common_multiplayer_rooms(id) ON DELETE CASCADE,
@@ -135,6 +153,8 @@ DECLARE
   v_is_host boolean;
   v_player_count integer;
   v_ready_count integer;
+  v_min_players integer;
+  v_game_max_players integer;
   v_last_seen timestamptz;
   v_expected_started_at timestamptz;
 BEGIN
@@ -201,12 +221,18 @@ BEGIN
       IF v_room.status NOT IN ('waiting', 'finished') OR v_room.game_id IS NULL THEN
         RAISE EXCEPTION 'Room cannot start a game in its current state' USING ERRCODE = '55000';
       END IF;
+      SELECT min_players, max_players INTO v_min_players, v_game_max_players
+      FROM public.common_multiplayer_game_rules
+      WHERE game_id = v_room.game_id AND is_enabled = true;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'Selected game is not enabled for multiplayer' USING ERRCODE = '55000';
+      END IF;
       SELECT count(*), count(*) FILTER (
         WHERE is_ready AND last_seen_at >= pg_catalog.clock_timestamp() - interval '90 seconds'
       ) INTO v_player_count, v_ready_count
       FROM public.common_multiplayer_players WHERE room_id = v_room_id;
-      IF v_player_count < 2 OR v_player_count > 4 OR v_ready_count <> v_player_count THEN
-        RAISE EXCEPTION 'Two to four connected players must all be ready' USING ERRCODE = '55000';
+      IF v_player_count < v_min_players OR v_player_count > v_game_max_players OR v_ready_count <> v_player_count THEN
+        RAISE EXCEPTION 'Player count or readiness does not meet the selected game rules' USING ERRCODE = '55000';
       END IF;
       UPDATE public.common_multiplayer_rooms
       SET status = 'playing', started_at = pg_catalog.clock_timestamp(), finished_at = NULL
@@ -244,7 +270,10 @@ BEGIN
       RAISE EXCEPTION 'Game selection is locked during a match' USING ERRCODE = '55000';
     END IF;
     v_game_id := pg_catalog.btrim(p_payload->>'gameId');
-    IF v_game_id IS NULL OR v_game_id NOT IN ('reaction-rush') THEN
+    IF v_game_id IS NULL OR NOT EXISTS (
+      SELECT 1 FROM public.common_multiplayer_game_rules
+      WHERE game_id = v_game_id AND is_enabled = true
+    ) THEN
       RAISE EXCEPTION 'Unsupported game selection' USING ERRCODE = '22023';
     END IF;
     UPDATE public.common_multiplayer_rooms SET game_id = v_game_id WHERE id = v_room_id;
