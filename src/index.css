@@ -30,3 +30,34 @@ button {
 #root {
   min-height: 100vh;
 }
+
+.startup-error {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background: #8fd5ef;
+}
+
+.startup-error__content {
+  width: min(100%, 560px);
+  padding: 28px;
+  border: 3px solid #3d2a1b;
+  border-radius: 24px;
+  background: #fff8e9;
+  box-shadow: 0 8px 0 rgb(61 42 27 / 18%);
+}
+
+.startup-error__content h1 {
+  margin: 0 0 16px;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+.startup-error__content p {
+  line-height: 1.6;
+}
+
+.startup-error__content code {
+  overflow-wrap: anywhere;
+  font-size: 0.95em;
+}
