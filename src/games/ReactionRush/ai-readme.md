@@ -138,3 +138,10 @@ The legacy `duels` table/function references in older code/README are not the cu
 Test solo mode separately. Multiplayer verification should cover create/join/select, 2–4 players, readiness, host start, accepted/rejected taps, 1000-point round cap, round deadline, concurrent finish requests, round advancement, final totals, winner/tie, leaderboard, common room stats, finish, rematch, leave during match and reconnect.
 
 A successful build does not prove that the Edge Function, SQL, Realtime policies or live multi-device flow are deployed and working. Report source/build checks, SQL/deployment state and real multi-client tests separately.
+
+
+## 10. Shared room integration boundary
+
+The common room screen is now `src/menus/MultiplayerRoomMenu.tsx`. It owns room creation/joining, selection of Reaction Rush, readiness, host start, invites, room presence and common room statistics. The game-specific `ReactionRushMatch` component receives an existing room and owns only Reaction Rush match snapshots, tap actions, round timing/transitions and match results.
+
+Do not add common room controls or call `createRoom`, `joinRoom`, `selectGame`, `setReady` or `leaveRoom` from `ReactionRushMatch`. The older `ReactionRushMultiplayer.tsx` remains as legacy implementation and is not routed by the current `App.tsx`; do not extend it when changing the shared room flow.
