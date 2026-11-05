@@ -137,6 +137,9 @@ BEGIN
     IF p_user_id <> '__game_server__' THEN
       RAISE EXCEPTION 'Trusted game server is required' USING ERRCODE = '42501';
     END IF;
+    IF p_payload->>'gameId' IS DISTINCT FROM v_room.game_id THEN
+      RAISE EXCEPTION 'Game server is not authorized for this game' USING ERRCODE = '42501';
+    END IF;
 
     IF p_action = 'start_game' THEN
       IF v_room.status NOT IN ('waiting', 'finished') THEN
