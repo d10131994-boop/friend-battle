@@ -100,17 +100,11 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) return fail("Invalid request body", 400);
     const action = body.action;
-    const roomId = typeof body.roomId === "string" ? body.roomId.trim() : "";
-    const startedAt = typeof body.startedAt === "string" ? body.startedAt : "";
-    const initData = typeof body.initData === "string" ? body.initData : "";
-
-    if (!["start_round", "tap", "finish_round"].includes(action)) {
+    if (!["start_match", "tap", "finish_round", "get_match", "leaderboard"].includes(action)) {
       return fail("Unknown Reaction Rush action", 400);
     }
-    if (!roomId || roomId.length > 80) return fail("A valid roomId is required", 400);
-    if (action !== "start_round" && !startedAt) return fail("A valid startedAt is required", 400);
+    const initData = typeof body.initData === "string" ? body.initData : "";
     if (!initData || initData.length > 10000) return fail("Invalid Telegram data", 400);
-
     const user = await verifyTelegram(initData, botToken);
     if (!user) return fail("Telegram verification failed", 401);
 
@@ -120,14 +114,54 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    if (action === "tap") {
-      const { data, error } = await supabase.rpc("reaction_rush_record_tap", {
+    if (action === "leaderboard") {
+      const { data, error } = await supabase
+        .from("games_reaction_rush_leaderboard")
+        .select("user_id, display_name, wins, matches_played, total_taps, best_match_score")
+        .order("wins", { ascending: false })
+        .order("best_match_score", { ascending: false })
+        .limit(50);
+      if (error) return errorResponse(error);
+      return respond({ leaderboard: data ?? [] });
+    }
+
+    const roomId = typeof body.roomId === "string" ? body.roomId.trim() : "";
+    if (!roomId || roomId.length > 80) return fail("A valid roomId is required", 400);
+
+    if (action === "tap" || action === "finish_round") {
+      const matchId = typeof body.matchId === "string" ? body.matchId : "";
+      const roundNumber = Number(body.roundNumber);
+      if (!matchId || !Number.isInteger(roundNumber) || roundNumber < 1 || roundNumber > 3) {
+        return fail("A valid matchId and roundNumber are required", 400);
+      }
+      if (action === "tap") {
+        const { data, error } = await supabase.rpc("reaction_rush_record_tap", {
+          p_room_id: roomId,
+          p_match_id: matchId,
+          p_round_number: roundNumber,
+          p_user_id: telegramId,
+        });
+        if (error) return errorResponse(error);
+        return respond({ roomId, matchId, roundNumber, score: data });
+      }
+
+      const { data, error } = await supabase.rpc("reaction_rush_finish_round", {
         p_room_id: roomId,
-        p_user_id: telegramId,
-        p_started_at: startedAt,
+        p_match_id: matchId,
+        p_round_number: roundNumber,
       });
       if (error) return errorResponse(error);
-      return respond({ roomId, startedAt, score: data });
+      await broadcast(supabase, roomId, data?.matchFinished ? "match_finished" : "round_finished", data);
+      return respond(data);
+    }
+
+    if (action === "get_match") {
+      const { data, error } = await supabase.rpc("reaction_rush_match_snapshot", {
+        p_room_id: roomId,
+        p_user_id: telegramId,
+      });
+      if (error) return errorResponse(error);
+      return respond(data);
     }
 
     const { data: room, error: roomError } = await supabase.rpc("multiplayer_execute_action", {
@@ -137,36 +171,20 @@ Deno.serve(async (req: Request) => {
       p_payload: { roomId },
     });
     if (roomError) return errorResponse(roomError);
-    if (!room || room.gameId !== "reaction-rush") return fail("Это не комната Reaction Rush", 403);
+    if (!room || room.gameId !== "reaction-rush") return fail("В комнате должна быть выбрана Reaction Rush", 409);
 
     const member = Array.isArray(room.players)
       ? room.players.find((player: { userId?: string }) => player.userId === telegramId)
       : null;
     if (!member) return fail("Вы не участник этой комнаты", 403);
+    if (!member.isHost) return fail("Начать матч может только создатель комнаты", 403);
 
-    if (action === "start_round") {
-      if (!member.isHost) return fail("Начать раунд может только создатель комнаты", 403);
-      if (!room.players.length || room.players.some((player: { isReady?: boolean }) => !player.isReady)) {
-        return fail("Все игроки должны подтвердить готовность", 409);
-      }
-
-      const { data, error } = await supabase.rpc("multiplayer_execute_action", {
-        p_action: "start_game",
-        p_user_id: "__game_server__",
-        p_display_name: "Game server",
-        p_payload: { roomId, gameId: "reaction-rush" },
-      });
-      if (error) return errorResponse(error);
-      await broadcast(supabase, roomId, "room_updated");
-      return respond(data);
-    }
-
-    const { data, error } = await supabase.rpc("reaction_rush_finish_round", {
+    const { data, error } = await supabase.rpc("reaction_rush_start_match", {
       p_room_id: roomId,
-      p_started_at: startedAt,
+      p_user_id: telegramId,
     });
     if (error) return errorResponse(error);
-    await broadcast(supabase, roomId, "room_finished");
+    await broadcast(supabase, roomId, "match_started", data);
     return respond(data);
   } catch (error) {
     console.error("Reaction Rush function error:", error instanceof Error ? error.message : "Unknown error");
@@ -178,13 +196,14 @@ async function broadcast(
   supabase: ReturnType<typeof createClient>,
   roomId: string,
   event: string,
+  data: unknown = {},
 ): Promise<void> {
   try {
     const channel = supabase.channel(`room:${roomId}`, { config: { private: true } });
     const sent = await channel.send({
       type: "broadcast",
       event,
-      payload: { roomId, source: "reaction-rush" },
+      payload: { roomId, source: "reaction-rush", data },
     });
     if (sent !== "ok") console.warn("Reaction Rush broadcast was not acknowledged:", sent);
     await supabase.removeChannel(channel);
