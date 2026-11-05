@@ -145,3 +145,10 @@ The shared SQL conflict also affects no-game room creation, `select_game`, capac
 Test solo mode separately from multiplayer. Multiplayer verification should cover create/join/select, 2–4 players, readiness, host start, question snapshots, answer validation, duplicate answers, deadlines, unanswered skips, score calculation, tie/winner, common stats, finish, rematch, leave during match, disconnect/reconnect and concurrent answer/advance requests.
 
 A successful build does not prove that the Edge Function, SQL, Realtime policies or live multi-device flow are deployed and working. Report these checks separately.
+
+
+## 10. Shared room integration boundary
+
+The common room screen is now `src/menus/MultiplayerRoomMenu.tsx`. It owns room creation/joining, selection of Brain Battle, readiness, host start, invites, room presence and common room statistics. The game-specific `BrainBattleMatch` component receives an existing room and owns only Brain Battle match snapshots, question timing, answer submission and match results.
+
+Do not add common room controls or call `createRoom`, `joinRoom`, `selectGame`, `setReady` or `leaveRoom` from `BrainBattleMatch`. The older `BrainBattleRoom.tsx` remains as legacy implementation and is not routed by the current `App.tsx`; do not extend it when changing the shared room flow.

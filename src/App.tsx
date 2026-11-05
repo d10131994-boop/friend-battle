@@ -1,17 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { supabase } from './supabase'
 import './App.css'
 import DevMultiplayerSmokeTest from './multiplayer/DevSmokeTest'
 import { useReactionRush } from './games/ReactionRush/useReactionRush'
-import ReactionRushMenu from './games/ReactionRush/ReactionRushMenu'
 import ReactionRush from './games/ReactionRush/ReactionRush'
-import ReactionRushMultiplayer from './games/ReactionRush/ReactionRushMultiplayer'
-import GameCatalog from './components/GameCatalog/GameCatalog'
+import BrainBattle from './games/BrainBattle/BrainBattle'
+import { MainMenu, MultiplayerRoomMenu, SoloRoomMenu } from './menus'
+import type { GameId } from './menus'
 import BottomNavigation from './components/BottomNavigation/BottomNavigation'
 import PlayerProfile from './components/PlayerProfile/PlayerProfile'
-import BrainBattleMenu from './games/BrainBattle/BrainBattleMenu'
-import BrainBattle from './games/BrainBattle/BrainBattle'
-import BrainBattleRoom from './games/BrainBattle/BrainBattleRoom'
 import { telegramUser, telegramInitData, telegramStartParam } from './services/telegram'
 
 type LeaderboardPlayer = {
@@ -20,20 +17,19 @@ type LeaderboardPlayer = {
   first_name: string
   best_score: number
 }
+type Screen = 'home' | 'solo-room' | 'reaction-game' | 'brain-game' | 'multiplayer-room' | 'rating' | 'profile'
 
-type Screen =
-  | 'games'
-  | 'reaction-menu'
-  | 'reaction-game'
-  | 'reaction-multiplayer'
-  | 'brain-menu'
-  | 'brain-game'
-  | 'brain-battle-room'
-  | 'rating'
-  | 'profile'
+function getInviteCode(startParam: string | undefined): string | undefined {
+  if (!startParam) return undefined
+  for (const prefix of ['fb_', 'rr_', 'bb_']) {
+    if (startParam.startsWith(prefix)) return startParam.slice(prefix.length).trim() || undefined
+  }
+  return undefined
+}
 
 function App() {
-  const [screen, setScreen] = useState<Screen>('games')
+  const inviteCode = getInviteCode(telegramStartParam)
+  const [screen, setScreen] = useState<Screen>(inviteCode ? 'multiplayer-room' : 'home')
   const [leaderboard, setLeaderboard] = useState<LeaderboardPlayer[]>([])
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
   const [leaderboardError, setLeaderboardError] = useState('')
@@ -88,45 +84,51 @@ function App() {
     }
   }
 
-  useEffect(() => {
-    if (telegramStartParam?.startsWith('rr_')) setScreen('reaction-multiplayer')
-    if (telegramStartParam?.startsWith('bb_')) setScreen('brain-battle-room')
-  }, [telegramStartParam])
-
   function openRating() {
     setScreen('rating')
     void loadLeaderboard()
   }
 
-  return (
-    <main className="app">
-      <header className="topbar">
-        <div className="logo">FRIEND <span>BATTLE</span></div>
-        <div className="player-level">НОВИЧОК · LVL 1</div>
-      </header>
+  function startSelectedSoloGame(gameId: GameId) {
+    if (gameId === 'reaction-rush') {
+      setScreen('reaction-game')
+      startSoloGame()
+    } else {
+      setScreen('brain-game')
+    }
+  }
 
-      {screen === 'games' && (
-        <>
+  const showBottomNavigation = screen === 'home' || screen === 'rating' || screen === 'profile'
+
+  return (
+    <>
+      {screen === 'home' && (
+        <main className="app">
+          <header className="topbar">
+            <div className="logo">FRIEND <span>BATTLE</span></div>
+            <div className="player-level">НОВИЧОК · LVL 1</div>
+          </header>
           <section className="hero">
             <PlayerProfile userName={userName} userUsername={userUsername} userPhoto={userPhoto} score={score} best={best} rounds={rounds} />
             <p>Докажи, кто здесь лучший!</p>
           </section>
-          <GameCatalog
-            onOpenReactionRush={() => setScreen('reaction-menu')}
-            onOpenBrainBattle={() => setScreen('brain-menu')}
-            onOpenMultiplayer={() => setScreen('reaction-multiplayer')}
+          <MainMenu
+            onSolo={() => setScreen('solo-room')}
+            onMultiplayer={() => setScreen('multiplayer-room')}
           />
-        </>
+          {import.meta.env.DEV && new URLSearchParams(window.location.search).get('multiplayer-smoke') === '1' && <DevMultiplayerSmokeTest />}
+        </main>
       )}
 
-      {screen === 'reaction-menu' && (
-        <ReactionRushMenu
-          onSoloGame={() => {
-            setScreen('reaction-game')
-            startSoloGame()
-          }}
-          onMultiplayerGame={() => setScreen('reaction-multiplayer')}
-          onBack={() => setScreen('games')}
+      {screen === 'solo-room' && (
+        <SoloRoomMenu onBack={() => setScreen('home')} onStart={startSelectedSoloGame} />
+      )}
+
+      {screen === 'multiplayer-room' && (
+        <MultiplayerRoomMenu
+          initData={telegramInitData}
+          inviteCode={inviteCode}
+          onBack={() => setScreen('home')}
         />
       )}
 
@@ -139,48 +141,26 @@ function App() {
           onStart={startSoloGame}
           onTap={tap}
           onBack={() => {
-            if (!playing) setScreen('reaction-menu')
+            if (!playing) setScreen('solo-room')
           }}
         />
       )}
 
-      {screen === 'reaction-multiplayer' && (
-        <ReactionRushMultiplayer
-          initData={telegramInitData}
-          inviteCode={telegramStartParam?.startsWith('rr_') ? telegramStartParam.slice(3) : undefined}
-          onBack={() => setScreen('games')}
-        />
-      )}
-
-      {screen === 'brain-menu' && (
-        <BrainBattleMenu
-          onSoloGame={() => setScreen('brain-game')}
-          onMultiplayerGame={() => setScreen('brain-battle-room')}
-          onBack={() => setScreen('games')}
-        />
-      )}
-
-      {screen === 'brain-game' && <BrainBattle onBack={() => setScreen('brain-menu')} />}
-      {screen === 'brain-battle-room' && (
-        <BrainBattleRoom
-          initData={telegramInitData}
-          inviteCode={telegramStartParam?.startsWith('bb_') ? telegramStartParam.slice(3) : undefined}
-          onBack={() => setScreen('brain-menu')}
-        />
-      )}
+      {screen === 'brain-game' && <BrainBattle onBack={() => setScreen('solo-room')} />}
 
       {screen === 'rating' && (
-        <>
+        <main className="app">
+          <header className="topbar">
+            <div className="logo">FRIEND <span>BATTLE</span></div>
+            <div className="player-level">РЕЙТИНГ</div>
+          </header>
           <section className="hero">
             <div className="eyebrow">FRIEND BATTLE</div>
             <h1>ТАБЛИЦА<br /><span>ЛИДЕРОВ</span></h1>
             <p>Соревнуйся с лучшими игроками!</p>
           </section>
           <section className="stats">
-            <div className="stat-card">
-              <span>🏆</span>
-              <div><small>ТВОЙ РЕКОРД</small><strong>{best}</strong></div>
-            </div>
+            <div className="stat-card"><span>🏆</span><div><small>ТВОЙ РЕКОРД</small><strong>{best}</strong></div></div>
           </section>
           <section className="leaderboard-list">
             {leaderboardLoading && <p>Загружаем рейтинг...</p>}
@@ -188,35 +168,36 @@ function App() {
             {!leaderboardLoading && !leaderboardError && leaderboard.length === 0 && <p>Пока игроков нет. Стань первым!</p>}
             {!leaderboardLoading && !leaderboardError && leaderboard.map((player, index) => (
               <div className="leaderboard-row" key={player.telegram_id}>
-                <span>{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}</span>
-                <div>
-                  <strong>{player.first_name || 'Игрок'}</strong>
-                  <small>{player.username ? `@${player.username}` : 'Игрок Friend Battle'}</small>
-                </div>
+                <span>{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1 + '.'}</span>
+                <div><strong>{player.first_name || 'Игрок'}</strong><small>{player.username ? '@' + player.username : 'Игрок Friend Battle'}</small></div>
                 <strong>{player.best_score}</strong>
               </div>
             ))}
           </section>
           <button className="leaderboard-button" onClick={() => void loadLeaderboard()}>↻ Обновить рейтинг</button>
-        </>
+        </main>
       )}
 
       {screen === 'profile' && (
-        <>
+        <main className="app">
+          <header className="topbar">
+            <div className="logo">FRIEND <span>BATTLE</span></div>
+            <div className="player-level">ПРОФИЛЬ</div>
+          </header>
           <section className="hero"><div className="eyebrow">FRIEND BATTLE</div><h1>ТВОЙ <span>ПРОФИЛЬ</span></h1></section>
           <PlayerProfile userName={userName} userUsername={userUsername} userPhoto={userPhoto} score={score} best={best} rounds={rounds} />
-        </>
+        </main>
       )}
 
-      {import.meta.env.DEV && new URLSearchParams(window.location.search).get('multiplayer-smoke') === '1' && <DevMultiplayerSmokeTest />}
-
-      <BottomNavigation
-        activeTab={screen === 'rating' ? 'rating' : screen === 'profile' ? 'profile' : 'games'}
-        onGames={() => setScreen('games')}
-        onRating={openRating}
-        onProfile={() => setScreen('profile')}
-      />
-    </main>
+      {showBottomNavigation && (
+        <BottomNavigation
+          activeTab={screen === 'rating' ? 'rating' : screen === 'profile' ? 'profile' : 'games'}
+          onGames={() => setScreen('home')}
+          onRating={openRating}
+          onProfile={() => setScreen('profile')}
+        />
+      )}
+    </>
   )
 }
 
