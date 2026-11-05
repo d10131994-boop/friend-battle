@@ -41,6 +41,7 @@ export function createMultiplayerRoomSession(
 
   let started = false
   let stopped = false
+  let stopPromise: Promise<void> | null = null
   let watcher: RoomWatcher | null = null
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null
   let tokenTimer: ReturnType<typeof setInterval> | null = null
@@ -106,19 +107,31 @@ export function createMultiplayerRoomSession(
     tokenTimer = null
   }
 
-  const stop = async () => {
-    if (stopped) return
+  const stop = (): Promise<void> => {
+    if (stopPromise) return stopPromise
+
     stopped = true
     stopTimers()
     if (typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-    if (watcher) {
-      const currentWatcher = watcher
-      watcher = null
-      await currentWatcher.stop()
-    }
-    if (activeSession === sessionId) activeSession = null
+
+    const currentWatcher = watcher
+    watcher = null
+
+    stopPromise = (async () => {
+      try {
+        if (currentWatcher) await currentWatcher.stop()
+      } catch (error) {
+        reportError(error)
+      } finally {
+        // A failed Realtime unsubscribe must not permanently lock the shared
+        // client and prevent the user from opening another room session.
+        if (activeSession === sessionId) activeSession = null
+      }
+    })()
+
+    return stopPromise
   }
 
   const onVisibilityChange = () => {
