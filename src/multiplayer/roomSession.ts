@@ -129,7 +129,9 @@ export function createMultiplayerRoomSession(
 
   const handleRoom = (room: MultiplayerRoom) => {
     options.onRoom(room)
-    if (room.status === 'finished' || room.status === 'cancelled') {
+    // A finished game returns players to the room menu. Keep Realtime and
+    // heartbeat active so the same room can start another game session.
+    if (room.status === 'cancelled') {
       void stop()
     }
   }
