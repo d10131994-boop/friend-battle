@@ -108,11 +108,12 @@ notifications. Each room has one private topic: `room:<roomId>`.
 
 The trusted server authorizes a member and issues a short-lived ES256 JWT
 containing `role: authenticated`, `telegram_id`, and `room_id`. Its lifetime
-is one hour. The client refreshes five minutes before expiry only while the
-room session is active. Tokens are cached in memory by room ID: returning to
-a room reuses its token if it is still valid; otherwise the client requests a
-new token. Only one room is active at a time on the shared Supabase client.
-Pausing or closing the app stops refresh; on resume, the client checks expiry.
+is one hour. The JWT header's `kid` identifies the imported ES256 signing key.
+The client refreshes five minutes before expiry only while the room session is
+active. Tokens are cached in memory by room ID: returning to a room reuses its
+token if it is still valid; otherwise the client requests a new token. Only
+one room is active at a time on the shared Supabase client. Pausing or closing
+the app stops refresh; on resume, the client checks expiry.
 
 The server issues or refreshes a token only if the caller's Telegram identity
 matches an existing room member and the room status is `waiting`,
@@ -163,16 +164,21 @@ locking the room row, including heartbeat updates, explicit leave, host
 transfer, and idle cleanup. The browser has no direct table privileges and
 cannot publish authoritative room events.
 
-The signing key is prepared as a Standby key and the matching private JWK is
-stored in the Edge Function secret `MULTIPLAYER_JWT_PRIVATE_JWK`. The token
-issuer is deployed, but the signing key has not been activated. Therefore
-token issuance code is present, but Supabase Realtime acceptance of these
-tokens has not yet been verified and is not expected until the key is Current.
-Do not activate or rotate the key without the agreed rollout step.
+The private JWK in the Edge Function secret
+`MULTIPLAYER_JWT_PRIVATE_JWK` was manually checked against the public
+parameters of the imported Supabase ES256 key. That key has since been
+rotated to `Current`; the previous key remains `Previously used` and has
+not been revoked. The deployed token issuer uses that key's `kid`.
+
+The key rotation is complete, but end-to-end acceptance of a freshly issued
+JWT by Supabase Realtime has not yet been verified with a live Telegram
+session. Treat that as an outstanding integration smoke test, not as a
+confirmed working path.
 
 The JWT `room_id` claim must match the UUID in `room:<roomId>`. Realtime RLS
-policies must authorize only the corresponding room member. Never grant broad
-access to all `realtime.messages` rows.
+policies authorize receipt only for the matching room topic and require a
+`telegram_id` claim. The client joins with a private channel. Never grant
+broad access to all `realtime.messages` rows.
 
 ## Scope
 
