@@ -133,8 +133,12 @@ export default function BrainBattleRoom({
 
   useEffect(() => {
     if (!match || match.status !== 'playing' || room?.status !== 'playing') return
+    const startAt = Date.parse(match.questionStartedAt)
     const endAt = Date.parse(match.questionEndsAt)
-    const update = () => setRemaining(Math.max(0, Math.ceil((endAt - Date.now()) / 1000)))
+    const update = () => {
+      const now = Date.now()
+      setRemaining(now < startAt ? 15 : Math.max(0, Math.ceil((endAt - now) / 1000)))
+    }
     update()
     const timer = window.setInterval(update, 100)
     return () => window.clearInterval(timer)
