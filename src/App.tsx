@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import './App.css'
+import DevMultiplayerSmokeTest from './multiplayer/DevSmokeTest'
 
 import { useReactionRush } from './games/ReactionRush/useReactionRush'
 import ReactionRushMenu from './games/ReactionRush/ReactionRushMenu'
@@ -677,6 +678,10 @@ function App() {
             rounds={rounds}
           />
         </>
+      )}
+
+      {import.meta.env.DEV && new URLSearchParams(window.location.search).get('multiplayer-smoke') === '1' && (
+        <DevMultiplayerSmokeTest />
       )}
 
       <BottomNavigation
