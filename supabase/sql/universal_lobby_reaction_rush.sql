@@ -568,3 +568,10 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.reaction_rush_match_snapshot(uuid, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reaction_rush_match_snapshot(uuid, text) TO service_role;
+
+
+-- Retire the first-generation single-round score store after the new Edge
+-- Function is deployed together with this migration.
+DROP FUNCTION IF EXISTS public.reaction_rush_record_tap(uuid, text, timestamptz);
+DROP FUNCTION IF EXISTS public.reaction_rush_finish_round(uuid, timestamptz);
+DROP TABLE IF EXISTS public.reaction_rush_scores;
