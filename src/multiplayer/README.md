@@ -49,7 +49,40 @@ game-server secret.
 
 The server calls the same Edge Function endpoint
 `POST /functions/v1/multiplayer` with the
-`x-multiplayer-game-server-secret` header:
+`x-multiplayer-game-server-secret` header. For example, a server-side
+Deno game module can start a session and later finish that exact session:
+
+```ts
+const endpoint = `${Deno.env.get('SUPABASE_URL')}/functions/v1/multiplayer`
+const secret = Deno.env.get('MULTIPLAYER_GAME_SERVER_SECRET')!
+
+const startResponse = await fetch(endpoint, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-multiplayer-game-server-secret': secret,
+  },
+  body: JSON.stringify({ action: 'start_game', roomId }),
+})
+if (!startResponse.ok) throw new Error('Could not start the game')
+const startedRoom = await startResponse.json()
+
+// After game-specific result presentation (for example, 10 seconds):
+const finishResponse = await fetch(endpoint, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-multiplayer-game-server-secret': secret,
+  },
+  body: JSON.stringify({
+    action: 'finish_game',
+    roomId,
+    startedAt: startedRoom.startedAt,
+  }),
+})
+if (!finishResponse.ok) throw new Error('Could not finish the game')
+```
+
 
 | Action | Input | Result |
 | --- | --- | --- |
@@ -199,6 +232,11 @@ after each reconnect. Concurrent event bursts are coalesced, and late
 responses cannot update a stopped watcher.
 
 ## Server and Supabase prerequisites
+
+The SQL changes required by this contract are in
+`supabase/sql/multiplayer_game_lifecycle.sql`. Apply this patch to the
+existing Multiplayer schema before deploying the updated Edge Function. The
+live Supabase project has not been changed as part of this branch work.
 
 The Edge Function validates Telegram `initData` for player actions and the
 separate game-server secret for `start_game` / `finish_game`. It calls a
