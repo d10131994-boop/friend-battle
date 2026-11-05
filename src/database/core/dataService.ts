@@ -120,7 +120,7 @@ export const dataService = {
 
       const { data, error } = await query
       if (error) throw error
-      return (data ?? []) as TRecord[]
+      return (data ?? []) as unknown as TRecord[]
     })
   },
 
