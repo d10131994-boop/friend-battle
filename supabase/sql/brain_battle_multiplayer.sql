@@ -103,6 +103,7 @@ BEGIN
           ) <> 4
        OR COALESCE((question.value->>'correctAnswer') ~ '^[0-3]$', false) = false
   ) THEN
+    RAISE EXCEPTION 'Invalid Brain Battle question payload' USING ERRCODE = '22023';
   END IF;
 
   v_started := public.multiplayer_execute_action(
