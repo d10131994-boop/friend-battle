@@ -480,7 +480,7 @@ BEGIN
     pg_catalog.jsonb_build_object('roomId', p_room_id, 'gameId', 'reaction-rush', 'startedAt', v_match.started_at)
   );
   RETURN pg_catalog.jsonb_build_object(
-    'completedRound', 3, 'roundResults', v_results, 'totals', v_totals,
+    'completedRound', 3, 'roundResults', v_results, 'finalResults', v_totals,
     'winnerUserId', v_winner, 'matchFinished', true, 'room', v_started
   );
 END;
