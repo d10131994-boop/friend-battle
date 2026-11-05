@@ -147,10 +147,22 @@ Deno.serve(async (req: Request) => {
     let displayName = "Game server";
 
     if (isGameServerAction) {
-      const expectedSecret = Deno.env.get("MULTIPLAYER_GAME_SERVER_SECRET");
+      const secretsJson = Deno.env.get("MULTIPLAYER_GAME_SERVER_SECRETS");
+      const gameId = body.gameId;
+      if (typeof gameId !== "string" || gameId.trim().length === 0 || gameId.length > 80) {
+        return fail("A valid gameId is required for game-server actions", 400);
+      }
+      let gameSecrets: Record<string, unknown>;
+      try {
+        gameSecrets = JSON.parse(secretsJson ?? "{}");
+      } catch {
+        console.error("MULTIPLAYER_GAME_SERVER_SECRETS is not valid JSON");
+        return fail("Game server authentication is not configured", 503);
+      }
+      const expectedSecret = gameSecrets[gameId];
       const receivedSecret = req.headers.get("x-multiplayer-game-server-secret") ?? "";
-      if (!expectedSecret || expectedSecret.length < 32) {
-        console.error("MULTIPLAYER_GAME_SERVER_SECRET is missing or too short");
+      if (typeof expectedSecret !== "string" || expectedSecret.length < 32) {
+        console.error("No valid game-server secret is configured for game:", gameId);
         return fail("Game server authentication is not configured", 503);
       }
       if (!constantTimeEquals(receivedSecret, expectedSecret)) {
@@ -183,6 +195,7 @@ Deno.serve(async (req: Request) => {
       payload.inviteCode = body.inviteCode;
     } else {
       payload.roomId = body.roomId;
+      if (isGameServerAction) payload.gameId = body.gameId;
       if (action === "set_ready") payload.isReady = body.isReady;
       if (action === "finish_game") payload.startedAt = body.startedAt;
     }
