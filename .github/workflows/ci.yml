@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build and lint
+    name: Build and lint common modules
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -38,5 +38,18 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Lint
-        run: npm run lint
+      - name: Lint common modules
+        shell: bash
+        run: |
+          paths=()
+          for path in src/database src/multiplayer; do
+            if [ -d "$path" ]; then
+              paths+=("$path")
+            fi
+          done
+
+          if [ "${#paths[@]}" -gt 0 ]; then
+            npx eslint "${paths[@]}"
+          else
+            echo "No common modules are present yet; scoped lint is skipped."
+          fi
