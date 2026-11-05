@@ -21,11 +21,13 @@ export interface MultiplayerPlayer {
   joinedAt: string | null
   /** Последний heartbeat, принятый сервером. */
   lastSeenAt: string | null
+  wins: number
+  matchesPlayed: number
 }
 
 export interface MultiplayerRoom {
   roomId: string
-  gameId: MultiplayerGameId
+  gameId: MultiplayerGameId | null
   inviteCode: string
   status: MultiplayerRoomStatus
   players: MultiplayerPlayer[]
@@ -42,8 +44,12 @@ export interface MultiplayerAuth {
 }
 
 export interface CreateRoomParams {
-  gameId: MultiplayerGameId
   maxPlayers?: number
+}
+
+export interface SelectGameParams {
+  roomId: string
+  gameId: MultiplayerGameId
 }
 
 export interface JoinRoomParams {
@@ -89,6 +95,7 @@ export interface MultiplayerRoomToken {
 
 export interface MultiplayerService {
   createRoom(auth: MultiplayerAuth, params: CreateRoomParams): Promise<MultiplayerRoom>
+  selectGame(auth: MultiplayerAuth, params: SelectGameParams): Promise<MultiplayerRoom>
   joinRoom(auth: MultiplayerAuth, params: JoinRoomParams): Promise<MultiplayerRoom>
   getRoom(auth: MultiplayerAuth, params: GetRoomParams): Promise<MultiplayerRoom>
   setReady(auth: MultiplayerAuth, params: SetPlayerReadyParams): Promise<MultiplayerRoom>

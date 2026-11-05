@@ -64,10 +64,7 @@ export default function DevMultiplayerSmokeTest() {
 
     try {
       addStep('Создаём отдельную тестовую комнату…')
-      room = await service.createRoom(auth, {
-        gameId: 'multiplayer-smoke-test',
-        maxPlayers: 1,
-      })
+      room = await service.createRoom(auth, { maxPlayers: 2 })
       addStep(`Комната создана: ${room.roomId}`)
 
       session = createMultiplayerRoomSession({
