@@ -3,17 +3,30 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-multiplayer-game-server-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const JWT_KEY_ID = "d27b354d-84aa-4d2a-864e-e953408cb575";
 const TOKEN_LIFETIME_SECONDS = 3600;
+const GAME_SERVER_USER_ID = "__game_server__";
 
 type TelegramUser = { id: number; first_name?: string; username?: string };
 
 function hexToBytes(hex: string): Uint8Array {
   if (!/^[0-9a-f]{64}$/i.test(hex)) throw new Error("Invalid hash");
   return new Uint8Array(hex.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+}
+
+function constantTimeEquals(left: string, right: string): boolean {
+  const encoder = new TextEncoder();
+  const leftBytes = encoder.encode(left);
+  const rightBytes = encoder.encode(right);
+  if (leftBytes.length !== rightBytes.length) return false;
+  let difference = 0;
+  for (let index = 0; index < leftBytes.length; index++) {
+    difference |= leftBytes[index] ^ rightBytes[index];
+  }
+  return difference === 0;
 }
 
 async function verifyTelegram(initData: string, botToken: string): Promise<TelegramUser | null> {
@@ -110,10 +123,9 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return fail("Method not allowed", 405);
 
   try {
-    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const url = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!botToken || !url || !serviceKey) {
+    if (!url || !serviceKey) {
       console.error("Missing required server configuration");
       return fail("Server configuration missing", 500);
     }
@@ -121,23 +133,47 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) return fail("Invalid request body", 400);
     const action = body.action;
-    const allowed = [
+    const gameServerActions = ["start_game", "finish_game"];
+    const publicActions = [
       "create_room", "join_room", "get_room", "set_ready",
       "leave_room", "close_room", "heartbeat", "get_room_token",
     ];
-    if (typeof action !== "string" || !allowed.includes(action)) return fail("Unknown multiplayer action", 400);
-    if (typeof body.initData !== "string" || body.initData.length === 0 || body.initData.length > 10000) {
-      return fail("Invalid Telegram data", 400);
+    if (typeof action !== "string" || ![...publicActions, ...gameServerActions].includes(action)) {
+      return fail("Unknown multiplayer action", 400);
     }
 
-    const user = await verifyTelegram(body.initData, botToken);
-    if (!user) return fail("Telegram verification failed", 401);
+    const isGameServerAction = gameServerActions.includes(action);
+    let telegramId = GAME_SERVER_USER_ID;
+    let displayName = "Game server";
+
+    if (isGameServerAction) {
+      const expectedSecret = Deno.env.get("MULTIPLAYER_GAME_SERVER_SECRET");
+      const receivedSecret = req.headers.get("x-multiplayer-game-server-secret") ?? "";
+      if (!expectedSecret || expectedSecret.length < 32) {
+        console.error("MULTIPLAYER_GAME_SERVER_SECRET is missing or too short");
+        return fail("Game server authentication is not configured", 503);
+      }
+      if (!constantTimeEquals(receivedSecret, expectedSecret)) {
+        return fail("Game server authentication failed", 401);
+      }
+    } else {
+      const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+      if (!botToken) {
+        console.error("Missing TELEGRAM_BOT_TOKEN secret");
+        return fail("Server configuration missing", 500);
+      }
+      if (typeof body.initData !== "string" || body.initData.length === 0 || body.initData.length > 10000) {
+        return fail("Invalid Telegram data", 400);
+      }
+      const user = await verifyTelegram(body.initData, botToken);
+      if (!user) return fail("Telegram verification failed", 401);
+      telegramId = String(user.id);
+      displayName = user.first_name?.trim().slice(0, 100) || "Игрок";
+    }
 
     const supabase = createClient(url, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const telegramId = String(user.id);
-    const displayName = user.first_name?.trim().slice(0, 100) || "Игрок";
     const payload: Record<string, unknown> = {};
 
     if (action === "create_room") {
@@ -148,6 +184,7 @@ Deno.serve(async (req: Request) => {
     } else {
       payload.roomId = body.roomId;
       if (action === "set_ready") payload.isReady = body.isReady;
+      if (action === "finish_game") payload.startedAt = body.startedAt;
     }
 
     const { data, error } = await supabase.rpc("multiplayer_execute_action", {
@@ -190,6 +227,8 @@ Deno.serve(async (req: Request) => {
       set_ready: "player_updated",
       leave_room: "player_left",
       close_room: "room_updated",
+      start_game: "room_updated",
+      finish_game: "room_finished",
     };
     const event = eventByAction[action];
     if (roomId && event) {
@@ -198,7 +237,9 @@ Deno.serve(async (req: Request) => {
         const sent = await channel.send({
           type: "broadcast",
           event,
-          payload: { roomId, changedBy: telegramId },
+          payload: isGameServerAction
+            ? { roomId, source: "game_module" }
+            : { roomId, changedBy: telegramId },
         });
         if (sent !== "ok") console.warn("Multiplayer broadcast was not acknowledged:", sent);
         await supabase.removeChannel(channel);
