@@ -150,7 +150,10 @@ export function createMultiplayerRoomSession(
           installToken(cached)
         } else {
           await refreshTokenIfNeeded(true)
-          if (!getCachedToken()) throw new Error('Не удалось получить действующий токен комнаты.')
+          const availableToken = getCachedToken()
+          if (!availableToken) throw new Error('Не удалось получить действующий токен комнаты.')
+          // If refresh failed but the cached token is still valid, install it as a fallback.
+          installToken(availableToken)
         }
 
         if (stopped) return
