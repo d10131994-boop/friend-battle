@@ -19,6 +19,8 @@ export interface MultiplayerPlayer {
   isReady: boolean
   isHost: boolean
   joinedAt: string | null
+  /** Последний heartbeat, принятый сервером. */
+  lastSeenAt: string | null
 }
 
 export interface MultiplayerRoom {
@@ -58,11 +60,42 @@ export interface SetPlayerReadyParams {
   isReady: boolean
 }
 
+export interface LeaveRoomParams {
+  roomId: string
+}
+
+export interface CloseRoomParams {
+  roomId: string
+}
+
+export interface HeartbeatRoomParams {
+  roomId: string
+}
+
+export interface MultiplayerHeartbeatResult {
+  roomId: string
+  lastSeenAt: string
+}
+
+export interface GetRoomTokenParams {
+  roomId: string
+}
+
+export interface MultiplayerRoomToken {
+  roomId: string
+  accessToken: string
+  expiresAt: string
+}
+
 export interface MultiplayerService {
   createRoom(auth: MultiplayerAuth, params: CreateRoomParams): Promise<MultiplayerRoom>
   joinRoom(auth: MultiplayerAuth, params: JoinRoomParams): Promise<MultiplayerRoom>
   getRoom(auth: MultiplayerAuth, params: GetRoomParams): Promise<MultiplayerRoom>
   setReady(auth: MultiplayerAuth, params: SetPlayerReadyParams): Promise<MultiplayerRoom>
+  leaveRoom(auth: MultiplayerAuth, params: LeaveRoomParams): Promise<MultiplayerRoom>
+  closeRoom(auth: MultiplayerAuth, params: CloseRoomParams): Promise<MultiplayerRoom>
+  heartbeat(auth: MultiplayerAuth, params: HeartbeatRoomParams): Promise<MultiplayerHeartbeatResult>
+  getRoomToken(auth: MultiplayerAuth, params: GetRoomTokenParams): Promise<MultiplayerRoomToken>
 }
 
 /** Общая ошибка слоя мультиплеера с исходной причиной для логирования. */
