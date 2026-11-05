@@ -63,6 +63,24 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   }, [room?.roomId, auth, acceptRoom])
 
   useEffect(() => {
+    if (!room?.roomId || gameScreen || room.status === 'cancelled') return
+    let active = true
+    const refreshRoom = async () => {
+      try {
+        const snapshot = await multiplayer.getRoom(auth, { roomId: room.roomId })
+        if (active) acceptRoom(snapshot)
+      } catch (error) {
+        if (active) setMessage(errorMessage(error, 'Не удалось обновить комнату.'))
+      }
+    }
+    const timer = window.setInterval(() => { void refreshRoom() }, 4000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
+  }, [room?.roomId, room?.status, gameScreen, auth, acceptRoom])
+
+  useEffect(() => {
     if (!room || !auth.initData || (room.status !== 'waiting' && room.status !== 'finished')) return
     const me = room.players.find((player) => player.userId === telegramId)
     if (!me?.isHost || me.isReady) return
