@@ -135,7 +135,7 @@ Deno.serve(async (req: Request) => {
     const action = body.action;
     const gameServerActions = ["start_game", "finish_game"];
     const publicActions = [
-      "create_room", "join_room", "get_room", "set_ready",
+      "create_room", "join_room", "get_room", "select_game", "set_ready",
       "leave_room", "close_room", "heartbeat", "get_room_token",
     ];
     if (typeof action !== "string" || ![...publicActions, ...gameServerActions].includes(action)) {
@@ -195,6 +195,7 @@ Deno.serve(async (req: Request) => {
       payload.inviteCode = body.inviteCode;
     } else {
       payload.roomId = body.roomId;
+      if (action === "select_game") payload.gameId = body.gameId;
       if (isGameServerAction) payload.gameId = body.gameId;
       if (action === "set_ready") payload.isReady = body.isReady;
       if (action === "finish_game") payload.startedAt = body.startedAt;
