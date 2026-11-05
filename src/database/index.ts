@@ -4,10 +4,6 @@ import { rpc } from './core/rpcService'
 import { realtime } from './realtime/realtimeService'
 import { storage } from './storage/storageService'
 
-/**
- * Public Database API. The raw Supabase client is intentionally not exported.
- * Feature-specific repositories should live inside this module.
- */
 export const database = {
   ...dataService,
   rpc,
@@ -42,4 +38,6 @@ export type {
   RealtimeEvent,
   RealtimeSubscriptionOptions,
   RealtimeSubscriptionStatus,
+  RealtimeBroadcastCallback,
+  RealtimeBroadcastOptions,
 } from './realtime/realtimeService'
