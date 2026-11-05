@@ -55,7 +55,8 @@ Deno game module can start a session and later finish that exact session:
 ```ts
 const endpoint = `${Deno.env.get('SUPABASE_URL')}/functions/v1/multiplayer`
 const secrets = JSON.parse(Deno.env.get('MULTIPLAYER_GAME_SERVER_SECRETS')!)
-const secret = secrets['brain-battle'] as string
+const gameId = 'brain-battle'
+const secret = secrets[gameId] as string
 
 const startResponse = await fetch(endpoint, {
   method: 'POST',
@@ -64,7 +65,7 @@ const startResponse = await fetch(endpoint, {
     'apikey': Deno.env.get('SUPABASE_ANON_KEY')!,
     'x-multiplayer-game-server-secret': secret,
   },
-  body: JSON.stringify({ action: 'start_game', roomId }),
+  body: JSON.stringify({ action: 'start_game', roomId, gameId }),
 })
 if (!startResponse.ok) throw new Error('Could not start the game')
 const startedRoom = await startResponse.json()
@@ -80,6 +81,7 @@ const finishResponse = await fetch(endpoint, {
   body: JSON.stringify({
     action: 'finish_game',
     roomId,
+    gameId,
     startedAt: startedRoom.startedAt,
   }),
 })
