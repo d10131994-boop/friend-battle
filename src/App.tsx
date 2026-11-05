@@ -147,7 +147,7 @@ function App() {
         <ReactionRushMultiplayer
           initData={telegramInitData}
           inviteCode={telegramStartParam?.startsWith('rr_') ? telegramStartParam.slice(3) : undefined}
-          onBack={() => setScreen('reaction-menu')}
+          onBack={() => setScreen('games')}
         />
       )}
 
