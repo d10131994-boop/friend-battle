@@ -336,7 +336,7 @@ END;
 $function$;
 
 CREATE OR REPLACE FUNCTION public.reaction_rush_record_tap(
-  p_room_id uuid, p_match_id uuid, p_round_number smallint, p_user_id text
+  p_room_id uuid, p_match_id uuid, p_round_number integer, p_user_id text
 )
 RETURNS integer
 LANGUAGE plpgsql
@@ -375,7 +375,7 @@ END;
 $function$;
 
 CREATE OR REPLACE FUNCTION public.reaction_rush_finish_round(
-  p_room_id uuid, p_match_id uuid, p_round_number smallint
+  p_room_id uuid, p_match_id uuid, p_round_number integer
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -487,11 +487,11 @@ END;
 $function$;
 
 REVOKE ALL ON FUNCTION public.reaction_rush_start_match(uuid, text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.reaction_rush_record_tap(uuid, uuid, smallint, text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.reaction_rush_finish_round(uuid, uuid, smallint) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.reaction_rush_record_tap(uuid, uuid, integer, text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.reaction_rush_finish_round(uuid, uuid, integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reaction_rush_start_match(uuid, text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.reaction_rush_record_tap(uuid, uuid, smallint, text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.reaction_rush_finish_round(uuid, uuid, smallint) TO service_role;
+GRANT EXECUTE ON FUNCTION public.reaction_rush_record_tap(uuid, uuid, integer, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.reaction_rush_finish_round(uuid, uuid, integer) TO service_role;
 
 
 CREATE OR REPLACE FUNCTION public.reaction_rush_match_snapshot(p_room_id uuid, p_user_id text)
