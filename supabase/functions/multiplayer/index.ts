@@ -238,6 +238,7 @@ Deno.serve(async (req: Request) => {
     const eventByAction: Record<string, string> = {
       create_room: "room_updated",
       join_room: "player_joined",
+      select_game: "room_updated",
       set_ready: "player_updated",
       leave_room: "player_left",
       close_room: "room_updated",
