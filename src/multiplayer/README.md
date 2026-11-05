@@ -15,10 +15,11 @@ source of truth.
 
 ## Server API contract
 
-The shared `multiplayer` Edge Function accepts an action and Telegram
-`initData`. The server validates the Telegram signature, derives the acting
-Telegram user, and enforces membership and lifecycle rules. It must never
-trust a client-supplied Telegram ID.
+The `multiplayer` Supabase Edge Function is deployed. It accepts an action
+and Telegram `initData`. Supabase gateway JWT verification is disabled for
+this function because it authenticates each request by validating Telegram
+`initData` itself. The server derives the acting Telegram user and enforces
+membership and lifecycle rules; it never trusts a client-supplied Telegram ID.
 
 Public client actions:
 
@@ -47,6 +48,7 @@ leaving or inactivity must never change it to `cancelled`.
 - Creating a room inserts the creator as its first player and host.
 - Joining by invite code is allowed only while the room is `waiting` and has
   capacity.
+- An existing member can re-enter a waiting room even when it is at capacity.
 - A player who explicitly calls `leave_room` is removed immediately.
 - If the host explicitly leaves and other players remain, the host role is
   transferred to the remaining player with the earliest `joined_at`. A stable
@@ -147,24 +149,26 @@ await watcher.stop()
 
 Supported events: `room_updated`, `player_joined`, `player_updated`,
 `player_left`, and `room_finished`. Payloads are invalidation signals only;
-the client never merges them into the canonical room model. A successful
-subscription triggers an initial snapshot fetch and a fresh fetch after each
-reconnect. Concurrent event bursts are coalesced, and late responses cannot
-update a stopped watcher.
+the client never merges them into the canonical room model. The deployed
+function sends invalidation events after successful room mutations. A
+successful subscription triggers an initial snapshot fetch and a fresh fetch
+after each reconnect. Concurrent event bursts are coalesced, and late
+responses cannot update a stopped watcher.
 
 ## Server and Supabase prerequisites
 
-The browser must not publish authoritative room events. Trusted server code
-publishes events only after a successful state change. The server verifies
-Telegram `initData` and room membership before issuing a token, and does not
-issue tokens for finished or cancelled rooms.
+The Edge Function validates Telegram `initData` and calls a single
+server-only PostgreSQL action function. Room mutations are serialized by
+locking the room row, including heartbeat updates, explicit leave, host
+transfer, and idle cleanup. The browser has no direct table privileges and
+cannot publish authoritative room events.
 
 The signing key is prepared as a Standby key and the matching private JWK is
-stored in the Edge Function secret `MULTIPLAYER_JWT_PRIVATE_JWK`; it has not
-been activated. Until the key is Current, the token issuer is deployed, and
-private-channel RLS policies are installed, private Broadcast authorization
-is not operational. Do not activate or deploy these Supabase changes without
-the agreed rollout step.
+stored in the Edge Function secret `MULTIPLAYER_JWT_PRIVATE_JWK`. The token
+issuer is deployed, but the signing key has not been activated. Therefore
+token issuance code is present, but Supabase Realtime acceptance of these
+tokens has not yet been verified and is not expected until the key is Current.
+Do not activate or rotate the key without the agreed rollout step.
 
 The JWT `room_id` claim must match the UUID in `room:<roomId>`. Realtime RLS
 policies must authorize only the corresponding room member. Never grant broad
