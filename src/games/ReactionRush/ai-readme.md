@@ -79,7 +79,7 @@ The client sends `roomId`, `matchId` and `roundNumber`. SQL verifies the match i
 - Rounds 1 and 2 produce round results and advance to the next round using a server timestamp.
 - Round 3 computes final totals and winner/tie, updates common room stats and the Reaction Rush leaderboard, marks the game match completed, and calls the shared Multiplayer `finish_game` lifecycle operation.
 
-The Edge Function broadcasts `round_finished` or `match_finished` after a successful SQL call. The current function's `finish_round` path does not itself perform the same explicit room membership/host check as `start_match`; it relies on the service-role RPC's match/room validation and the possession of valid Telegram initData at the Edge Function. Do not add assumptions about host-only round completion unless the backend contract is deliberately changed.
+The Edge Function broadcasts `round_finished` or `match_finished` after a successful SQL call. **Known authorization gap:** the current `finish_round` path does not check that the Telegram-authenticated caller is a member of the room (nor that the caller is host). The SQL RPC validates the match/room identifiers, active state, current round and deadline, but it receives no caller ID and therefore cannot verify membership. A caller with valid Telegram initData who knows the room and match IDs may be able to trigger round completion after the deadline. Do not describe this as membership-authorized; it needs a separately scoped security fix.
 
 ### get_match
 
@@ -97,7 +97,7 @@ The current SQL uses:
 - `games_reaction_rush_leaderboard`;
 - shared `common_multiplayer_room_stats`.
 
-A match has three rounds. Each round lasts 10 seconds. Every accepted tap adds one point, with a maximum of 1000 per player per round. Final match score is the sum across rounds. A unique highest total wins; a tie has no winner. Common room wins/matches and the game-specific leaderboard are updated when round 3 completes.
+A match has three rounds. Each round lasts 10 seconds. Every accepted tap adds one point, with a maximum of 1000 per player per round. Final match score is the sum across rounds. A unique highest total wins; a tie has no winner. Common room wins/matches and the game-specific leaderboard are updated when round 3 completes. The SQL then deletes that match's per-round rows from `games_reaction_rush_scores`; the completed match's final results remain in `games_reaction_rush_matches.final_results`.
 
 The game rules registry convention is `common_multiplayer_game_rules`, with Reaction Rush registered for 2–4 players in the game SQL. The current multiplayer UI also checks 2–4 players before enabling the host's start button. This client check is for presentation only: the later `multiplayer_game_lifecycle.sql` replacement does not consult the rules registry when starting a match. Verify the actual deployed RPC before claiming server-side min/max enforcement.
 
