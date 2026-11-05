@@ -101,7 +101,8 @@ BEGIN
             CASE WHEN jsonb_typeof(question.value->'answers') = 'array'
               THEN question.value->'answers' ELSE '[]'::jsonb END
           ) <> 4
-       OR COALESCE((question.value->>'correctAnswer') ~ '^[0-3] 'Invalid Brain Battle question payload' USING ERRCODE = '22023';
+       OR COALESCE((question.value->>'correctAnswer') ~ '^[0-3]$', false) = false
+  ) THEN
   END IF;
 
   v_started := public.multiplayer_execute_action(
