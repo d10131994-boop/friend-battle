@@ -36,6 +36,15 @@ export default function ReactionRushMatch({
   const [remaining, setRemaining] = useState(10)
   const [myScore, setMyScore] = useState(0)
   const [roundResults, setRoundResults] = useState<ReactionRushResult[]>([])
+  const [leaderboard, setLeaderboard] = useState<Array<{
+    user_id: string
+    display_name: string
+    wins: number
+    matches_played: number
+    total_taps: number
+    best_match_score: number
+  }>>([])
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
   const finishRequestedRef = useRef<string | null>(null)
   const startAttemptRef = useRef(false)
   const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
@@ -131,6 +140,19 @@ export default function ReactionRushMatch({
     })
   }, [match, room, remaining, invokeGame, onRoomUpdate, refreshMatch])
 
+  async function loadLeaderboard() {
+    setLoading(true)
+    try {
+      const response = await invokeGame<{ leaderboard: typeof leaderboard }>({ action: 'leaderboard' })
+      setLeaderboard(response.leaderboard ?? [])
+      setShowLeaderboard(true)
+    } catch (error) {
+      setMessage(getErrorMessage(error, 'Не удалось загрузить лидерборд.'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function tap() {
     if (!match || match.status !== 'playing' || room.status !== 'playing' || remaining <= 0) return
     try {
@@ -189,6 +211,22 @@ export default function ReactionRushMatch({
       )}
 
       {!match && <section className="game-card"><p>{loading ? 'Запускаем матч...' : 'Подключаемся к матчу...'}</p></section>}
+
+      <button className="leaderboard-button" onClick={() => void loadLeaderboard()} disabled={loading}>
+        🏆 ЛИДЕРБОРД REACTION RUSH
+      </button>
+      {showLeaderboard && (
+        <section className="game-card">
+          <h2>ЛИДЕРБОРД REACTION RUSH</h2>
+          {leaderboard.length === 0 && <p>Пока нет завершённых матчей.</p>}
+          {leaderboard.map((player, index) => (
+            <p key={player.user_id}>
+              {index + 1}. {player.display_name} — {player.wins} побед · лучший счёт {player.best_match_score}
+            </p>
+          ))}
+          <button className="invite-button" onClick={() => setShowLeaderboard(false)}>ЗАКРЫТЬ</button>
+        </section>
+      )}
       {message && <section className="game-card" role="alert"><p>{message}</p></section>}
     </main>
   )
