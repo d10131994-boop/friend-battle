@@ -89,7 +89,10 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     autoReadyKeyRef.current = key
     void multiplayer.setReady(auth, { roomId: room.roomId, isReady: true })
       .then(acceptRoom)
-      .catch((error: unknown) => setMessage(errorMessage(error, 'Не удалось подтвердить готовность ведущего.')))
+      .catch((error: unknown) => {
+        autoReadyKeyRef.current = null
+        setMessage(errorMessage(error, 'Не удалось подтвердить готовность ведущего.'))
+      })
   }, [room, auth, telegramId, acceptRoom])
 
   const createRoom = useCallback(async () => {
