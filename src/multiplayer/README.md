@@ -54,7 +54,8 @@ Deno game module can start a session and later finish that exact session:
 
 ```ts
 const endpoint = `${Deno.env.get('SUPABASE_URL')}/functions/v1/multiplayer`
-const secret = Deno.env.get('MULTIPLAYER_GAME_SERVER_SECRET')!
+const secrets = JSON.parse(Deno.env.get('MULTIPLAYER_GAME_SERVER_SECRETS')!)
+const secret = secrets['brain-battle'] as string
 
 const startResponse = await fetch(endpoint, {
   method: 'POST',
@@ -88,14 +89,18 @@ if (!finishResponse.ok) throw new Error('Could not finish the game')
 
 | Action | Input | Result |
 | --- | --- | --- |
-| `start_game` | `roomId` | Room snapshot with `status: playing` and a new `startedAt` |
-| `finish_game` | `roomId`, `startedAt` from the matching `start_game` response | Room snapshot with `status: finished` and `finishedAt` |
+| `start_game` | `roomId`, `gameId` | Room snapshot with `status: playing` and a new `startedAt` |
+| `finish_game` | `roomId`, `gameId`, `startedAt` from the matching `start_game` response | Room snapshot with `status: finished` and `finishedAt` |
 
-The secret is configured as `MULTIPLAYER_GAME_SERVER_SECRET` in the
-Multiplayer Edge Function and in the trusted game-server environment. It must
-be a high-entropy value of at least 32 characters, kept out of source control
-and all client bundles. These actions are also protected by the database
-function's `service_role`-only execute permission.
+Secrets are configured as a JSON object in
+`MULTIPLAYER_GAME_SERVER_SECRETS` in the Multiplayer Edge Function, keyed by
+game ID (for example, `{"brain-battle":"<secret>" }`). Each trusted
+game-server environment receives only its own game's secret. Every secret
+must be a high-entropy value of at least 32 characters, kept out of source
+control and all client bundles. The request's `gameId` must match the room's
+stored `game_id`; a game server cannot start or finish another game's room.
+These actions are also protected by the database function's
+`service_role`-only execute permission.
 
 `start_game` succeeds only while the room is `waiting` or `finished`, and
 only when every current player is ready and has sent a heartbeat within the
