@@ -192,6 +192,15 @@ Deno.serve(async (req: Request) => {
       return respond(data);
     }
 
+    const { data: room, error: roomError } = await supabase.rpc("multiplayer_execute_action", {
+      p_action: "get_room",
+      p_user_id: userId,
+      p_display_name: displayName,
+      p_payload: { roomId },
+    });
+    if (roomError) return errorResponse(roomError);
+    if (!room || room.gameId !== "brain-battle") return fail("В комнате должна быть выбрана Brain Battle", 409);
+
     const { data: activeMatch, error: matchError } = await supabase
       .from("games_brain_battle_matches")
       .select("id")
