@@ -427,9 +427,16 @@ BEGIN
   ) s ON s.user_id = p.user_id
   WHERE p.room_id = p_room_id;
 
-  SELECT value->>'userId' INTO v_winner
-  FROM pg_catalog.jsonb_array_elements(v_totals) AS value
-  ORDER BY (value->>'score')::integer DESC LIMIT 1;
+  SELECT CASE WHEN count(*) FILTER (WHERE total_score = max_score) = 1
+    THEN max(user_id) FILTER (WHERE total_score = max_score) ELSE NULL END
+  INTO v_winner
+  FROM (
+    SELECT user_id, sum(score)::integer AS total_score,
+      max(sum(score)::integer) OVER () AS max_score
+    FROM public.games_reaction_rush_scores
+    WHERE match_id = p_match_id
+    GROUP BY user_id
+  ) ranked;
 
   INSERT INTO public.common_multiplayer_room_stats(room_id, user_id, wins, matches_played)
   SELECT p_room_id, p.user_id, CASE WHEN p.user_id = v_winner THEN 1 ELSE 0 END, 1
@@ -476,3 +483,44 @@ REVOKE ALL ON FUNCTION public.reaction_rush_finish_round(uuid, uuid, smallint) F
 GRANT EXECUTE ON FUNCTION public.reaction_rush_start_match(uuid, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.reaction_rush_record_tap(uuid, uuid, smallint, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.reaction_rush_finish_round(uuid, uuid, smallint) TO service_role;
+
+
+CREATE OR REPLACE FUNCTION public.reaction_rush_match_snapshot(p_room_id uuid, p_user_id text)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
+  v_match public.games_reaction_rush_matches%ROWTYPE;
+  v_score integer;
+BEGIN
+  SELECT * INTO v_room FROM public.common_multiplayer_rooms WHERE id = p_room_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.common_multiplayer_players WHERE room_id = p_room_id AND user_id = p_user_id) THEN
+    RAISE EXCEPTION 'Player is not a member of this room' USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO v_match FROM public.games_reaction_rush_matches
+  WHERE room_id = p_room_id AND status = 'playing';
+  IF NOT FOUND THEN
+    RETURN pg_catalog.jsonb_build_object('room', public.multiplayer_room_snapshot(p_room_id), 'match', NULL);
+  END IF;
+  SELECT score INTO v_score FROM public.games_reaction_rush_scores
+  WHERE match_id = v_match.id AND user_id = p_user_id AND round_number = v_match.current_round;
+  RETURN pg_catalog.jsonb_build_object(
+    'room', public.multiplayer_room_snapshot(p_room_id),
+    'match', pg_catalog.jsonb_build_object(
+      'matchId', v_match.id,
+      'roundNumber', v_match.current_round,
+      'roundStartedAt', v_match.round_started_at,
+      'startedAt', v_match.started_at,
+      'myScore', COALESCE(v_score, 0)
+    )
+  );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.reaction_rush_match_snapshot(uuid, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.reaction_rush_match_snapshot(uuid, text) TO service_role;
