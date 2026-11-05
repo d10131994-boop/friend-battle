@@ -305,7 +305,7 @@ export default function ReactionRushMultiplayer({
         matchId: match.matchId,
         roundNumber: match.roundNumber,
       })
-      setMyScore(Math.max(myScore, response.score))
+      setMyScore((current) => Math.max(current, response.score))
     } catch (error) {
       setMessage(getErrorMessage(error, 'Нажатие не засчитано.'))
     }
