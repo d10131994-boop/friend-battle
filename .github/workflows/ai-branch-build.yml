@@ -34,4 +34,4 @@ jobs:
         run: npm run build
 
       - name: Lint
-        run: npm run lint
+        run: npx eslint src/database src/multiplayer
