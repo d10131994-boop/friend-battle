@@ -90,7 +90,7 @@ function App() {
 
   useEffect(() => {
     if (telegramStartParam?.startsWith('rr_')) setScreen('reaction-multiplayer')
-  }, [])
+  }, [telegramStartParam])
 
   function openRating() {
     setScreen('rating')
