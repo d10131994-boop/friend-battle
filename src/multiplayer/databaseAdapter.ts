@@ -16,12 +16,14 @@ import type {
   MultiplayerRoomToken,
   MultiplayerService,
   SetPlayerReadyParams,
+  SelectGameParams,
 } from './types'
 import { MultiplayerError } from './types'
 
 /** Action names exposed by the trusted Multiplayer Edge Function. */
 export interface DatabaseMultiplayerActions {
   createRoom: string
+  selectGame: string
   joinRoom: string
   getRoom: string
   setReady: string
@@ -40,6 +42,7 @@ export interface DatabaseMultiplayerAdapterOptions {
 
 const DEFAULT_ACTIONS: DatabaseMultiplayerActions = {
   createRoom: 'create_room',
+  selectGame: 'select_game',
   joinRoom: 'join_room',
   getRoom: 'get_room',
   setReady: 'set_ready',
@@ -88,7 +91,9 @@ function isMultiplayerPlayer(value: unknown): value is MultiplayerPlayer {
     typeof value.isReady === 'boolean' &&
     typeof value.isHost === 'boolean' &&
     isNullableTimestamp(value.joinedAt) &&
-    isNullableTimestamp(value.lastSeenAt)
+    isNullableTimestamp(value.lastSeenAt) &&
+    typeof value.wins === 'number' && Number.isInteger(value.wins) && value.wins >= 0 &&
+    typeof value.matchesPlayed === 'number' && Number.isInteger(value.matchesPlayed) && value.matchesPlayed >= 0
   )
 }
 
@@ -103,7 +108,7 @@ function parseMultiplayerRoom(value: unknown): MultiplayerRoom {
 
   const valid =
     isNonEmptyString(value.roomId) &&
-    isNonEmptyString(value.gameId) &&
+    (value.gameId === null || isNonEmptyString(value.gameId)) &&
     isNonEmptyString(value.inviteCode) &&
     typeof value.status === 'string' &&
     ROOM_STATUSES.includes(value.status as MultiplayerRoomStatus) &&
@@ -198,9 +203,11 @@ export function createDatabaseMultiplayerAdapter(
   return {
     createRoom: (auth: MultiplayerAuth, params: CreateRoomParams) =>
       invokeRoom('createRoom', auth, {
-        gameId: params.gameId,
         ...(params.maxPlayers === undefined ? {} : { maxPlayers: params.maxPlayers }),
       }),
+
+    selectGame: (auth: MultiplayerAuth, params: SelectGameParams) =>
+      invokeRoom('selectGame', auth, { roomId: params.roomId, gameId: params.gameId }),
 
     joinRoom: (auth: MultiplayerAuth, params: JoinRoomParams) =>
       invokeRoom('joinRoom', auth, { inviteCode: params.inviteCode }),
