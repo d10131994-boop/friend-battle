@@ -173,3 +173,14 @@ When changing Multiplayer's public API, lifecycle, auth, Realtime, token format,
 5. report source-level checks separately from build/lint, database deployment and real integration tests.
 
 Do not silently reconcile conflicting SQL by choosing whichever version appears more convenient. Record the discrepancy and resolve it in a separately scoped change.
+
+
+## 10. Shared room UI ownership
+
+The application-level room experience is implemented in `src/menus/MultiplayerRoomMenu.tsx`, not inside individual game modules. The menus layer owns room creation/joining, invite links, game selection, common readiness, host-only start controls, the room session, player roster and shared room statistics. It uses the public Multiplayer adapter and room-session APIs described above.
+
+Game modules receive an already-created `MultiplayerRoom` and own only their match-specific UI/actions/results. Do not reintroduce room creation, invite-code parsing, common readiness, host transfer or generic room navigation inside a game screen.
+
+The menu automatically marks the host ready when a newly created room or a finished room returns to the waiting state, because the agreed UI does not show the host a Ready button while the lifecycle start operation still requires every member to be ready. This is client orchestration only; the server remains authoritative.
+
+The current Telegram Mini App share flow uses a single invite URL through `https://t.me/share/url`. Telegram's share sheet does not return a list of chosen recipients to the Mini App, so the client cannot show a truthful live count of selected contacts. The room snapshot and server-side capacity remain the source for actual participant counts. The shared invite deep-link prefix is `fb_`; the application continues to accept legacy `rr_` and `bb_` prefixes for existing links.
