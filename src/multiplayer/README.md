@@ -60,6 +60,7 @@ const startResponse = await fetch(endpoint, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
+    'apikey': Deno.env.get('SUPABASE_ANON_KEY')!,
     'x-multiplayer-game-server-secret': secret,
   },
   body: JSON.stringify({ action: 'start_game', roomId }),
@@ -72,6 +73,7 @@ const finishResponse = await fetch(endpoint, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
+    'apikey': Deno.env.get('SUPABASE_ANON_KEY')!,
     'x-multiplayer-game-server-secret': secret,
   },
   body: JSON.stringify({
