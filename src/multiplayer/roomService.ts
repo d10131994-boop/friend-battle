@@ -1,4 +1,5 @@
 import type {
+  CloseRoomParams,
   CreateRoomParams,
   GetRoomParams,
   MultiplayerAuth,
@@ -6,13 +7,11 @@ import type {
 } from './types'
 import { MultiplayerError } from './types'
 
-/**
- * Адаптер — граница между общим модулем и конкретным серверным API игры.
- * Игры подключают свои текущие Edge Functions через этот интерфейс.
- */
+/** Adapter boundary for room creation, lookup, and host-controlled closure. */
 export interface RoomServiceAdapter {
   createRoom(auth: MultiplayerAuth, params: CreateRoomParams): Promise<MultiplayerRoom>
   getRoom(auth: MultiplayerAuth, params: GetRoomParams): Promise<MultiplayerRoom>
+  closeRoom(auth: MultiplayerAuth, params: CloseRoomParams): Promise<MultiplayerRoom>
 }
 
 export function createRoomService(adapter: RoomServiceAdapter) {
@@ -30,6 +29,14 @@ export function createRoomService(adapter: RoomServiceAdapter) {
         return await adapter.getRoom(auth, params)
       } catch (error) {
         throw new MultiplayerError('Не удалось получить игровую комнату.', error)
+      }
+    },
+
+    async close(auth: MultiplayerAuth, params: CloseRoomParams) {
+      try {
+        return await adapter.closeRoom(auth, params)
+      } catch (error) {
+        throw new MultiplayerError('Не удалось закрыть игровую комнату.', error)
       }
     },
   }

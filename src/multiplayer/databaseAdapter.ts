@@ -1,29 +1,34 @@
 import { database } from '../database'
 import type { DatabaseRecord } from '../database'
 import type {
+  CloseRoomParams,
   CreateRoomParams,
   GetRoomParams,
+  GetRoomTokenParams,
+  HeartbeatRoomParams,
   JoinRoomParams,
+  LeaveRoomParams,
   MultiplayerAuth,
+  MultiplayerHeartbeatResult,
   MultiplayerPlayer,
   MultiplayerRoom,
   MultiplayerRoomStatus,
+  MultiplayerRoomToken,
+  MultiplayerService,
   SetPlayerReadyParams,
 } from './types'
 import { MultiplayerError } from './types'
-import type { RoomServiceAdapter } from './roomService'
-import type { InviteServiceAdapter } from './inviteService'
-import type { PlayerServiceAdapter } from './playerService'
 
-/**
- * The action names are configurable because the shared server endpoint and its
- * public contract must be agreed independently from the client module.
- */
+/** Action names exposed by the trusted Multiplayer Edge Function. */
 export interface DatabaseMultiplayerActions {
   createRoom: string
   joinRoom: string
   getRoom: string
   setReady: string
+  leaveRoom: string
+  closeRoom: string
+  heartbeat: string
+  getRoomToken: string
 }
 
 export interface DatabaseMultiplayerAdapterOptions {
@@ -38,6 +43,10 @@ const DEFAULT_ACTIONS: DatabaseMultiplayerActions = {
   joinRoom: 'join_room',
   getRoom: 'get_room',
   setReady: 'set_ready',
+  leaveRoom: 'leave_room',
+  closeRoom: 'close_room',
+  heartbeat: 'heartbeat',
+  getRoomToken: 'get_room_token',
 }
 
 const ROOM_STATUSES: readonly MultiplayerRoomStatus[] = [
@@ -58,13 +67,16 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
-function isNullableTimestamp(value: unknown): value is string | null {
+function isTimestamp(value: unknown): value is string {
   return (
-    value === null ||
-    (typeof value === 'string' &&
-      value.trim().length > 0 &&
-      Number.isFinite(Date.parse(value)))
+    typeof value === 'string' &&
+    value.trim().length > 0 &&
+    Number.isFinite(Date.parse(value))
   )
+}
+
+function isNullableTimestamp(value: unknown): value is string | null {
+  return value === null || isTimestamp(value)
 }
 
 function isMultiplayerPlayer(value: unknown): value is MultiplayerPlayer {
@@ -75,7 +87,8 @@ function isMultiplayerPlayer(value: unknown): value is MultiplayerPlayer {
     isNonEmptyString(value.displayName) &&
     typeof value.isReady === 'boolean' &&
     typeof value.isHost === 'boolean' &&
-    isNullableTimestamp(value.joinedAt)
+    isNullableTimestamp(value.joinedAt) &&
+    isNullableTimestamp(value.lastSeenAt)
   )
 }
 
@@ -111,19 +124,38 @@ function parseMultiplayerRoom(value: unknown): MultiplayerRoom {
   return value as unknown as MultiplayerRoom
 }
 
+function parseHeartbeat(value: unknown): MultiplayerHeartbeatResult {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.roomId) ||
+    !isTimestamp(value.lastSeenAt)
+  ) {
+    throw new MultiplayerError('Сервер вернул некорректное подтверждение heartbeat.')
+  }
+
+  return value as unknown as MultiplayerHeartbeatResult
+}
+
+function parseRoomToken(value: unknown): MultiplayerRoomToken {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.roomId) ||
+    !isNonEmptyString(value.accessToken) ||
+    !isTimestamp(value.expiresAt)
+  ) {
+    throw new MultiplayerError('Сервер вернул некорректный токен комнаты.')
+  }
+
+  return value as unknown as MultiplayerRoomToken
+}
+
 /**
- * Bridges the generic Multiplayer Core contracts to Database.invokeFunction.
- *
- * The Edge Function is responsible for validating Telegram initData and for
- * enforcing authorization. The browser only forwards initData; it must never
- * attempt to validate it or use a service-role key.
- *
- * The function must return a normalized MultiplayerRoom object. Runtime
- * validation protects the core from malformed or outdated server responses.
+ * Bridges the game-agnostic Multiplayer Core to Database.invokeFunction.
+ * Telegram initData is forwarded unchanged and verified only by the server.
  */
 export function createDatabaseMultiplayerAdapter(
   options: DatabaseMultiplayerAdapterOptions,
-): RoomServiceAdapter & InviteServiceAdapter & PlayerServiceAdapter {
+): MultiplayerService {
   if (!isNonEmptyString(options.functionName)) {
     throw new TypeError('A multiplayer Edge Function name is required.')
   }
@@ -136,16 +168,16 @@ export function createDatabaseMultiplayerAdapter(
     }
   }
 
-  async function execute(
+  async function invoke(
     action: MultiplayerAction,
     auth: MultiplayerAuth,
     params: DatabaseRecord,
-  ): Promise<MultiplayerRoom> {
+  ): Promise<unknown> {
     if (!isNonEmptyString(auth.initData)) {
       throw new TypeError('Telegram initData is required for multiplayer requests.')
     }
 
-    const response = await database.invokeFunction<unknown, DatabaseRecord>(
+    return database.invokeFunction<unknown, DatabaseRecord>(
       options.functionName.trim(),
       {
         ...params,
@@ -153,27 +185,45 @@ export function createDatabaseMultiplayerAdapter(
         initData: auth.initData,
       },
     )
+  }
 
-    return parseMultiplayerRoom(response)
+  async function invokeRoom(
+    action: MultiplayerAction,
+    auth: MultiplayerAuth,
+    params: DatabaseRecord,
+  ): Promise<MultiplayerRoom> {
+    return parseMultiplayerRoom(await invoke(action, auth, params))
   }
 
   return {
     createRoom: (auth: MultiplayerAuth, params: CreateRoomParams) =>
-      execute('createRoom', auth, {
+      invokeRoom('createRoom', auth, {
         gameId: params.gameId,
         ...(params.maxPlayers === undefined ? {} : { maxPlayers: params.maxPlayers }),
       }),
 
     joinRoom: (auth: MultiplayerAuth, params: JoinRoomParams) =>
-      execute('joinRoom', auth, { inviteCode: params.inviteCode }),
+      invokeRoom('joinRoom', auth, { inviteCode: params.inviteCode }),
 
     getRoom: (auth: MultiplayerAuth, params: GetRoomParams) =>
-      execute('getRoom', auth, { roomId: params.roomId }),
+      invokeRoom('getRoom', auth, { roomId: params.roomId }),
 
     setReady: (auth: MultiplayerAuth, params: SetPlayerReadyParams) =>
-      execute('setReady', auth, {
+      invokeRoom('setReady', auth, {
         roomId: params.roomId,
         isReady: params.isReady,
       }),
+
+    leaveRoom: (auth: MultiplayerAuth, params: LeaveRoomParams) =>
+      invokeRoom('leaveRoom', auth, { roomId: params.roomId }),
+
+    closeRoom: (auth: MultiplayerAuth, params: CloseRoomParams) =>
+      invokeRoom('closeRoom', auth, { roomId: params.roomId }),
+
+    heartbeat: async (auth: MultiplayerAuth, params: HeartbeatRoomParams) =>
+      parseHeartbeat(await invoke('heartbeat', auth, { roomId: params.roomId })),
+
+    getRoomToken: async (auth: MultiplayerAuth, params: GetRoomTokenParams) =>
+      parseRoomToken(await invoke('getRoomToken', auth, { roomId: params.roomId })),
   }
 }
