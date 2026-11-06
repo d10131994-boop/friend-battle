@@ -195,7 +195,7 @@ Deno.serve(async(req:Request)=>{
       }
     }
   }
-  if(match?.status==="completed")await finishSharedGame(db,roomId,match.startedAt);
+  if(match?.status==="completed" && room?.status==="playing")await finishSharedGame(db,roomId,match.startedAt);
   const {data:latest,error:latestError}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
   if(latestError)return fail("Не удалось обновить состояние матча",500);
   const current=latest?.match;
