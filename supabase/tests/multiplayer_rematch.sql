@@ -153,6 +153,44 @@ BEGIN
     RAISE EXCEPTION 'Unanswered rematch vote must expire after its deadline';
   END IF;
 
+  -- A unanimous vote cannot start with fewer than the game's minimum players.
+  v_room := public.multiplayer_execute_action(
+    'create_room', v_host || '_leave', 'Host', jsonb_build_object('maxPlayers', 2)
+  );
+  v_room_id := (v_room->>'roomId')::uuid;
+  PERFORM public.multiplayer_execute_action(
+    'join_room', v_guest || '_leave', 'Guest', jsonb_build_object('inviteCode', v_room->>'inviteCode')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'select_game', v_host || '_leave', 'Host',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_host || '_leave', 'Host', jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_guest || '_leave', 'Guest', jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  v_room := public.multiplayer_execute_action(
+    'start_game', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush')
+  );
+  v_started_at := v_room->>'startedAt';
+  PERFORM public.multiplayer_execute_action(
+    'finish_game', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush', 'startedAt', v_started_at)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'vote_rematch', v_host || '_leave', 'Host',
+    jsonb_build_object('roomId', v_room_id, 'vote', 'yes')
+  );
+  v_room := public.multiplayer_execute_action(
+    'leave_room', v_guest || '_leave', 'Guest', jsonb_build_object('roomId', v_room_id)
+  );
+  IF v_room->>'rematchStatus' <> 'declined' THEN
+    RAISE EXCEPTION 'Rematch must be declined when fewer than the minimum players remain';
+  END IF;
+
   -- Disabled/custom modes do not get the standard Multiplayer vote window.
   UPDATE public.common_multiplayer_game_rules SET lifecycle_mode = 'disabled'
   WHERE game_id = 'reaction-rush';
