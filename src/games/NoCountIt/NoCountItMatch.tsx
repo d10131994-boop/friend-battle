@@ -41,7 +41,16 @@ export default function NoCountItMatch({
   const refreshMatch = useCallback(async () => {
     const snapshot = await invokeGame<NoCountItSnapshot>({ action: 'get_match', roomId: room.roomId })
     onRoomUpdate(snapshot.room)
-    setMatch(snapshot.match)
+    setMatch((previous) => {
+      if (!snapshot.match || !previous || previous.matchId !== snapshot.match.matchId) return snapshot.match
+      if (previous.round?.roundNumber !== snapshot.match.round?.roundNumber) return snapshot.match
+      return {
+        ...snapshot.match,
+        round: snapshot.match.round && previous.round?.imageUrl
+          ? { ...snapshot.match.round, imageUrl: previous.round.imageUrl }
+          : snapshot.match.round,
+      }
+    })
     return snapshot.match
   }, [invokeGame, onRoomUpdate, room.roomId])
 
