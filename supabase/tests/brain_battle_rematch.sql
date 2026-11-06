@@ -62,7 +62,9 @@ BEGIN
   WHERE p.room_id = v_room_id;
 
   UPDATE public.games_brain_battle_matches
-  SET current_question_index = 9
+  SET current_question_index = 9,
+      question_started_at = now() - interval '16 seconds',
+      question_ends_at = now() - interval '1 second'
   WHERE id = v_match_id;
 
   v_started := public.brain_battle_advance_if_due(v_room_id, v_match_id);
@@ -117,7 +119,9 @@ BEGIN
   WHERE p.room_id = v_room_id;
 
   UPDATE public.games_brain_battle_matches
-  SET current_question_index = 9
+  SET current_question_index = 9,
+      question_started_at = now() - interval '16 seconds',
+      question_ends_at = now() - interval '1 second'
   WHERE id = v_match_id;
 
   v_started := public.brain_battle_advance_if_due(v_room_id, v_match_id);
