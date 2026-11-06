@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { sqlErrorResponse } from "../_shared/errors.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -47,13 +48,15 @@ function fail(message: string, status: number): Response {
   return respond({ error: message }, status);
 }
 
-function errorResponse(error: { code?: string; message?: string }): Response {
-  if (error.code === "P0002") return fail("Комната или матч не найдены", 404);
-  if (error.code === "42501") return fail("Недостаточно прав для этой операции", 403);
-  if (error.code === "55000" || error.code === "54000") return fail(error.message ?? "Действие сейчас недоступно", 409);
-  if (error.code === "22023") return fail(error.message ?? "Некорректный запрос", 400);
-  if (error.code === "23505") return fail("Ответ на этот вопрос уже отправлен", 409);
-  return fail("Не удалось выполнить действие Brain Battle", 500);
+function errorResponse(error: { code?: string }): Response {
+  return sqlErrorResponse(error, corsHeaders, {
+    operation: "brain-battle",
+    fallbackMessage: "Не удалось выполнить действие Brain Battle",
+    messages: {
+      P0002: "Комната или матч не найдены",
+      23505: "Ответ на этот вопрос уже отправлен",
+    },
+  });
 }
 
 function hexToBytes(hex: string): Uint8Array {
