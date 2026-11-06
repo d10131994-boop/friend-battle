@@ -142,7 +142,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     void joinRoom(inviteCode)
   }, [inviteCode, room, joinRoom])
 
-  async function selectGame(gameId: 'reaction-rush' | 'brain-battle') {
+  async function selectGame(gameId: 'reaction-rush' | 'brain-battle' | 'no-count-it') {
     if (!room) return
     setLoading(true)
     setMessage('')
@@ -407,7 +407,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
                   className="invite-input"
                   value={room.gameId ?? ''}
                   onChange={(event) => {
-                    if (event.target.value === 'reaction-rush' || event.target.value === 'brain-battle') {
+                    if (event.target.value === 'reaction-rush' || event.target.value === 'brain-battle' || event.target.value === 'no-count-it') {
                       void selectGame(event.target.value)
                     }
                   }}
