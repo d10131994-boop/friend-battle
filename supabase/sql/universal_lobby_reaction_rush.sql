@@ -292,7 +292,6 @@ BEGIN
   ELSIF p_action = 'leave_room' THEN
     DELETE FROM public.common_multiplayer_players WHERE room_id = v_room_id AND user_id = p_user_id;
     IF v_room.status = 'playing' THEN
-      DELETE FROM public.games_reaction_rush_matches WHERE room_id = v_room_id;
       UPDATE public.common_multiplayer_rooms
       SET status = 'waiting', game_id = NULL, started_at = NULL, finished_at = NULL
       WHERE id = v_room_id;
@@ -311,7 +310,6 @@ BEGIN
   ELSIF p_action = 'close_room' THEN
     IF NOT v_is_host THEN RAISE EXCEPTION 'Only the host can close the room' USING ERRCODE = '42501'; END IF;
     UPDATE public.common_multiplayer_rooms SET status = 'cancelled' WHERE id = v_room_id;
-    DELETE FROM public.games_reaction_rush_matches WHERE room_id = v_room_id;
     RETURN public.multiplayer_room_snapshot(v_room_id);
   ELSIF p_action = 'heartbeat' THEN
     IF v_room.status NOT IN ('waiting', 'starting', 'playing', 'finished') THEN
