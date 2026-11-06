@@ -31,7 +31,7 @@ This is a logical database backup, not a full Supabase project image. Supabase d
 
 ## Limits and verification
 
-- The workflow cannot run successfully until both repository secrets are configured.
-- A successful workflow run proves that the logical dump was created, encrypted and uploaded; it does not prove that a restore has been tested.
+- The repository owner has configured both required repository secrets. The first workflow run is still pending.
+- A successful workflow run proves that the logical dump was created, encrypted and uploaded; it does not prove that a restore has been tested. Restore testing is deferred to the repository owner and is outside this audit task.
 - GitHub artifact storage usage/quota is account-level and was not exposed by the repository connector during this audit. Check it in GitHub billing/settings after the first run. The workflow limits retained backup artifacts to two to reduce storage use.
 - Do not upload plaintext SQL dumps or the encryption passphrase to the repository, issues, logs or artifacts.
