@@ -243,10 +243,19 @@ responses cannot update a stopped watcher.
 
 ## Server and Supabase prerequisites
 
-The SQL changes required by this contract are in
-`supabase/sql/multiplayer_game_lifecycle.sql`. Apply this patch to the
-existing Multiplayer schema before deploying the updated Edge Function. The
-live Supabase project has not been changed as part of this branch work.
+The canonical shared room lifecycle SQL is
+`supabase/sql/universal_lobby_reaction_rush.sql`. Its
+`public.multiplayer_execute_action` definition is deployed in Production and
+is the authoritative implementation for room creation, game selection,
+readiness, membership, heartbeat and shared room transitions.
+
+Room-maintenance helpers are kept separately in
+`supabase/sql/multiplayer_room_maintenance.sql`. In particular,
+`multiplayer_cancel_idle_rooms()` is called by the active Production Cron
+job `multiplayer-room-idle-cleanup` every 30 seconds. Do not remove or rename
+that function without updating the Cron job. The old
+`multiplayer_game_lifecycle.sql` patch was removed because it redefined the
+shared action RPC with incompatible behavior; do not restore or apply it.
 
 The Edge Function validates Telegram `initData` for player actions and the
 separate game-server secret for `start_game` / `finish_game`. It calls a
