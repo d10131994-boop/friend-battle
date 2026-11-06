@@ -244,7 +244,7 @@ export default function BrainBattleRoom({
     }
   }
 
-  async function startMatch() {
+  const startMatch = useCallback(async () => {
     if (!room) return
     setLoading(true)
     setMessage('')
@@ -258,14 +258,19 @@ export default function BrainBattleRoom({
       }>({ action: 'start_match', roomId: room.roomId })
       setShowFinalResults(false)
       setRemaining(15)
+      rematchStartRequestedRef.current = null
       acceptRoom(started.room)
       await refreshMatch()
     } catch (error) {
       setMessage(getErrorMessage(error, 'Не удалось начать матч.'))
+      if (room.rematchStatus === 'accepted') {
+        rematchStartRequestedRef.current = null
+        void refreshMatch().catch(() => undefined)
+      }
     } finally {
       setLoading(false)
     }
-  }
+  }, [room, invokeGame, acceptRoom, refreshMatch])
 
   async function submitAnswer(answerIndex: number) {
     if (!room || !match || match.status !== 'playing' || match.myAnswerSubmitted || remaining <= 0) return
@@ -339,7 +344,7 @@ export default function BrainBattleRoom({
     if (rematchStartRequestedRef.current === sessionKey) return
     rematchStartRequestedRef.current = sessionKey
     void startMatch()
-  }, [room?.status, room?.rematchStatus, room?.startedAt, isHost])
+  }, [room?.status, room?.rematchStatus, room?.startedAt, isHost, startMatch])
 
   return (
     <main className="app">
