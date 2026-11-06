@@ -63,7 +63,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   }, [room?.roomId, auth, acceptRoom])
 
   useEffect(() => {
-    if (!room?.roomId || gameScreen || room.status === 'cancelled') return
+    if (!room?.roomId || gameScreen || room.status === 'cancelled' || realtimeStatus === 'SUBSCRIBED') return
     let active = true
     const refreshRoom = async () => {
       try {
@@ -78,7 +78,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
       active = false
       window.clearInterval(timer)
     }
-  }, [room?.roomId, room?.status, gameScreen, auth, acceptRoom])
+  }, [room?.roomId, room?.status, gameScreen, realtimeStatus, auth, acceptRoom])
 
   useEffect(() => {
     if (!room || !auth.initData || (room.status !== 'waiting' && room.status !== 'finished')) return
