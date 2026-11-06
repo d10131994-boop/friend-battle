@@ -43,6 +43,7 @@ export type NoCountItRoundPlayerStatus =
   | 'active'
   | 'excluded_not_ready'
   | 'completed'
+  | 'left'
 
 export type NoCountItMatchPlayerStatus = 'active' | 'left'
 
