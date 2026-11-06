@@ -15,6 +15,7 @@ DECLARE
   v_rejected boolean;
   v_host_player jsonb;
   v_match_id uuid;
+  v_questions jsonb;
 BEGIN
   -- A room may be created without selecting a game.
   v_room := public.multiplayer_execute_action(
@@ -150,6 +151,53 @@ BEGIN
   WHERE p.room_id = v_room_id AND p.user_id = v_host || '_leave';
   IF v_host_player IS NULL OR (v_host_player->>'is_ready')::boolean THEN
     RAISE EXCEPTION 'Remaining player must stay in room and become not-ready';
+  END IF;
+
+  -- Brain Battle owns its cleanup hook too: room reset cancels its active match.
+  v_room := public.multiplayer_execute_action(
+    'create_room', v_host || '_brain', 'Test host', jsonb_build_object('maxPlayers', 2)
+  );
+  v_room_id := (v_room->>'roomId')::uuid;
+  PERFORM public.multiplayer_execute_action(
+    'join_room', v_guest || '_brain', 'Test guest',
+    jsonb_build_object('inviteCode', v_room->>'inviteCode')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'select_game', v_host || '_brain', 'Test host',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'brain-battle')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_host || '_brain', 'Test host',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_guest || '_brain', 'Test guest',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  SELECT jsonb_agg(jsonb_build_object(
+    'id', question_number,
+    'question', 'Test question',
+    'answers', jsonb_build_array('A', 'B', 'C', 'D'),
+    'correctAnswer', 0
+  ))
+  INTO v_questions
+  FROM generate_series(1, 10) AS question_number;
+  v_room := public.brain_battle_start_match(
+    v_room_id, v_host || '_brain', v_questions
+  );
+  v_match_id := (v_room->>'matchId')::uuid;
+  v_room := public.multiplayer_execute_action(
+    'leave_room', v_guest || '_brain', 'Test guest',
+    jsonb_build_object('roomId', v_room_id)
+  );
+  IF v_room->>'status' <> 'waiting' OR v_room->>'gameId' IS NOT NULL THEN
+    RAISE EXCEPTION 'Leaving Brain Battle during a match did not reset the room';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.games_brain_battle_matches
+    WHERE id = v_match_id AND status = 'cancelled'
+  ) THEN
+    RAISE EXCEPTION 'Brain Battle game module did not cancel its interrupted match';
   END IF;
 END;
 $test$;
