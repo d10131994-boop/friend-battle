@@ -65,11 +65,16 @@ export default function ReactionRushMatch({
   }, [room.roomId, invokeGame, onRoomUpdate])
 
   useEffect(() => {
-    void refreshMatch().catch((error: unknown) => setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.')))
+    const initialRefresh = window.setTimeout(() => {
+      void refreshMatch().catch((error: unknown) => setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.')))
+    }, 0)
     const timer = window.setInterval(() => {
       void refreshMatch().catch((error: unknown) => setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.')))
     }, 1200)
-    return () => window.clearInterval(timer)
+    return () => {
+      window.clearTimeout(initialRefresh)
+      window.clearInterval(timer)
+    }
   }, [refreshMatch])
 
   useEffect(() => {
