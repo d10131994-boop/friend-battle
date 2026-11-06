@@ -63,7 +63,7 @@ The agreed product vocabulary may call the waiting state “lobby”, but the cu
 ### Current API operations
 
 - `createRoom(auth, { maxPlayers? })`: creates a room and inserts the creator as host. The TypeScript params do not contain `gameId`.
-- `selectGame(auth, { roomId, gameId })`: public client contract and Edge Function action exist. Intended permission is host-only; the earlier universal-lobby SQL implements host-only selection of an enabled game while the room is `waiting` or `finished`. **The later `multiplayer_game_lifecycle.sql` replacement of the action function does not implement `select_game`; against that function the request reaches “Unknown multiplayer action”.**
+- `selectGame(auth, { roomId, gameId })`: public client contract and Edge Function action exist. The canonical deployed `multiplayer_execute_action` in `universal_lobby_reaction_rush.sql` implements host-only selection of an enabled game while the room is `waiting` or `finished`.
 - `joinRoom(auth, { inviteCode })`: invite code is normalized client-side (whitespace removed, uppercase) and sent to the server. The SQL lowercases the code for lookup. Joining is intended for `waiting` or `finished` rooms; existing members can reconnect even if the room is full.
 - `getRoom(auth, { roomId })`: returns the canonical room snapshot to an existing member.
 - `setReady(auth, { roomId, isReady })`: updates the current member's readiness. The reviewed lifecycle SQL permits this in `waiting` or `finished`.
@@ -111,47 +111,24 @@ The Edge Function maps known SQL error codes to HTTP responses:
 
 The database adapter validates the Edge Function response before exposing it as a `MultiplayerRoom`, heartbeat result or room token. It rejects unknown statuses, malformed timestamps, invalid player fields and malformed token responses. Do not bypass these parsers or cast untrusted function responses directly to domain types.
 
-## 7. Intended architecture vs repository discrepancies
+## 7. Canonical SQL implementation and maintenance functions
 
-The following are known inconsistencies in the checked-in SQL/API. This documentation task does not fix them. Do not claim the affected flows work end-to-end until a separate implementation task resolves and verifies them.
+The canonical shared room lifecycle implementation is `supabase/sql/universal_lobby_reaction_rush.sql`. It defines `public.multiplayer_execute_action` and the shared room snapshot, including:
+- creating a room before a game is selected and later selecting an enabled game;
+- room capacity of 2–4 and game-specific min/max player rules;
+- host/readiness checks when starting a match;
+- returning remaining players to the waiting room and clearing the interrupted Reaction Rush match when someone leaves during play;
+- room membership checks for member actions and server-only game lifecycle actions.
 
-### A. Create room without a selected game
+The deployed Production definition of `public.multiplayer_execute_action` was inspected and matches this canonical implementation. Do not apply an alternate definition of this RPC over it.
 
-**Intended contract:** create a room before selecting a game; the room's `gameId` is initially `null`. The host selects a supported game later through `select_game`.
+`supabase/sql/multiplayer_room_maintenance.sql` contains separate room-maintenance helpers and deliberately does not redefine `multiplayer_execute_action`:
+- `multiplayer_cancel_idle_rooms()` is used by the active Production Cron job `multiplayer-room-idle-cleanup`, which runs every 30 seconds and cancels rooms with no player heartbeat for 10 minutes. Keep this function and its Cron dependency in sync.
+- `multiplayer_record_heartbeat(room_id, user_id)` is a legacy standalone helper. The current application heartbeat flow uses the `heartbeat` action of `multiplayer_execute_action`; no current repository call site invokes the standalone helper. Do not introduce a new caller without reviewing its membership and locking behavior.
 
-**Repository evidence:**
-- `CreateRoomParams` exposes only optional `maxPlayers`.
-- `databaseAdapter.ts` sends `create_room` without `gameId`.
-- `multiplayer/index.ts` and the Edge Function expose `select_game`.
-- `universal_lobby_reaction_rush.sql` implements no-game creation and later game selection.
-- The later `multiplayer_game_lifecycle.sql` implementation requires non-empty `gameId` during `create_room`, and does not implement `select_game`.
+The former `multiplayer_game_lifecycle.sql` file was removed because its alternate `multiplayer_execute_action` definition conflicted with the canonical deployed RPC. Its two maintenance functions were preserved in `multiplayer_room_maintenance.sql`. Never restore the old file or apply a competing definition of the shared action RPC.
 
-Therefore the public TypeScript flow does not match that later SQL function and cannot be assumed to work end-to-end against it.
-
-### B. Room capacity and game rules
-
-**Intended contract:** a room has a maximum capacity of four players; each enabled game registers its own minimum and maximum player counts in `common_multiplayer_game_rules`. Multiplayer should enforce the selected game's registered limits when starting a match.
-
-**Repository evidence:**
-- `universal_lobby_reaction_rush.sql` sets the room capacity constraint to 2–4, defaults capacity to 4, creates `common_multiplayer_game_rules`, and checks registered min/max values when starting a match.
-- Game SQL files register their game-specific player limits in that table.
-- The later `multiplayer_game_lifecycle.sql` checks `maxPlayers` only against 1–100 at room creation and does not consult `common_multiplayer_game_rules` in its `start_game` branch.
-
-Do not describe the 1–100 validation as the intended product rule. Equally, do not claim the four-player/game-specific constraints are enforced by the later replacement RPC without checking which SQL implementation is actually deployed.
-
-### C. Leaving during a match
-
-**Intended product behavior:** if a player leaves during a match, the current match is interrupted, the player is removed, and remaining players return to the waiting/lobby state; if no players remain, the room is cancelled.
-
-**Repository evidence:**
-- `universal_lobby_reaction_rush.sql` resets a playing room to `waiting`, clears `game_id` and match timestamps, and resets remaining players' readiness.
-- The later `multiplayer_game_lifecycle.sql` `leave_room` branch removes the player and may transfer host, but does not reset a playing room to `waiting` or cancel the active game-specific match. It only cancels the room when no players remain.
-
-This later implementation does not satisfy the agreed mid-match leave behavior. Do not work around it inside a game module; it needs a dedicated Multiplayer/SQL task.
-
-### D. Conflicting SQL files
-
-`universal_lobby_reaction_rush.sql` and `multiplayer_game_lifecycle.sql` both define `public.multiplayer_execute_action` with materially different behavior. SQL execution order determines which definition is active. The repository states that `supabase/sql` is currently a set of explicit SQL patches rather than a reproducible migration history. Before changing or applying Multiplayer SQL, inspect the actual deployed database definition and confirm the intended patch order. Do not infer the live Supabase state from repository file names alone.
+The SQL directory contains explicit SQL patches and snapshots, not a fully reproducible migration chain. For any SQL change, inspect the actual deployed database definition and migration history first; repository filenames alone do not prove what is live.
 
 ## 8. Development and verification guidance
 
