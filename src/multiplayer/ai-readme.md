@@ -158,3 +158,26 @@ Game modules receive an already-created `MultiplayerRoom` and own only their mat
 The menu automatically marks the host ready when a newly created room or a finished room returns to the waiting state, because the agreed UI does not show the host a Ready button while the lifecycle start operation still requires every member to be ready. This is client orchestration only; the server remains authoritative.
 
 The current Telegram Mini App share flow uses a single invite URL through `https://t.me/share/url`. Telegram's share sheet does not return a list of chosen recipients to the Mini App, so the client cannot show a truthful live count of selected contacts. The room snapshot and server-side capacity remain the source for actual participant counts. The shared invite deep-link prefix is `fb_`; the application continues to accept legacy `rr_` and `bb_` prefixes for existing links.
+
+## 11. Extensible game-session lifecycle contract
+
+The agreed target contract has three lifecycle modes:
+
+- `default`: Multiplayer Core owns the standard start/finish flow and the standard rematch vote. Game-specific code still owns its match state and exposes explicit server-side lifecycle hooks.
+- `custom`: Multiplayer Core continues to own room membership, participant identity, authorization, host/room transitions and security boundaries. The game supplies explicit hooks for its custom match start, finish and cancellation semantics.
+- `disabled`: no automatic shared start/finish/rematch orchestration is applied for that game. Room membership, participant authorization and room security remain Multiplayer responsibilities.
+
+Ownership boundary:
+- Multiplayer may operate only on common room, player, game-rule, room-stat and shared lifecycle data.
+- Multiplayer must not read or mutate a game's match/answer/score tables directly.
+- Game modules own their match tables, scoring, winner calculation and game-specific cleanup. They integrate through an explicit trusted server contract rather than direct cross-module table access.
+- All transitions must remain server-authoritative, membership-checked, retry-safe where promised and serialized with a documented lock order.
+
+Standard rematch behavior (agreed product contract):
+- After a match finishes, the remaining room members have 60 seconds to vote.
+- A rematch starts only if every remaining member votes yes.
+- One no vote or an unanswered vote at the deadline cancels the rematch; the completed session ends and players remain in the room.
+- A unanimous yes starts a new match of the same selected game without requiring game selection again.
+- The vote/deadline is bound to the exact completed match/session so stale votes cannot affect a later match.
+
+**Implementation status:** this is the accepted architecture contract, not a claim that all three modes or rematch voting are already implemented. The current public API and Production schema do not yet expose a persisted lifecycle-mode setting or standard rematch-vote RPC/table. Do not build a game integration that assumes those features exist until their implementation and migration are delivered and tested.
