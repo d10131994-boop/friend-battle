@@ -500,7 +500,7 @@ export default function ReactionRushMultiplayer({
           <h2>ЛИДЕРБОРД REACTION RUSH</h2>
           {leaderboard.length === 0 && <p>Пока нет завершённых матчей.</p>}
           {leaderboard.map((player, index) => (
-            <p key={player.user_id}>
+            <p key={`${player.display_name}-${index}`}>
               {index + 1}. {player.display_name} — {player.wins} побед · лучший счёт {player.best_match_score}
             </p>
           ))}
