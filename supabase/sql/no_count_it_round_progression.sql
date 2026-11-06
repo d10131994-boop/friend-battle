@@ -1,0 +1,3 @@
+-- Deployed SQL for NoCountIt reveal timing, round progression and final match results.
+-- See the canonical function definition in the corresponding Production migration no_count_it_round_progression.
+-- The migration is intentionally tracked in Supabase history and the implementation is deployed to Production.
