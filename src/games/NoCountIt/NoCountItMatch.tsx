@@ -24,10 +24,10 @@ export default function NoCountItMatch({
   const [match, setMatch] = useState<NoCountItPublicMatch | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [answerInput, setAnswerInput] = useState('')
+  const [answerDraft, setAnswerDraft] = useState<{ roundKey: string | null; value: string }>({ roundKey: null, value: '' })
   const [remaining, setRemaining] = useState(0)
   const [imageRemaining, setImageRemaining] = useState(0)
-  const [roundReady, setRoundReady] = useState(false)
+  const [readyRoundKey, setReadyRoundKey] = useState<string | null>(null)
   const startAttemptRef = useRef(false)
   const readyAttemptRef = useRef<string | null>(null)
   const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
@@ -96,10 +96,8 @@ export default function NoCountItMatch({
   const myRoundPlayer = currentRound?.players.find((player) => player.userId === telegramId)
   const roundKey = match && currentRound ? `${match.matchId}:${currentRound.roundNumber}` : null
 
-  useEffect(() => {
-    setRoundReady(false)
-    setAnswerInput('')
-  }, [roundKey])
+  const roundReady = readyRoundKey === roundKey
+  const answerInput = answerDraft.roundKey === roundKey ? answerDraft.value : ''
 
   useEffect(() => {
     if (!roundKey || !currentRound || currentRound.status !== 'preparing' ||
@@ -142,7 +140,7 @@ export default function NoCountItMatch({
         roundNumber: currentRound.roundNumber,
         answer: answerInput,
       })
-      setAnswerInput('')
+      setAnswerDraft({ roundKey: null, value: '' })
       await refreshMatch()
     } catch (error) {
       setMessage(errorMessage(error))
@@ -154,7 +152,7 @@ export default function NoCountItMatch({
 
   function appendDigit(digit: string) {
     if (answerInput.length >= 19 || myRoundPlayer?.answer !== null) return
-    setAnswerInput((value) => value + digit)
+    setAnswerDraft({ roundKey, value: answerInput + digit })
   }
 
   const isFinished = match?.status === 'completed' || match?.status === 'technical_aborted'
@@ -211,7 +209,7 @@ export default function NoCountItMatch({
                         {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map((digit) => (
                           <button key={digit} className="primary-button" disabled={loading} onClick={() => {
                             if (digit === '✓') void submitAnswer()
-                            else if (digit === '⌫') setAnswerInput((value) => value.slice(0, -1))
+                            else if (digit === '⌫') setAnswerDraft({ roundKey, value: answerInput.slice(0, -1) })
                             else appendDigit(digit)
                           }}>{digit}</button>
                         ))}
@@ -268,7 +266,7 @@ export default function NoCountItMatch({
     readyAttemptRef.current = roundKey
     try {
       await invokeGame({ action: 'round_ready', roomId: room.roomId, matchId: match.matchId })
-      setRoundReady(true)
+      setReadyRoundKey(roundKey)
       await refreshMatch()
     } catch (error) {
       readyAttemptRef.current = null
