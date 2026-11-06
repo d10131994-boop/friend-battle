@@ -118,7 +118,7 @@ Deno.serve(async (req: Request) => {
     if (action === "leaderboard") {
       const { data, error } = await supabase
         .from("games_reaction_rush_leaderboard")
-        .select("user_id, display_name, wins, matches_played, total_taps, best_match_score")
+        .select("display_name, wins, matches_played, best_match_score")
         .order("wins", { ascending: false })
         .order("best_match_score", { ascending: false })
         .limit(50);
