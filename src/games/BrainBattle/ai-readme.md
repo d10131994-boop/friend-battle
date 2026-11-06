@@ -64,12 +64,12 @@ The client must not send an authoritative user ID, correct answer, score, winner
 The Edge Function:
 1. fetches the canonical room through `multiplayer_execute_action(get_room)`;
 2. verifies that Brain Battle is selected;
-3. verifies that the caller is a room member and host;
-4. selects/shuffles the server-side question bank;
+3. verifies that the caller is a room member; the host starts an initial match, while any current member may trigger a rematch only after the shared room has an accepted unanimous vote;
+4. selects/shuffles the server-side question bank, excluding IDs from the immediately previous completed match;
 5. calls `brain_battle_start_match`;
 6. broadcasts `match_started` to the private room topic.
 
-The SQL function repeats the critical checks: room exists, Brain Battle is selected, caller is the host, and exactly 10 valid questions with four answers and a valid correct-answer index are supplied. It starts the shared Multiplayer match and creates the game-specific match record.
+The SQL function repeats the critical checks: room exists, Brain Battle is selected, caller is a current member who is either the host or is triggering an already-approved rematch, and exactly 10 valid questions with four answers and a valid correct-answer index are supplied. The shared Multiplayer RPC independently validates readiness for an initial match or unanimous approval for a default rematch. It starts the shared room session and creates the game-specific match record.
 
 ### submit_answer
 
@@ -119,15 +119,17 @@ The game Edge Function broadcasts private room-topic events such as:
 
 These events are notifications. The room watcher in Multiplayer listens to the shared room event set and refreshes the common room snapshot; Brain Battle separately refreshes its game-specific snapshot. Do not treat Broadcast payloads as canonical match state.
 
-## 7. Known lifecycle dependency / discrepancy
+## 7. Shared lifecycle and rematch integration
 
-The game SQL defines a trigger intended to cancel an active Brain Battle match when the shared room transitions from `playing` to `waiting` or `cancelled`. This supports the intended behavior that a player leaving mid-match interrupts the match and returns remaining players to the lobby.
+The current AI-branch canonical shared room lifecycle is defined in supabase/sql/universal_lobby_reaction_rush.sql. When a player leaves during a match, the shared room returns to waiting; the Brain Battle-owned trigger in supabase/sql/brain_battle_multiplayer.sql marks its active match cancelled. Multiplayer does not directly update Brain Battle match or answer tables.
 
-However, the later `supabase/sql/multiplayer_game_lifecycle.sql` implementation of `leave_room` does not reset a playing room to `waiting`; it removes the player and only cancels the room if no players remain. In that path, the Brain Battle trigger does not fire. The earlier `universal_lobby_reaction_rush.sql` contains the room reset behavior, but the repository has conflicting definitions of `multiplayer_execute_action`.
+Both current games use lifecycle mode default. After a completed match, Multiplayer opens a 60-second unanimous rematch vote. Once accepted, the host client automatically requests the next match. The trusted SQL layer validates the accepted vote before starting it.
 
-This is a shared Multiplayer/SQL issue, not something to patch inside Brain Battle. Do not claim the mid-match leave behavior is reliable until the deployed RPC implementation is confirmed and the dedicated fix is tested.
+For Brain Battle, supabase/functions/brain-battle/questions.ts contains the trusted question bank and selector. The Edge Function reads the immediately previous completed match's question IDs and excludes them when selecting the next set. The current bank contains 20 questions and each match uses 10, so consecutive completed matches receive disjoint question sets. If fewer than 10 unseen questions remain, the selector falls back to the full bank; this is a deliberate fallback, not a guarantee of permanent non-repetition across an unlimited number of matches.
 
-The shared SQL conflict also affects no-game room creation, `select_game`, capacity and game rule enforcement. See `src/multiplayer/ai-readme.md`.
+The selector is covered by questions_test.ts. Database lifecycle behavior is covered by transactional SQL scripts under supabase/tests; CI parses SQL but does not execute those scripts.
+
+Deployment distinction: the rematch migration and current lifecycle SQL are present on the AI branch but have not been applied to Production. Production's live schema/migration history must be checked separately before any deployment. Do not infer deployed behavior from this branch's files.
 
 ## 8. Security and change rules
 
