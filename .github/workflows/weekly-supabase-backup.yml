@@ -50,13 +50,13 @@ jobs:
 
           # Supabase CLI intentionally excludes managed schemas such as realtime.
           # Preserve custom RLS policies on Realtime's managed messages table separately.
-          printf '%s\\n' '-- Custom RLS policies on managed Realtime tables.' > backup/realtime-policies.sql
+          printf '%s\n' '-- Custom RLS policies on managed Realtime tables.' > backup/realtime-policies.sql
           psql "$SUPABASE_DB_URL" --no-psqlrc --tuples-only --no-align --set ON_ERROR_STOP=1 \
             --command "SELECT
               format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY;', p.schemaname, p.tablename)
-              || E'\\n'
+              || E'\n'
               || format('DROP POLICY IF EXISTS %I ON %I.%I;', p.policyname, p.schemaname, p.tablename)
-              || E'\\n'
+              || E'\n'
               || format(
                 'CREATE POLICY %I ON %I.%I AS %s FOR %s TO %s%s%s;',
                 p.policyname,
