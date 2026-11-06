@@ -51,11 +51,9 @@ export default function ReactionRushMultiplayer({
   const [showFinalResults, setShowFinalResults] = useState(true)
   const [realtimeStatus, setRealtimeStatus] = useState('Подключаемся...')
   const [leaderboard, setLeaderboard] = useState<Array<{
-    user_id: string
     display_name: string
     wins: number
     matches_played: number
-    total_taps: number
     best_match_score: number
   }>>([])
   const [showLeaderboard, setShowLeaderboard] = useState(false)
