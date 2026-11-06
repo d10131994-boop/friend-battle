@@ -18,9 +18,9 @@ function renderCandy(object: NoCountItSceneObject): string {
   const gradientId = `candy-gradient-${object.id}`
   const transform = `translate(${object.x} ${object.y}) rotate(${object.rotation}) scale(${object.scale})`
   const shape = object.shape === 'wrapped'
-    ? `<path d="M-39 -13 L-25 -7 L-25 7 L-39 13 L-32 0 Z M39 -13 L25 -7 L25 7 L39 13 L32 0 Z" fill="url(#${gradientId})"/><rect x="-27" y="-18" width="54" height="36" rx="17" fill="url(#${gradientId})"/>`
+    ? `<path d="M-29 -11 L-22 -6 L-22 6 L-29 11 L-25 0 Z M29 -11 L22 -6 L22 6 L29 11 L25 0 Z" fill="url(#${gradientId})"/><rect x="-22" y="-15" width="44" height="30" rx="14" fill="url(#${gradientId})"/>`
     : object.shape === 'oval'
-      ? `<ellipse cx="0" cy="0" rx="35" ry="25" fill="url(#${gradientId})"/>`
+      ? `<ellipse cx="0" cy="0" rx="29" ry="22" fill="url(#${gradientId})"/>`
       : `<circle cx="0" cy="0" r="29" fill="url(#${gradientId})"/>`
 
   return `<g transform="${transform}"><defs><linearGradient id="${gradientId}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${color.light}"/><stop offset=".56" stop-color="${color.base}"/><stop offset="1" stop-color="${color.dark}"/></linearGradient></defs>${shape}<ellipse cx="-9" cy="-11" rx="8" ry="4" fill="#FFFFFF" opacity=".22"/></g>`
