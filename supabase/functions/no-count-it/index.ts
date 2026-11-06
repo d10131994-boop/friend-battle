@@ -98,7 +98,13 @@ function renderSvg(scene:Scene):string{
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><clipPath id="inside"><path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z"/></clipPath></defs><g clip-path="url(#inside)">${candies}</g><path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z" fill="#D9ECEA" fill-opacity=".08" stroke="#A8C9CB" stroke-opacity=".72" stroke-width="13"/><path d="M260 105 Q260 80 292 80 H708 Q740 80 740 105 V135 Q740 155 710 155 H290 Q260 155 260 135 Z" fill="#D8E6E3" fill-opacity=".65" stroke="#A8C9CB" stroke-width="11"/><path d="M465 82 C430 25 385 48 420 92 C445 115 470 100 500 90 C530 100 555 115 580 92 C615 48 570 25 535 82" fill="#D98A9D" stroke="#A95F76" stroke-width="7"/><circle cx="500" cy="91" r="17" fill="#E9A7B5" stroke="#A95F76" stroke-width="6"/></svg>`;
 }
 async function uploadScene(db:SupabaseClient,roomId:string,round:number){
- const scene=generateScene(),path=`${roomId}/round-${round}/${crypto.randomUUID()}.svg`;
+ let scene:Scene|undefined;
+ let lastError:unknown;
+ for(let attempt=0;attempt<5&&!scene;attempt++){
+  try{scene=generateScene();}catch(error){lastError=error;}
+ }
+ if(!scene)throw lastError??new Error("Could not generate a valid candy scene.");
+ const path=`${roomId}/round-${round}/${crypto.randomUUID()}.svg`;
  const {error}=await db.storage.from("no-count-it-scenes").upload(path,new Blob([renderSvg(scene)],{type:"image/svg+xml"}),{contentType:"image/svg+xml",upsert:false});
  if(error)throw error;
  return {scene,path};
