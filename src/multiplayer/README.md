@@ -135,7 +135,7 @@ The shared game-rule row has a `lifecycle_mode` setting:
 - `custom`: the Multiplayer Core does not open a standard vote; the game module owns its custom post-match flow;
 - `disabled`: no rematch flow is offered.
 
-For `default`, every current room member must vote yes. One no vote declines the rematch; unanswered votes expire at the deadline. While voting is open or accepted, new members cannot join and the selected game cannot be changed. Existing members can reconnect, and members can leave. The vote is tied to the exact completed session.
+For `default`, every current room member must vote yes. One no vote declines the rematch; unanswered votes expire at the deadline. While voting is open or accepted, new members cannot join and the selected game cannot be changed. Existing members can reconnect, and members can leave. If a member leaves, the remaining players must still meet the game's minimum player count; otherwise the rematch is declined. The vote is tied to the exact completed session.
 
 When every remaining member has voted yes, the room snapshot reports `rematchStatus: accepted`. The host client then triggers the selected game's trusted start action. Multiplayer validates the accepted vote and starts the same selected game without another readiness round or game selection. The game module creates its own new match state. Vote rows are removed when the new session starts.
 
