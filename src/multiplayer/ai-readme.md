@@ -111,7 +111,7 @@ The canonical shared room lifecycle implementation is `supabase/sql/universal_lo
 - creating a room before a game is selected and later selecting an enabled game;
 - room capacity of 2–4 and game-specific min/max player rules;
 - host/readiness checks when starting a match;
-- returning remaining players to the waiting room and clearing the interrupted Reaction Rush match when someone leaves during play;
+- returning remaining players to the waiting room when someone leaves during play; game-specific match cleanup is delegated to each game's own database hook;
 - room membership checks for member actions and server-only game lifecycle actions.
 
 The deployed Production definition of `public.multiplayer_execute_action` was inspected and matches this canonical implementation. Do not apply an alternate definition of this RPC over it.
