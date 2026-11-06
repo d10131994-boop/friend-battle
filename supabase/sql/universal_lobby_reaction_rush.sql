@@ -403,8 +403,13 @@ BEGIN
 END;
 $function$;
 
+DROP FUNCTION IF EXISTS public.reaction_rush_finish_round(uuid, uuid, integer);
+
 CREATE OR REPLACE FUNCTION public.reaction_rush_finish_round(
-  p_room_id uuid, p_match_id uuid, p_round_number integer
+  p_room_id uuid,
+  p_match_id uuid,
+  p_round_number integer,
+  p_user_id text
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -412,6 +417,7 @@ SECURITY DEFINER
 SET search_path TO ''
 AS $function$
 DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
   v_match public.games_reaction_rush_matches%ROWTYPE;
   v_results jsonb;
   v_totals jsonb;
@@ -419,9 +425,37 @@ DECLARE
   v_started jsonb;
   v_round_started_at timestamptz;
 BEGIN
-  SELECT * INTO v_match FROM public.games_reaction_rush_matches
-  WHERE id = p_match_id AND room_id = p_room_id FOR UPDATE;
+  IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = '' THEN
+    RAISE EXCEPTION 'Authenticated player is required' USING ERRCODE = '22023';
+  END IF;
+
+  -- Match Multiplayer mutation lock order: room first, then match.
+  -- This serializes round completion with leave_room and membership changes.
+  SELECT * INTO v_room
+  FROM public.common_multiplayer_rooms
+  WHERE id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_room.game_id IS DISTINCT FROM 'reaction-rush'
+     OR v_room.status <> 'playing' THEN
+    RAISE EXCEPTION 'Reaction Rush match is not active in this room' USING ERRCODE = '55000';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players
+    WHERE room_id = p_room_id AND user_id = p_user_id
+  ) THEN
+    RAISE EXCEPTION 'Player is not a member of this room' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_match
+  FROM public.games_reaction_rush_matches
+  WHERE id = p_match_id AND room_id = p_room_id
+  FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Match not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_match.started_at IS DISTINCT FROM v_room.started_at THEN
+    RAISE EXCEPTION 'Match does not belong to the active room session' USING ERRCODE = '55000';
+  END IF;
   IF v_match.status <> 'playing' THEN RAISE EXCEPTION 'Match is not active' USING ERRCODE = '55000'; END IF;
   IF p_round_number <> v_match.current_round THEN
     RAISE EXCEPTION 'Round has already advanced' USING ERRCODE = '55000';
@@ -517,10 +551,10 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.reaction_rush_start_match(uuid, text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.reaction_rush_record_tap(uuid, uuid, integer, text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.reaction_rush_finish_round(uuid, uuid, integer) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.reaction_rush_finish_round(uuid, uuid, integer, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reaction_rush_start_match(uuid, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.reaction_rush_record_tap(uuid, uuid, integer, text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.reaction_rush_finish_round(uuid, uuid, integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.reaction_rush_finish_round(uuid, uuid, integer, text) TO service_role;
 
 
 CREATE OR REPLACE FUNCTION public.reaction_rush_match_snapshot(p_room_id uuid, p_user_id text)
