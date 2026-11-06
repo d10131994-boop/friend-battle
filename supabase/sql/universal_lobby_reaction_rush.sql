@@ -272,6 +272,9 @@ BEGIN
         WHERE is_ready AND last_seen_at >= pg_catalog.clock_timestamp() - interval '90 seconds'
       ) INTO v_player_count, v_ready_count
       FROM public.common_multiplayer_players WHERE room_id = v_room_id;
+      IF v_player_count < v_min_players OR v_player_count > v_game_max_players THEN
+        RAISE EXCEPTION 'Player count does not meet the selected game rules' USING ERRCODE = '55000';
+      END IF;
       IF v_room.status = 'finished' AND v_room.rematch_status = 'accepted'
          AND v_lifecycle_mode = 'default' THEN
         SELECT NOT EXISTS (
@@ -286,8 +289,8 @@ BEGIN
         IF NOT COALESCE(v_all_yes, false) THEN
           RAISE EXCEPTION 'Rematch vote is not unanimous' USING ERRCODE = '55000';
         END IF;
-      ELSIF v_player_count < v_min_players OR v_player_count > v_game_max_players OR v_ready_count <> v_player_count THEN
-        RAISE EXCEPTION 'Player count or readiness does not meet the selected game rules' USING ERRCODE = '55000';
+      ELSIF v_ready_count <> v_player_count THEN
+        RAISE EXCEPTION 'All players must be ready to start a new match' USING ERRCODE = '55000';
       END IF;
       UPDATE public.common_multiplayer_rooms
       SET status = 'playing', started_at = pg_catalog.clock_timestamp(), finished_at = NULL,
@@ -396,19 +399,29 @@ BEGIN
     RETURN public.multiplayer_room_snapshot(v_room_id);
   ELSIF p_action = 'leave_room' THEN
     DELETE FROM public.common_multiplayer_players WHERE room_id = v_room_id AND user_id = p_user_id;
-    IF v_room.status = 'finished' AND v_room.rematch_status = 'open' THEN
-      SELECT NOT EXISTS (
-        SELECT 1 FROM public.common_multiplayer_players p
-        LEFT JOIN public.common_multiplayer_rematch_votes v
-          ON v.room_id = p.room_id
-         AND v.session_started_at = v_room.started_at
-         AND v.user_id = p.user_id
-         AND v.vote = 'yes'
-        WHERE p.room_id = v_room_id AND v.user_id IS NULL
-      ) INTO v_all_yes;
-      IF v_all_yes THEN
-        UPDATE public.common_multiplayer_rooms SET rematch_status = 'accepted'
-        WHERE id = v_room_id AND rematch_status = 'open';
+    IF v_room.status = 'finished' AND v_room.rematch_status IN ('open', 'accepted') THEN
+      SELECT count(*) INTO v_player_count
+      FROM public.common_multiplayer_players WHERE room_id = v_room_id;
+      SELECT min_players INTO v_min_players
+      FROM public.common_multiplayer_game_rules
+      WHERE game_id = v_room.game_id AND is_enabled = true;
+      IF v_player_count < COALESCE(v_min_players, 1) THEN
+        UPDATE public.common_multiplayer_rooms SET rematch_status = 'declined'
+        WHERE id = v_room_id AND rematch_status IN ('open', 'accepted');
+      ELSE
+        SELECT NOT EXISTS (
+          SELECT 1 FROM public.common_multiplayer_players p
+          LEFT JOIN public.common_multiplayer_rematch_votes v
+            ON v.room_id = p.room_id
+           AND v.session_started_at = v_room.started_at
+           AND v.user_id = p.user_id
+           AND v.vote = 'yes'
+          WHERE p.room_id = v_room_id AND v.user_id IS NULL
+        ) INTO v_all_yes;
+        IF v_all_yes THEN
+          UPDATE public.common_multiplayer_rooms SET rematch_status = 'accepted'
+          WHERE id = v_room_id AND rematch_status IN ('open', 'accepted');
+        END IF;
       END IF;
     END IF;
     IF v_room.status = 'playing' THEN
