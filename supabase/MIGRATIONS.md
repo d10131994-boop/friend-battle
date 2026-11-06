@@ -20,7 +20,7 @@ The AI branch adds `20261106152000_multiplayer_rematch_lifecycle`; it is not yet
 
 ## Repository state
 
-The current repository stores reviewed SQL sources and patches under `supabase/sql/`. These files are not yet a complete, timestamped, reproducible `supabase/migrations/` chain. A filename in `supabase/sql/` does not prove that a patch is applied to Production.
+The current repository stores reviewed SQL sources and patches under `supabase/sql/`, and now includes the new timestamped rematch migration in `supabase/migrations/`. The overall repository is not yet a complete, reproducible migration chain. A filename in `supabase/sql/` does not prove that a patch is applied to Production.
 
 The current canonical sources are:
 - `supabase/sql/universal_lobby_reaction_rush.sql` — shared Multiplayer lifecycle and canonical Reaction Rush implementation;
