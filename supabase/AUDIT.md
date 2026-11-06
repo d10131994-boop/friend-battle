@@ -47,8 +47,8 @@ Frontend changes in this audit:
 - Added a weekly Sunday 04:00 UTC logical database backup workflow.
 - Dumps are encrypted with GPG AES-256 before upload because this repository is public.
 - The workflow retains only the latest two matching artifacts.
-- It requires GitHub repository secrets `SUPABASE_DB_URL` and `BACKUP_ENCRYPTION_PASSPHRASE`; until configured, no scheduled backup can succeed.
-- The workflow has not yet completed a backup or restore test. GitHub artifact storage quota was not available through the repository connector and must be checked in repository/account settings.
+- The repository owner has configured the required GitHub Actions secrets `SUPABASE_DB_URL` and `BACKUP_ENCRYPTION_PASSPHRASE`.
+- The workflow has not yet completed its first backup run. Restore testing is deferred to the repository owner and is outside this audit task. GitHub artifact storage quota was not available through the repository connector and must be checked in repository/account settings.
 - Supabase database dumps do not include Storage API binary objects; other project-level secrets/settings also require separate secure handling.
 
 ## Migration architecture
