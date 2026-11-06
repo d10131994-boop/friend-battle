@@ -203,7 +203,7 @@ Deno.serve(async (req: Request) => {
       });
       if (advanceError) return errorResponse(advanceError);
       if (advance?.status === "advanced" || advance?.matchFinished) {
-        await broadcast(supabase, roomId, advance.matchFinished ? "match_finished" : "question_advanced", advance);
+        await broadcast(supabase, roomId, advance.matchFinished ? "match_finished" : "question_advanced");
       }
     }
 
