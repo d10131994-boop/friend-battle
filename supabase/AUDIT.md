@@ -49,6 +49,7 @@ Frontend changes in this audit:
 - The workflow retains only the latest two matching artifacts.
 - The repository owner has configured the required GitHub Actions secrets `SUPABASE_DB_URL` and `BACKUP_ENCRYPTION_PASSPHRASE`.
 - The workflow has not yet completed its first backup run. Restore testing is deferred to the repository owner and is outside this audit task. GitHub artifact storage quota was not available through the repository connector and must be checked in repository/account settings.
+- The Supabase CLI excludes managed schemas such as `realtime`; the backup workflow separately exports custom `realtime` RLS policies to `realtime-policies.sql` so the room broadcast policy is retained.
 - Supabase database dumps do not include Storage API binary objects; other project-level secrets/settings also require separate secure handling.
 
 ## Migration architecture
