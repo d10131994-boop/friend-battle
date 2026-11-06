@@ -86,7 +86,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     if (room.rematchStatus === 'open' || room.rematchStatus === 'accepted') return
     const me = room.players.find((player) => player.userId === telegramId)
     if (!me?.isHost || me.isReady) return
-    const key = room.roomId + ':' + room.status + ':' + me.userId
+    const key = room.roomId + ':' + room.status + ':' + (room.startedAt ?? 'not-started') + ':' + me.userId
     if (autoReadyKeyRef.current === key) return
     autoReadyKeyRef.current = key
     void multiplayer.setReady(auth, { roomId: room.roomId, isReady: true })
