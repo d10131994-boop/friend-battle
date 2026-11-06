@@ -32,7 +32,7 @@ const questionBank: ServerQuestion[] = [
   { id: 11, category: "logic", question: "У Пети два брата и одна сестра. Сколько сестёр у каждого брата?", answers: ["1", "2", "3", "4"], correctAnswer: 0, explanation: "У всех братьев одна общая сестра." },
   { id: 12, category: "logic", question: "Что тяжелее: килограмм железа или килограмм пуха?", answers: ["Железо", "Пух", "Одинаково", "Зависит от объёма"], correctAnswer: 2, explanation: "Оба весят ровно один килограмм." },
   { id: 13, category: "logic", question: "В комнате горели 5 свечей. Две потушили. Сколько свечей останется утром?", answers: ["2", "3", "5", "0"], correctAnswer: 0, explanation: "Потушенные свечи не сгорят полностью." },
-  { id: 14, category: "math", question: "Сколько будет й 12 × 7?", answers: ["72", "84", "92", "96"], correctAnswer: 1, explanation: "12 × 7 = 84." },
+  { id: 14, category: "math", question: "Сколько будет 12 × 7?", answers: ["72", "84", "92", "96"], correctAnswer: 1, explanation: "12 × 7 = 84." },
   { id: 15, category: "math", question: "В коробке 24 конфеты. Четверть уже съели. Сколько осталось?", answers: ["6", "12", "18", "20"], correctAnswer: 2, explanation: "Четверть от 24 — это 6, значит осталось 18." },
   { id: 16, category: "math", question: "Какое число получится, если 3 десятка увеличить на 8?", answers: ["28", "30", "38", "48"], correctAnswer: 2, explanation: "Три десятка — 30; 30 + 8 = 38." },
   { id: 17, category: "attention", question: "Какое слово написано наоборот: «АКШОК»?", answers: ["КОШКА", "ШКОЛА", "КАШКА", "ОКНО"], correctAnswer: 0, explanation: "Если прочитать АКШОК справа налево, получится КОШКА." },
