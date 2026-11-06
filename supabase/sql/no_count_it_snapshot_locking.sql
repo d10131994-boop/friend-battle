@@ -19,11 +19,11 @@ BEGIN
  IF NOT FOUND THEN RETURN jsonb_build_object('room',v_room,'match',NULL); END IF;
  SELECT * INTO v_round FROM public.games_no_count_it_rounds
  WHERE match_id=v_match.id AND round_number=v_match.current_round FOR UPDATE;
- IF FOUND AND v_round.status='showing' AND v_now>=v_round.show_started_at+interval '5 seconds' THEN
+ IF FOUND AND v_match.status='playing' AND v_round.status='showing' AND v_now>=v_round.show_started_at+interval '5 seconds' THEN
   UPDATE public.games_no_count_it_rounds SET status='answering' WHERE id=v_round.id;
   v_round.status:='answering';
  END IF;
- IF FOUND AND v_round.status IN ('showing','answering') THEN
+ IF FOUND AND v_match.status='playing' AND v_round.status IN ('showing','answering') THEN
   SELECT count(*) FILTER(WHERE status IN ('active','completed')),count(*) FILTER(WHERE status='completed')
   INTO v_active_count,v_answered_count FROM public.games_no_count_it_round_players
   WHERE match_id=v_match.id AND round_number=v_match.current_round;
