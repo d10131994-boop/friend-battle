@@ -66,7 +66,9 @@ The planned private Storage bucket is `no-count-it-scenes`. Use signed URLs issu
 
 Production currently contains all four game tables with RLS enabled and no browser policies; execute access is restricted to `service_role`. The private `no-count-it-scenes` bucket is live, limited to SVG and 1 MiB, and the `no-count-it` Edge Function is deployed. Production migration history includes `no_count_it_multiplayer_schema`, `no_count_it_round_progression`, `no_count_it_match_rpcs`, `no_count_it_preparation_deadline`, `no_count_it_round_ready_deadline_guard`, `no_count_it_round_ready_waiting_count_fix` and `no_count_it_snapshot_locking`. Signed URLs currently expire after 10 minutes. The 24-hour object cleanup is not yet scheduled; do not claim retention enforcement is active.
 
-Known remaining lifecycle gap: the shared Multiplayer `leave_room` resets a playing room to waiting and clears its selected game. NoCountIt does not yet have a game-specific hook to preserve and display early-winner results or correctly mark an individual leaver while multiple players remain. Do not claim the agreed early-departure behavior is implemented.
+Real player departure is handled by a NoCountIt-owned trigger on the shared player deletion: the leaver is marked `left`; if exactly one match participant remains, that player is recorded as the early winner and common room statistics are updated. If more than one participant remains, the active match is cancelled because the current shared Multiplayer leave operation resets the room and clears its selected game. The currently connected game screen preserves its NoCountIt view long enough to display the completed/cancelled result. Reconnection into that post-leave result view after a full app restart is not yet guaranteed.
+
+The agreed 24-hour Storage object cleanup is still not implemented or scheduled.
 
 ## 7. Client integration boundary
 
