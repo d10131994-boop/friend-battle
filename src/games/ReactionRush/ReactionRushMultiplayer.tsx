@@ -79,8 +79,10 @@ export default function ReactionRushMultiplayer({
     }
   }, [])
 
+  const roomId = room?.roomId
+
   const refreshMatch = useCallback(async () => {
-    if (!room?.roomId) return
+    if (!roomId) return
     const response = await invokeGame<{
       room: MultiplayerRoom
       match: ReactionRushMatch | null
@@ -92,7 +94,7 @@ export default function ReactionRushMultiplayer({
     } else if (response.match?.status === 'completed') {
       setShowFinalResults(true)
     }
-  }, [room?.roomId, invokeGame, acceptRoom])
+  }, [roomId, invokeGame, acceptRoom])
 
   useEffect(() => {
     if (!room?.roomId || !auth.initData) return
