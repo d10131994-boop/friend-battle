@@ -185,7 +185,7 @@ export default function NoCountItMatch({
             <section className="game-card">
               <h2>ГОТОВИМ ИЗОБРАЖЕНИЕ</h2>
               <p>Как только изображение загрузится у участников, раунд начнётся одновременно для всех готовых игроков.</p>
-              {currentRound.imageUrl && <img src={currentRound.imageUrl} alt="Банка с конфетами" onLoad={() => void confirmRoundReady()} onError={() => setMessage('Не удалось загрузить изображение раунда.')} style={{ width: '100%', maxWidth: 420, display: 'block', margin: '0 auto' }} />}
+              {currentRound.imageUrl && <img src={currentRound.imageUrl} alt="Банка с конфетами" onLoad={() => void confirmRoundReady()} onError={() => setMessage('Не удалось загрузить изображение раунда.')} style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />}
               <p>{roundReady ? '✓ Изображение готово. Ждём остальных…' : 'Загружаем сцену…'}</p>
               <p>Игроки готовы: {currentRound.players.filter((player) => player.status === 'ready').length} / {currentRound.players.length}</p>
             </section>
