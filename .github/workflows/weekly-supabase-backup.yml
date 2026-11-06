@@ -84,10 +84,11 @@ jobs:
           BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
         run: |
           set -euo pipefail
-          gpg --batch --yes --pinentry-mode loopback \
-            --passphrase "$BACKUP_ENCRYPTION_PASSPHRASE" \
-            --symmetric --cipher-algo AES256 \
-            --output supabase-db-backup.tar.gz.gpg supabase-db-backup.tar.gz
+          printf '%s\\n' "$BACKUP_ENCRYPTION_PASSPHRASE" | \
+            gpg --batch --yes --pinentry-mode loopback \
+              --passphrase-fd 0 \
+              --symmetric --cipher-algo AES256 \
+              --output supabase-db-backup.tar.gz.gpg supabase-db-backup.tar.gz
           rm -rf backup supabase-db-backup.tar.gz
 
       - name: Upload encrypted backup
