@@ -7,6 +7,7 @@ import type { MultiplayerRoom } from '../multiplayer'
 import { telegramUser } from '../services/telegram'
 import BrainBattleMatch from '../games/BrainBattle/BrainBattleMatch'
 import ReactionRushMatch from '../games/ReactionRush/ReactionRushMatch'
+import NoCountItMatch from '../games/NoCountIt/NoCountItMatch'
 
 const multiplayer = createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })
 
@@ -28,6 +29,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   const [realtimeStatus, setRealtimeStatus] = useState('Подключаемся...')
   const [startRequested, setStartRequested] = useState(false)
   const [gameScreen, setGameScreen] = useState(false)
+  const [activeGameId, setActiveGameId] = useState<MultiplayerRoom['gameId']>(null)
   const sessionRef = useRef<ReturnType<typeof createMultiplayerRoomSession> | null>(null)
   const autoReadyKeyRef = useRef<string | null>(null)
   const rematchStartRequestedRef = useRef<string | null>(null)
@@ -36,6 +38,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
 
   const acceptRoom = useCallback((nextRoom: MultiplayerRoom) => {
     setRoom(nextRoom)
+    if (nextRoom.gameId) setActiveGameId(nextRoom.gameId)
     if (nextRoom.status === 'playing') setGameScreen(true)
     if (nextRoom.status === 'cancelled') {
       setGameScreen(false)
@@ -141,12 +144,13 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     void joinRoom(inviteCode)
   }, [inviteCode, room, joinRoom])
 
-  async function selectGame(gameId: 'reaction-rush' | 'brain-battle') {
+  async function selectGame(gameId: 'reaction-rush' | 'brain-battle' | 'no-count-it') {
     if (!room) return
     setLoading(true)
     setMessage('')
     try {
       const updated = await multiplayer.selectGame(auth, { roomId: room.roomId, gameId })
+      setActiveGameId(gameId)
       acceptRoom(updated)
     } catch (error) {
       setMessage(errorMessage(error, 'Не удалось выбрать игру.'))
@@ -198,6 +202,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
       await multiplayer.leaveRoom(auth, { roomId: room.roomId })
       await sessionRef.current?.stop()
       setRoom(null)
+      setActiveGameId(null)
       setGameScreen(false)
       setStartRequested(false)
       onBack()
@@ -268,6 +273,19 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   if (gameScreen && room?.gameId === 'brain-battle') {
     return (
       <BrainBattleMatch
+        initData={initData}
+        room={room}
+        startRequested={startRequested}
+        onRoomUpdate={acceptRoom}
+        onReturnToRoom={returnToRoom}
+        onStartRequestHandled={() => setStartRequested(false)}
+      />
+    )
+  }
+
+  if (gameScreen && (room?.gameId === 'no-count-it' || (activeGameId === 'no-count-it' && room?.status === 'waiting'))) {
+    return (
+      <NoCountItMatch
         initData={initData}
         room={room}
         startRequested={startRequested}
@@ -393,7 +411,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
                   className="invite-input"
                   value={room.gameId ?? ''}
                   onChange={(event) => {
-                    if (event.target.value === 'reaction-rush' || event.target.value === 'brain-battle') {
+                    if (event.target.value === 'reaction-rush' || event.target.value === 'brain-battle' || event.target.value === 'no-count-it') {
                       void selectGame(event.target.value)
                     }
                   }}
@@ -402,12 +420,14 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
                   <option value="">Выбери игру</option>
                   <option value="reaction-rush">Reaction Rush</option>
                   <option value="brain-battle">Brain Battle</option>
+                  <option value="no-count-it">NoCountIt</option>
                 </select>
               ) : (
-                <p>Выбрана игра: {room.gameId === 'reaction-rush' ? 'Reaction Rush' : room.gameId === 'brain-battle' ? 'Brain Battle' : 'Пока не выбрана'}</p>
+                <p>Выбрана игра: {room.gameId === 'reaction-rush' ? 'Reaction Rush' : room.gameId === 'brain-battle' ? 'Brain Battle' : room.gameId === 'no-count-it' ? 'NoCountIt' : 'Пока не выбрана'}</p>
               )}
               {room.gameId === 'reaction-rush' && <p>Три раунда по 10 секунд. От 2 до 4 игроков.</p>}
               {room.gameId === 'brain-battle' && <p>10 вопросов, 15 секунд на ответ. От 2 до 4 игроков.</p>}
+              {room.gameId === 'no-count-it' && <p>Три раунда на оценку количества конфет. От 2 до 4 игроков.</p>}
               {room.gameId && (
                 <>
                   {!isHost && (

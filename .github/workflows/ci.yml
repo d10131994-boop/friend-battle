@@ -61,6 +61,7 @@ jobs:
           deno check --node-modules-dir=auto supabase/functions/multiplayer/index.ts
           deno check --node-modules-dir=auto supabase/functions/reaction-rush/index.ts
           deno check --node-modules-dir=auto supabase/functions/brain-battle/index.ts
+          deno check --node-modules-dir=auto supabase/functions/no-count-it/index.ts
           deno test supabase/functions/_shared/errors_test.ts
           deno test supabase/functions/brain-battle/questions_test.ts
 

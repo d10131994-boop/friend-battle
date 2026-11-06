@@ -7,6 +7,7 @@ This document describes the shared rules for game modules in Friend Battle. It i
 The current game directories use PascalCase:
 - `src/games/BrainBattle/`
 - `src/games/ReactionRush/`
+- `src/games/NoCountIt/`
 
 Each game currently owns its screens/components, game-specific state and logic, and (where implemented) its game-specific multiplayer UI and data contract. There is no shared generic game engine or game UI framework in `src/games` that a new game must extend. Do not invent a global registry, base class or generic game controller without a concrete requirement.
 
