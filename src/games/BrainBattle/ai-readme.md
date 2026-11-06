@@ -127,7 +127,7 @@ Both current games use lifecycle mode default. After a completed match, Multipla
 
 For Brain Battle, supabase/functions/brain-battle/questions.ts contains the trusted question bank and selector. The Edge Function reads the immediately previous completed match's question IDs and excludes them when selecting the next set. The current bank contains 20 questions and each match uses 10, so consecutive completed matches receive disjoint question sets. If fewer than 10 unseen questions remain, the selector falls back to the full bank; this is a deliberate fallback, not a guarantee of permanent non-repetition across an unlimited number of matches.
 
-The selector is covered by questions_test.ts. Database lifecycle behavior is covered by transactional SQL scripts under supabase/tests; CI parses SQL but does not execute those scripts.
+The selector is covered by questions_test.ts. The transactional brain_battle_rematch.sql script covers two consecutive matches, winner/statistics accumulation, and repeated-completion idempotency. Database lifecycle SQL scripts are parsed by CI but are not executed there.
 
 Deployment distinction: the rematch migration and current lifecycle SQL are present on the AI branch but have not been applied to Production. Production's live schema/migration history must be checked separately before any deployment. Do not infer deployed behavior from this branch's files.
 
