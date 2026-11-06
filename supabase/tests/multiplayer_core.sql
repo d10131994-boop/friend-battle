@@ -14,6 +14,7 @@ DECLARE
   v_started_at text;
   v_rejected boolean;
   v_host_player jsonb;
+  v_match_id uuid;
 BEGIN
   -- A room may be created without selecting a game.
   v_room := public.multiplayer_execute_action(
@@ -130,16 +131,19 @@ BEGIN
     'set_ready', v_guest || '_leave', 'Test guest',
     jsonb_build_object('roomId', v_room_id, 'isReady', true)
   );
-  PERFORM public.multiplayer_execute_action(
-    'start_game', '__game_server__', 'Game server',
-    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush')
-  );
+  v_room := public.reaction_rush_start_match(v_room_id, v_host || '_leave');
+  v_match_id := (v_room->>'matchId')::uuid;
   v_room := public.multiplayer_execute_action(
     'leave_room', v_guest || '_leave', 'Test guest',
     jsonb_build_object('roomId', v_room_id)
   );
   IF v_room->>'status' <> 'waiting' OR v_room->>'gameId' IS NOT NULL THEN
     RAISE EXCEPTION 'Leaving during a match did not reset the room';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.games_reaction_rush_matches WHERE id = v_match_id
+  ) THEN
+    RAISE EXCEPTION 'Reaction Rush game module did not clean up its interrupted match';
   END IF;
   SELECT pg_catalog.to_jsonb(p) INTO v_host_player
   FROM public.common_multiplayer_players p
