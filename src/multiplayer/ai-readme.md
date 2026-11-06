@@ -1,6 +1,6 @@
 # Multiplayer Core — AI integration guide
 
-This document describes the Multiplayer module for AI-assisted development. It complements the human-oriented `README.md`; it does not replace it. The implementation and SQL currently selected for deployment remain the source of truth for what actually works. Where the repository contains conflicting SQL implementations, the conflict is called out explicitly below.
+This document describes the Multiplayer module for AI-assisted development. It complements the human-oriented `README.md`; it does not replace it. The implementation and SQL currently selected for deployment remain the source of truth for what actually works. The canonical deployed SQL implementation and any remaining integration-test gaps are documented below.
 
 ## 1. Responsibility boundaries
 
@@ -67,7 +67,7 @@ The agreed product vocabulary may call the waiting state “lobby”, but the cu
 - `joinRoom(auth, { inviteCode })`: invite code is normalized client-side (whitespace removed, uppercase) and sent to the server. The SQL lowercases the code for lookup. Joining is intended for `waiting` or `finished` rooms; existing members can reconnect even if the room is full.
 - `getRoom(auth, { roomId })`: returns the canonical room snapshot to an existing member.
 - `setReady(auth, { roomId, isReady })`: updates the current member's readiness. The reviewed lifecycle SQL permits this in `waiting` or `finished`.
-- `leaveRoom(auth, { roomId })`: removes the current member. The lifecycle SQL transfers host to the remaining member with the earliest `joined_at` (then player ID) when the host leaves. See the mid-match discrepancy below.
+- `leaveRoom(auth, { roomId })`: removes the current member. If the room is playing, the current Reaction Rush match is deleted, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. If the host leaves, host role transfers to the remaining member with the earliest `joined_at` (then player ID).
 - `closeRoom(auth, { roomId })`: host-only cancellation in the reviewed lifecycle SQL.
 - `heartbeat(auth, { roomId })`: updates server-side `last_seen_at` and returns the server timestamp.
 - `getRoomToken(auth, { roomId })`: issues a room-scoped JWT for private Realtime.
@@ -149,7 +149,7 @@ When changing Multiplayer's public API, lifecycle, auth, Realtime, token format,
 4. update the human README when its user-facing guidance becomes stale;
 5. report source-level checks separately from build/lint, database deployment and real integration tests.
 
-Do not silently reconcile conflicting SQL by choosing whichever version appears more convenient. Record the discrepancy and resolve it in a separately scoped change.
+Do not introduce a second definition of `public.multiplayer_execute_action`. The canonical implementation is `universal_lobby_reaction_rush.sql`; room-maintenance helpers belong in `multiplayer_room_maintenance.sql`.
 
 
 ## 10. Shared room UI ownership
