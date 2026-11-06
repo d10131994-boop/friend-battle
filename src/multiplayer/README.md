@@ -27,7 +27,8 @@ Public client actions:
 | Action | Input | Result |
 | --- | --- | --- |
 | `create_room` | optional `maxPlayers` | Room snapshot with `gameId: null` |
-| `select_game` | `roomId`, `gameId` | Room snapshot; host-only |\n| `join_room` | `inviteCode` | Room snapshot |
+| `select_game` | `roomId`, `gameId` | Room snapshot; host-only |
+| `join_room` | `inviteCode` | Room snapshot |
 | `get_room` | `roomId` | Room snapshot |
 | `set_ready` | `roomId`, `isReady` | Room snapshot |
 | `leave_room` | `roomId` | Room snapshot after leaving; cancelled state if last member |
