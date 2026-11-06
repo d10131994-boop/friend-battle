@@ -48,6 +48,8 @@ AS $function$
         ORDER BY v.created_at, v.user_id
       )
       FROM public.common_multiplayer_rematch_votes v
+      JOIN public.common_multiplayer_players current_player
+        ON current_player.room_id = v.room_id AND current_player.user_id = v.user_id
       WHERE v.room_id = r.id AND v.session_started_at = r.started_at
     ), '[]'::jsonb),
     'players', COALESCE((
@@ -134,7 +136,7 @@ BEGIN
         last_seen_at = pg_catalog.clock_timestamp()
     WHERE room_id = v_room.id AND user_id = p_user_id;
     IF FOUND THEN RETURN public.multiplayer_room_snapshot(v_room.id); END IF;
-    IF v_room.rematch_status = 'open' THEN
+    IF v_room.rematch_status IN ('open', 'accepted') THEN
       RAISE EXCEPTION 'Room membership is locked during rematch voting' USING ERRCODE = '55000';
     END IF;
     SELECT count(*) INTO v_player_count FROM public.common_multiplayer_players WHERE room_id = v_room.id;
@@ -279,7 +281,7 @@ BEGIN
     RETURN public.multiplayer_room_snapshot(v_room_id);
   ELSIF p_action = 'select_game' THEN
     IF NOT v_is_host THEN RAISE EXCEPTION 'Only the host can select a game' USING ERRCODE = '42501'; END IF;
-    IF v_room.status NOT IN ('waiting', 'finished') OR v_room.rematch_status = 'open' THEN
+    IF v_room.status NOT IN ('waiting', 'finished') OR v_room.rematch_status IN ('open', 'accepted') THEN
       RAISE EXCEPTION 'Game selection is locked during a match or rematch vote' USING ERRCODE = '55000';
     END IF;
     v_game_id := pg_catalog.btrim(p_payload->>'gameId');
