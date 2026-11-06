@@ -80,10 +80,14 @@ BEGIN
     RAISE EXCEPTION 'Brain Battle is not selected' USING ERRCODE = '42501';
   END IF;
   IF NOT EXISTS (
-    SELECT 1 FROM public.common_multiplayer_players
-    WHERE room_id = p_room_id AND user_id = p_user_id AND is_host
+    SELECT 1 FROM public.common_multiplayer_players p
+    WHERE p.room_id = p_room_id AND p.user_id = p_user_id
+      AND (p.is_host OR EXISTS (
+        SELECT 1 FROM public.common_multiplayer_rooms r
+        WHERE r.id = p_room_id AND r.rematch_status = 'accepted'
+      ))
   ) THEN
-    RAISE EXCEPTION 'Only the room host can start the match' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'Only the room host can start a new match' USING ERRCODE = '42501';
   END IF;
   IF jsonb_typeof(p_questions) IS DISTINCT FROM 'array' THEN
     RAISE EXCEPTION 'Questions must be a JSON array' USING ERRCODE = '22023';

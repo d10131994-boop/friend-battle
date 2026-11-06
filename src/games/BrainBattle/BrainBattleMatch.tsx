@@ -53,6 +53,7 @@ export default function BrainBattleMatch({
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [remaining, setRemaining] = useState(15)
+  const [questionStarted, setQuestionStarted] = useState(false)
   const startAttemptRef = useRef(false)
   const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
 
@@ -69,11 +70,16 @@ export default function BrainBattleMatch({
   }, [room.roomId, invokeGame, onRoomUpdate])
 
   useEffect(() => {
-    void refreshMatch().catch((error: unknown) => setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.')))
+    const initialRefresh = window.setTimeout(() => {
+      void refreshMatch().catch((error: unknown) => setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.')))
+    }, 0)
     const timer = window.setInterval(() => {
       void refreshMatch().catch((error: unknown) => setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.')))
     }, 1200)
-    return () => window.clearInterval(timer)
+    return () => {
+      window.clearTimeout(initialRefresh)
+      window.clearInterval(timer)
+    }
   }, [refreshMatch])
 
   useEffect(() => {
@@ -82,6 +88,7 @@ export default function BrainBattleMatch({
     const endAt = Date.parse(match.questionEndsAt)
     const update = () => {
       const now = Date.now()
+      setQuestionStarted(now >= startAt)
       setRemaining(now < startAt ? 15 : Math.max(0, Math.ceil((endAt - now) / 1000)))
     }
     update()
@@ -139,7 +146,7 @@ export default function BrainBattleMatch({
 
   const questionIsLive = Boolean(
     match?.status === 'playing' && room.status === 'playing' &&
-    Date.now() >= Date.parse(match.questionStartedAt) && remaining > 0,
+    questionStarted && remaining > 0,
   )
   const results = match?.finalResults ?? []
 
