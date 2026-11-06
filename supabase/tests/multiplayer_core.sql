@@ -199,6 +199,42 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Brain Battle game module did not cancel its interrupted match';
   END IF;
+
+  -- Closing a room during an active Reaction Rush match also cleans game state.
+  v_room := public.multiplayer_execute_action(
+    'create_room', v_host || '_close', 'Test host', jsonb_build_object('maxPlayers', 2)
+  );
+  v_room_id := (v_room->>'roomId')::uuid;
+  PERFORM public.multiplayer_execute_action(
+    'join_room', v_guest || '_close', 'Test guest',
+    jsonb_build_object('inviteCode', v_room->>'inviteCode')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'select_game', v_host || '_close', 'Test host',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_host || '_close', 'Test host',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_guest || '_close', 'Test guest',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  v_room := public.reaction_rush_start_match(v_room_id, v_host || '_close');
+  v_match_id := (v_room->>'matchId')::uuid;
+  v_room := public.multiplayer_execute_action(
+    'close_room', v_host || '_close', 'Test host',
+    jsonb_build_object('roomId', v_room_id)
+  );
+  IF v_room->>'status' <> 'cancelled' THEN
+    RAISE EXCEPTION 'Closing an active room did not cancel it';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.games_reaction_rush_matches WHERE id = v_match_id
+  ) THEN
+    RAISE EXCEPTION 'Closing the room did not clean its interrupted Reaction Rush match';
+  END IF;
 END;
 $test$;
 
