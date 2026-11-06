@@ -100,19 +100,6 @@ export default function NoCountItMatch({
   const answerInput = answerDraft.roundKey === roundKey ? answerDraft.value : ''
 
   useEffect(() => {
-    if (!roundKey || !currentRound || currentRound.status !== 'preparing' ||
-      myRoundPlayer?.status !== 'preparing' || readyAttemptRef.current === roundKey) return
-    readyAttemptRef.current = roundKey
-    void invokeGame({ action: 'round_ready', roomId: room.roomId, matchId: match?.matchId })
-      .then(() => refreshMatch())
-      .then(() => setReadyRoundKey(roundKey))
-      .catch((error: unknown) => {
-        readyAttemptRef.current = null
-        setMessage(errorMessage(error))
-      })
-  }, [roundKey, currentRound?.status, myRoundPlayer?.status, invokeGame, room.roomId, match?.matchId, refreshMatch])
-
-  useEffect(() => {
     if (!currentRound) return
     const update = () => {
       const now = Date.now()
@@ -154,6 +141,19 @@ export default function NoCountItMatch({
     if (answerInput.length >= 19 || myRoundPlayer?.answer !== null) return
     setAnswerDraft({ roundKey, value: answerInput + digit })
   }
+
+  const confirmRoundReady = useCallback(async () => {
+    if (!roundKey || readyAttemptRef.current === roundKey || !match) return
+    readyAttemptRef.current = roundKey
+    try {
+      await invokeGame({ action: 'round_ready', roomId: room.roomId, matchId: match.matchId })
+      setReadyRoundKey(roundKey)
+      await refreshMatch()
+    } catch (error) {
+      readyAttemptRef.current = null
+      setMessage(errorMessage(error))
+    }
+  }, [roundKey, match, invokeGame, room.roomId, refreshMatch])
 
   const isFinished = match?.status === 'completed' || match?.status === 'technical_aborted' || match?.status === 'cancelled'
   const isReveal = currentRound?.status === 'revealing' || currentRound?.status === 'completed'
@@ -263,15 +263,4 @@ export default function NoCountItMatch({
       {message && <section className="game-card" role="alert"><p>{message}</p></section>}
     </main>
   )
-}  const confirmRoundReady = useCallback(async () => {
-    if (!roundKey || readyAttemptRef.current === roundKey || !match) return
-    readyAttemptRef.current = roundKey
-    try {
-      await invokeGame({ action: 'round_ready', roomId: room.roomId, matchId: match.matchId })
-      setReadyRoundKey(roundKey)
-      await refreshMatch()
-    } catch (error) {
-      readyAttemptRef.current = null
-      setMessage(errorMessage(error))
-    }
-  }, [roundKey, match, invokeGame, room.roomId, refreshMatch])
+}
