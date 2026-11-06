@@ -137,7 +137,7 @@ Deno.serve(async (req: Request) => {
     const gameServerActions = ["start_game", "finish_game"];
     const publicActions = [
       "create_room", "join_room", "get_room", "select_game", "set_ready",
-      "leave_room", "close_room", "heartbeat", "get_room_token",
+      "leave_room", "close_room", "heartbeat", "get_room_token", "vote_rematch",
     ];
     if (typeof action !== "string" || ![...publicActions, ...gameServerActions].includes(action)) {
       return fail("Unknown multiplayer action", 400);
@@ -199,6 +199,7 @@ Deno.serve(async (req: Request) => {
       if (action === "select_game") payload.gameId = body.gameId;
       if (isGameServerAction) payload.gameId = body.gameId;
       if (action === "set_ready") payload.isReady = body.isReady;
+      if (action === "vote_rematch") payload.vote = body.vote;
       if (action === "finish_game") payload.startedAt = body.startedAt;
     }
 
@@ -242,6 +243,7 @@ Deno.serve(async (req: Request) => {
       join_room: "player_joined",
       select_game: "room_updated",
       set_ready: "player_updated",
+      vote_rematch: "room_updated",
       leave_room: "player_left",
       close_room: "room_updated",
       start_game: "room_updated",
