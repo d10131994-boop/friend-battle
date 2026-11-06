@@ -342,3 +342,135 @@ REVOKE ALL ON FUNCTION public.multiplayer_room_snapshot(uuid) FROM PUBLIC, anon,
 REVOKE ALL ON FUNCTION public.multiplayer_execute_action(text, text, text, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.multiplayer_room_snapshot(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.multiplayer_execute_action(text, text, text, jsonb) TO service_role;
+
+-- Game-owned start hooks accept any current member only after unanimous rematch approval.
+CREATE OR REPLACE FUNCTION public.reaction_rush_start_match(p_room_id uuid, p_user_id text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
+  v_started jsonb;
+  v_started_at timestamptz;
+  v_match_id uuid;
+BEGIN
+  SELECT * INTO v_room FROM public.common_multiplayer_rooms WHERE id = p_room_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_room.game_id <> 'reaction-rush' THEN RAISE EXCEPTION 'Reaction Rush is not selected' USING ERRCODE = '42501'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players p
+    WHERE p.room_id = p_room_id AND p.user_id = p_user_id
+      AND (p.is_host OR EXISTS (
+        SELECT 1 FROM public.common_multiplayer_rooms r
+        WHERE r.id = p_room_id AND r.rematch_status = 'accepted'
+      ))
+  ) THEN
+    RAISE EXCEPTION 'Only the room host can start a new match' USING ERRCODE = '42501';
+  END IF;
+  v_started := public.multiplayer_execute_action(
+    'start_game', '__game_server__', 'Game server',
+    pg_catalog.jsonb_build_object('roomId', p_room_id, 'gameId', 'reaction-rush')
+  );
+  v_started_at := (v_started->>'startedAt')::timestamptz;
+  DELETE FROM public.games_reaction_rush_matches
+  WHERE room_id = p_room_id AND status = 'completed';
+  INSERT INTO public.games_reaction_rush_matches(room_id, started_at, round_started_at)
+  VALUES (p_room_id, v_started_at, v_started_at) RETURNING id INTO v_match_id;
+  RETURN pg_catalog.jsonb_build_object(
+    'matchId', v_match_id, 'roundNumber', 1,
+    'roundStartedAt', v_started_at, 'room', v_started
+  );
+END;
+$function$;
+
+
+CREATE OR REPLACE FUNCTION public.brain_battle_start_match(
+  p_room_id uuid,
+  p_user_id text,
+  p_questions jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
+  v_started jsonb;
+  v_started_at timestamptz;
+  v_question_started_at timestamptz;
+  v_match_id uuid;
+BEGIN
+  SELECT * INTO v_room
+  FROM public.common_multiplayer_rooms
+  WHERE id = p_room_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_room.game_id IS DISTINCT FROM 'brain-battle' THEN
+    RAISE EXCEPTION 'Brain Battle is not selected' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players p
+    WHERE p.room_id = p_room_id AND p.user_id = p_user_id
+      AND (p.is_host OR EXISTS (
+        SELECT 1 FROM public.common_multiplayer_rooms r
+        WHERE r.id = p_room_id AND r.rematch_status = 'accepted'
+      ))
+  ) THEN
+    RAISE EXCEPTION 'Only the room host can start a new match' USING ERRCODE = '42501';
+  END IF;
+  IF jsonb_typeof(p_questions) IS DISTINCT FROM 'array' THEN
+    RAISE EXCEPTION 'Questions must be a JSON array' USING ERRCODE = '22023';
+  END IF;
+  IF jsonb_array_length(p_questions) <> 10 THEN
+    RAISE EXCEPTION 'Exactly 10 questions are required' USING ERRCODE = '22023';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(p_questions) AS question(value)
+    WHERE jsonb_typeof(question.value) <> 'object'
+       OR NOT (question.value ? 'question' AND question.value ? 'answers' AND question.value ? 'correctAnswer')
+       OR jsonb_typeof(question.value->'answers') <> 'array'
+       OR jsonb_array_length(
+            CASE WHEN jsonb_typeof(question.value->'answers') = 'array'
+              THEN question.value->'answers' ELSE '[]'::jsonb END
+          ) <> 4
+       OR COALESCE((question.value->>'correctAnswer') ~ '^[0-3]$', false) = false
+  ) THEN
+    RAISE EXCEPTION 'Invalid Brain Battle question payload' USING ERRCODE = '22023';
+  END IF;
+
+  v_started := public.multiplayer_execute_action(
+    'start_game', '__game_server__', 'Game server',
+    pg_catalog.jsonb_build_object('roomId', p_room_id, 'gameId', 'brain-battle')
+  );
+  v_started_at := (v_started->>'startedAt')::timestamptz;
+  v_question_started_at := v_started_at + interval '3 seconds';
+
+  INSERT INTO public.games_brain_battle_matches(
+    room_id, started_at, current_question_index, question_started_at,
+    question_ends_at, questions
+  )
+  VALUES (
+    p_room_id, v_started_at, 0, v_question_started_at,
+    v_question_started_at + interval '15 seconds', p_questions
+  )
+  RETURNING id INTO v_match_id;
+
+  RETURN pg_catalog.jsonb_build_object(
+    'matchId', v_match_id,
+    'currentQuestionIndex', 0,
+    'questionStartedAt', v_question_started_at,
+    'questionEndsAt', v_question_started_at + interval '15 seconds',
+    'room', v_started
+  );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.reaction_rush_start_match(uuid, text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.brain_battle_start_match(uuid, text, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.reaction_rush_start_match(uuid, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.brain_battle_start_match(uuid, text, jsonb) TO service_role;
