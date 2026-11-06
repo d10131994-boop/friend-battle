@@ -31,6 +31,7 @@ Public client actions:
 | `join_room` | `inviteCode` | Room snapshot |
 | `get_room` | `roomId` | Room snapshot |
 | `set_ready` | `roomId`, `isReady` | Room snapshot |
+| `vote_rematch` | `roomId`, `vote: yes \| no` | Updated room snapshot with vote state |
 | `leave_room` | `roomId` | Room snapshot after leaving; cancelled state if last member |
 | `close_room` | `roomId` | Room snapshot; host-only |
 | `heartbeat` | `roomId` | Acknowledgement and server time |
@@ -38,7 +39,7 @@ Public client actions:
 
 The server returns normalized room snapshots with `roomId`, `gameId`,
 `inviteCode`, `status`, `players`, `maxPlayers`, `createdAt`,
-`startedAt`, and `finishedAt`. Each player includes `userId`,
+`startedAt`, `finishedAt`, `rematchStatus`, `rematchDeadlineAt`, and `rematchVotes`. Each player includes `userId`,
 `displayName`, `isReady`, `isHost`, `joinedAt`, and `lastSeenAt`.
 
 ### Trusted game-server actions
