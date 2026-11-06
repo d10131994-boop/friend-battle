@@ -59,7 +59,6 @@ export default function ReactionRushMultiplayer({
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const sessionRef = useRef<ReturnType<typeof createMultiplayerRoomSession> | null>(null)
   const finishRequestedRef = useRef<string | null>(null)
-  const rematchStartRequestedRef = useRef<string | null>(null)
   const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
 
   const invokeGame = useCallback(async <T,>(body: Record<string, unknown>): Promise<T> => {
@@ -271,21 +270,7 @@ export default function ReactionRushMultiplayer({
     }
   }
 
-  async function voteRematch(vote: 'yes' | 'no') {
-    if (!room) return
-    setLoading(true)
-    setMessage('')
-    try {
-      const updated = await multiplayer.voteRematch(auth, { roomId: room.roomId, vote })
-      acceptRoom(updated)
-    } catch (error) {
-      setMessage(getErrorMessage(error, 'Не удалось отправить голос за реванш.'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const startMatch = useCallback(async () => {
+  async function startMatch() {
     if (!room) return
     setLoading(true)
     setMessage('')
@@ -308,18 +293,13 @@ export default function ReactionRushMultiplayer({
         myScore: 0,
       })
       finishRequestedRef.current = null
-      rematchStartRequestedRef.current = null
       acceptRoom(started.room)
     } catch (error) {
       setMessage(getErrorMessage(error, 'Не удалось начать матч.'))
-      if (room.rematchStatus === 'accepted') {
-        rematchStartRequestedRef.current = null
-        void refreshMatch().catch(() => undefined)
-      }
     } finally {
       setLoading(false)
     }
-  }, [room, invokeGame, acceptRoom, refreshMatch])
+  }
 
   async function tap() {
     if (!room || !match || match.status !== 'playing' || room.status !== 'playing' || remaining <= 0) return
@@ -381,16 +361,6 @@ export default function ReactionRushMultiplayer({
   const canStart = Boolean(room?.gameId === 'reaction-rush' && room.players.length >= 2 && room.players.length <= 4 && allReady)
   const isHost = Boolean(me?.isHost)
   const finalResults = match?.status === 'completed' ? match.finalResults ?? [] : []
-  const rematchYesVotes = room?.rematchVotes.filter((vote) => vote.vote === 'yes').length ?? 0
-  const myRematchVote = room?.rematchVotes.find((vote) => vote.userId === telegramId)?.vote
-
-  useEffect(() => {
-    if (!room || room.status !== 'finished' || room.rematchStatus !== 'accepted' || !isHost) return
-    const sessionKey = room.startedAt ?? room.roomId
-    if (rematchStartRequestedRef.current === sessionKey) return
-    rematchStartRequestedRef.current = sessionKey
-    void startMatch()
-  }, [room?.status, room?.rematchStatus, room?.startedAt, isHost, startMatch])
 
   return (
     <main className="app">
@@ -458,20 +428,10 @@ export default function ReactionRushMultiplayer({
                     </p>
                   ))}
                   <p>{match.winnerUserId ? 'Победитель получает победу в счёте комнаты!' : 'Ничья! В этот раз без победителя.'}</p>
-                  {room.rematchStatus === 'open' && (
-                    <>
-                      <p>Реванш: {rematchYesVotes} из {room.players.length} игроков согласились. Голосование до {room.rematchDeadlineAt ? new Date(room.rematchDeadlineAt).toLocaleTimeString() : 'окончания 60 секунд'}.</p>
-                      {myRematchVote ? <p>Твой голос: {myRematchVote === 'yes' ? 'ЗА' : 'ПРОТИВ'}</p> : (
-                        <>
-                          <button className="play-button" onClick={() => void voteRematch('yes')} disabled={loading}>ДА, РЕВАНШ!</button>
-                          <button className="invite-button" onClick={() => void voteRematch('no')} disabled={loading}>НЕТ, ЗАКОНЧИТЬ</button>
-                        </>
-                      )}
-                    </>
-                  )}
-                  {(room.rematchStatus === 'declined' || room.rematchStatus === 'expired') && (
-                    <p>Реванш отменён. Все игроки остаются в комнате — можно подготовить новую игру.</p>
-                  )}
+                  <button className="invite-button" onClick={() => setShowFinalResults(false)}>ЗАВЕРШИТЬ</button>
+                  <button className="play-button" onClick={() => void toggleReady()} disabled={loading}>
+                    {me?.isReady ? 'ОТМЕНИТЬ ГОТОВНОСТЬ' : 'РЕВАНШ — Я ГОТОВ'}
+                  </button>
                 </section>
               )}
 
@@ -496,14 +456,12 @@ export default function ReactionRushMultiplayer({
                 <button className="invite-button" onClick={() => void toggleReady()} disabled={loading || !room.gameId}>
                   {me?.isReady ? 'ОТМЕНИТЬ ГОТОВНОСТЬ' : 'Я ГОТОВ ⚔️'}
                 </button>
-                {room.rematchStatus !== 'open' && room.rematchStatus !== 'accepted' && (
-                  isHost ? (
-                    <button className="play-button" onClick={() => void startMatch()} disabled={loading || !canStart}>
-                      НАЧАТЬ МАТЧ
-                    </button>
-                  ) : (
-                    <p>Ожидаем, пока ведущий начнёт матч.</p>
-                  )
+                {isHost ? (
+                  <button className="play-button" onClick={() => void startMatch()} disabled={loading || !canStart}>
+                    {room.status === 'finished' ? 'НАЧАТЬ РЕВАНШ' : 'НАЧАТЬ МАТЧ'}
+                  </button>
+                ) : (
+                  <p>Ожидаем, пока ведущий начнёт матч.</p>
                 )}
                 {room.players.length < 2 && <p>Для начала матча нужен хотя бы ещё один игрок.</p>}
               </section>
