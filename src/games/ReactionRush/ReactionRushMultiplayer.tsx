@@ -453,7 +453,6 @@ export default function ReactionRushMultiplayer({
                     </p>
                   ))}
                   <p>{match.winnerUserId ? 'Победитель получает победу в счёте комнаты!' : 'Ничья! В этот раз без победителя.'}</p>
-                  <button className="invite-button" onClick={() => setShowFinalResults(false)}>ЗАВЕРШИТЬ</button>
                   {room.rematchStatus === 'open' && (
                     <>
                       <p>Реванш: {rematchYesVotes} из {room.players.length} игроков согласились. Голосование до {room.rematchDeadlineAt ? new Date(room.rematchDeadlineAt).toLocaleTimeString() : 'окончания 60 секунд'}.</p>
@@ -492,7 +491,7 @@ export default function ReactionRushMultiplayer({
                 <button className="invite-button" onClick={() => void toggleReady()} disabled={loading || !room.gameId}>
                   {me?.isReady ? 'ОТМЕНИТЬ ГОТОВНОСТЬ' : 'Я ГОТОВ ⚔️'}
                 </button>
-                {room.rematchStatus !== 'open' && (
+                {room.rematchStatus !== 'open' && room.rematchStatus !== 'accepted' && (
                   isHost ? (
                     <button className="play-button" onClick={() => void startMatch()} disabled={loading || !canStart}>
                       НАЧАТЬ МАТЧ
