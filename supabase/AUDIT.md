@@ -71,7 +71,7 @@ Frontend changes in this audit:
 
 ## Session lifecycle architecture
 
-The three agreed modes (`default`, `custom`, `disabled`) and standard unanimous 60-second rematch vote are documented as the target contract in `src/multiplayer/ai-readme.md`. They are not yet implemented in the Production API/schema. Do not treat them as available features until the lifecycle migration, server hooks and tests are delivered.
+The AI branch now implements the shared lifecycle-mode column (`default`, `custom`, `disabled`), session-scoped rematch votes, a 60-second unanimous default vote, automatic host-side restart after approval, and rematch-aware game start hooks. Both current games use `default`. Brain Battle draws a fresh set of ten questions from a 20-question server bank while excluding the immediately previous set; Reaction Rush creates a new match row. The timestamped migration is `20261106152000_multiplayer_rematch_lifecycle`, with transactional integration coverage in `supabase/tests/multiplayer_rematch.sql`. These changes are AI-branch only and have not been applied to Production.
 
 ## Release status
 
