@@ -191,6 +191,69 @@ BEGIN
     RAISE EXCEPTION 'Rematch must be declined when fewer than the minimum players remain';
   END IF;
 
+  -- A host may leave during an open vote; the remaining host is promoted
+  -- and the vote can still become unanimous among the remaining members.
+  v_room := public.multiplayer_execute_action(
+    'create_room', v_host || '_transfer', 'Host', jsonb_build_object('maxPlayers', 3)
+  );
+  v_room_id := (v_room->>'roomId')::uuid;
+  PERFORM public.multiplayer_execute_action(
+    'join_room', v_guest || '_transfer_1', 'Guest 1',
+    jsonb_build_object('inviteCode', v_room->>'inviteCode')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'join_room', v_guest || '_transfer_2', 'Guest 2',
+    jsonb_build_object('inviteCode', v_room->>'inviteCode')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'select_game', v_host || '_transfer', 'Host',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_host || '_transfer', 'Host', jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_guest || '_transfer_1', 'Guest 1', jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_guest || '_transfer_2', 'Guest 2', jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  v_room := public.multiplayer_execute_action(
+    'start_game', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush')
+  );
+  v_started_at := v_room->>'startedAt';
+  PERFORM public.multiplayer_execute_action(
+    'finish_game', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush', 'startedAt', v_started_at)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'vote_rematch', v_host || '_transfer', 'Host',
+    jsonb_build_object('roomId', v_room_id, 'vote', 'yes')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'vote_rematch', v_guest || '_transfer_1', 'Guest 1',
+    jsonb_build_object('roomId', v_room_id, 'vote', 'yes')
+  );
+  v_room := public.multiplayer_execute_action(
+    'leave_room', v_host || '_transfer', 'Host', jsonb_build_object('roomId', v_room_id)
+  );
+  IF v_room->>'rematchStatus' <> 'open'
+     OR NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements(v_room->'players') AS player(value)
+       WHERE player.value->>'userId' = v_guest || '_transfer_1'
+         AND (player.value->>'isHost')::boolean
+     ) THEN
+    RAISE EXCEPTION 'Host departure must transfer host role and keep the remaining vote open';
+  END IF;
+  v_room := public.multiplayer_execute_action(
+    'vote_rematch', v_guest || '_transfer_2', 'Guest 2',
+    jsonb_build_object('roomId', v_room_id, 'vote', 'yes')
+  );
+  IF v_room->>'rematchStatus' <> 'accepted' THEN
+    RAISE EXCEPTION 'Remaining members must be able to accept rematch after host transfer';
+  END IF;
+
   -- Disabled/custom modes do not get the standard Multiplayer vote window.
   UPDATE public.common_multiplayer_game_rules SET lifecycle_mode = 'disabled'
   WHERE game_id = 'reaction-rush';
