@@ -338,7 +338,7 @@ BEGIN
       END IF;
       RAISE EXCEPTION 'Rematch voting is closed' USING ERRCODE = '55000';
     END IF;
-    IF p_payload->>'vote' NOT IN ('yes', 'no') THEN
+    IF p_payload->>'vote' IS DISTINCT FROM 'yes' AND p_payload->>'vote' IS DISTINCT FROM 'no' THEN
       RAISE EXCEPTION 'vote must be yes or no' USING ERRCODE = '22023';
     END IF;
     INSERT INTO public.common_multiplayer_rematch_votes(room_id, session_started_at, user_id, vote)
@@ -443,8 +443,15 @@ BEGIN
   SELECT * INTO v_room FROM public.common_multiplayer_rooms WHERE id = p_room_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
   IF v_room.game_id <> 'reaction-rush' THEN RAISE EXCEPTION 'Reaction Rush is not selected' USING ERRCODE = '42501'; END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.common_multiplayer_players WHERE room_id = p_room_id AND user_id = p_user_id AND is_host) THEN
-    RAISE EXCEPTION 'Only the room host can start the match' USING ERRCODE = '42501';
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players p
+    WHERE p.room_id = p_room_id AND p.user_id = p_user_id
+      AND (p.is_host OR EXISTS (
+        SELECT 1 FROM public.common_multiplayer_rooms r
+        WHERE r.id = p_room_id AND r.rematch_status = 'accepted'
+      ))
+  ) THEN
+    RAISE EXCEPTION 'Only the room host can start a new match' USING ERRCODE = '42501';
   END IF;
   v_started := public.multiplayer_execute_action(
     'start_game', '__game_server__', 'Game server',
