@@ -173,6 +173,7 @@ export default function NoCountItMatch({
             <section className="game-card">
               <h2>ГОТОВИМ ИЗОБРАЖЕНИЕ</h2>
               <p>Как только изображение загрузится у участников, раунд начнётся одновременно для всех готовых игроков.</p>
+              {currentRound.imageUrl && <img src={currentRound.imageUrl} alt="Банка с конфетами" onLoad={() => void confirmRoundReady()} onError={() => setMessage('Не удалось загрузить изображение раунда.')} style={{ width: '100%', maxWidth: 420, display: 'block', margin: '0 auto' }} />}
               <p>{roundReady ? '✓ Изображение готово. Ждём остальных…' : 'Загружаем сцену…'}</p>
               <p>Игроки готовы: {currentRound.players.filter((player) => player.status === 'ready').length} / {currentRound.players.length}</p>
             </section>
@@ -248,4 +249,15 @@ export default function NoCountItMatch({
       {message && <section className="game-card" role="alert"><p>{message}</p></section>}
     </main>
   )
-}
+}  const confirmRoundReady = useCallback(async () => {
+    if (!roundKey || readyAttemptRef.current === roundKey || !match) return
+    readyAttemptRef.current = roundKey
+    try {
+      await invokeGame({ action: 'round_ready', roomId: room.roomId, matchId: match.matchId })
+      setRoundReady(true)
+      await refreshMatch()
+    } catch (error) {
+      readyAttemptRef.current = null
+      setMessage(errorMessage(error))
+    }
+  }, [roundKey, match, invokeGame, room.roomId, refreshMatch])
