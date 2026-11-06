@@ -181,7 +181,7 @@ BEGIN
     'correctAnswer', 0
   ))
   INTO v_questions
-  FROM generate_series(1, 10) AS question_number;
+  FROM generate_series(1, 10) AS series(question_number);
   v_room := public.brain_battle_start_match(
     v_room_id, v_host || '_brain', v_questions
   );
