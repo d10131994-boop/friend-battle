@@ -27,6 +27,7 @@ export type NoCountItMatchStatus =
   | 'playing'
   | 'completed'
   | 'technical_aborted'
+  | 'cancelled'
 
 export type NoCountItRoundStatus =
   | 'preparing'
