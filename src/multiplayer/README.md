@@ -107,10 +107,7 @@ stored `game_id`; a game server cannot start or finish another game's room.
 These actions are also protected by the database function's
 `service_role`-only execute permission.
 
-`start_game` succeeds only while the room is `waiting` or `finished`, and
-only when every current player is ready and has sent a heartbeat within the
-last 90 seconds. The returned `startedAt` identifies that particular game
-session. The game server must pass that exact value to `finish_game`; this
+`start_game` succeeds only while the room is `waiting` or `finished`. An initial match requires every current player to be ready and to have sent a heartbeat within the last 90 seconds. A `default` rematch instead requires the exact finished session to have an accepted unanimous vote; the current player count must still satisfy the game's min/max rules. The returned `startedAt` identifies that particular game session. The game server must pass that exact value to `finish_game`; this
 prevents a delayed finish request from an older game from ending a newer game
 in the same room. Repeating `finish_game` for the same already-finished
 session is safe and idempotent.
