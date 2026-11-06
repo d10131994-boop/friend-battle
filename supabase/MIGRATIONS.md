@@ -32,7 +32,7 @@ Do not reapply an already-deployed patch or restore the retired conflicting life
 
 The agreed approach is to capture a fresh baseline snapshot from the current live Production schema. Do not recreate or backfill the old migration history, and do not apply the baseline snapshot to the live database. The baseline must be generated from a real database dump, reviewed for managed-schema exclusions and custom Realtime policies, then committed as the starting point for future reproducible migrations.
 
-**Current status:** the live migration history has been inspected, but the repository baseline snapshot has not yet been generated. The backup workflow requires the `SUPABASE_DB_URL` GitHub Actions secret; use the Supabase CLI dump workflow/process once that secret is configured. Do not synthesize a purported live baseline from partial SQL patches.
+**Current status:** the live migration history has been inspected and both required GitHub Actions secrets (`SUPABASE_DB_URL` and `BACKUP_ENCRYPTION_PASSPHRASE`) have been configured by the repository owner. The first backup workflow run and baseline extraction are still pending. Do not synthesize a purported live baseline from partial SQL patches.
 
 ## Future change procedure
 
