@@ -65,6 +65,7 @@ export default function BrainBattleRoom({
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [remaining, setRemaining] = useState(15)
+  const [questionStarted, setQuestionStarted] = useState(false)
   const [showFinalResults, setShowFinalResults] = useState(true)
   const [realtimeStatus, setRealtimeStatus] = useState('Подключаемся...')
   const sessionRef = useRef<ReturnType<typeof createMultiplayerRoomSession> | null>(null)
@@ -120,15 +121,20 @@ export default function BrainBattleRoom({
 
   useEffect(() => {
     if (!room?.roomId || room.status === 'cancelled') return
-    void refreshMatch().catch((error: unknown) => {
-      setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.'))
-    })
+    const initialRefresh = window.setTimeout(() => {
+      void refreshMatch().catch((error: unknown) => {
+        setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.'))
+      })
+    }, 0)
     const timer = window.setInterval(() => {
       void refreshMatch().catch((error: unknown) => {
         setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.'))
       })
     }, 1200)
-    return () => window.clearInterval(timer)
+    return () => {
+      window.clearTimeout(initialRefresh)
+      window.clearInterval(timer)
+    }
   }, [room?.roomId, room?.status, refreshMatch])
 
   useEffect(() => {
@@ -137,6 +143,7 @@ export default function BrainBattleRoom({
     const endAt = Date.parse(match.questionEndsAt)
     const update = () => {
       const now = Date.now()
+      setQuestionStarted(now >= startAt)
       setRemaining(now < startAt ? 15 : Math.max(0, Math.ceil((endAt - now) / 1000)))
     }
     update()
@@ -302,7 +309,7 @@ export default function BrainBattleRoom({
   const questionIsLive = Boolean(
     match?.status === 'playing' &&
     room?.status === 'playing' &&
-    Date.now() >= Date.parse(match.questionStartedAt) &&
+    questionStarted &&
     remaining > 0,
   )
   const results = match?.finalResults ?? []
