@@ -179,7 +179,7 @@ Deno.serve(async (req: Request) => {
       ? room.players.find((player: { userId?: string }) => player.userId === telegramId)
       : null;
     if (!member) return fail("Вы не участник этой комнаты", 403);
-    if (!member.isHost) return fail("Начать матч может только создатель комнаты", 403);
+    if (!member.isHost && room.rematchStatus !== "accepted") return fail("Начать матч может только ведущий комнаты", 403);
 
     const { data, error } = await supabase.rpc("reaction_rush_start_match", {
       p_room_id: roomId,
