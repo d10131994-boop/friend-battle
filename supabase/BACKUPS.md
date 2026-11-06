@@ -11,7 +11,7 @@ Add these **repository Actions secrets** in GitHub:
 
 Keep a separate copy of the encryption passphrase in a secure password manager or offline recovery location. The repository is public; backup artifacts are therefore encrypted before upload. Losing the passphrase makes retained backups unrecoverable.
 
-The workflow exports roles, schema and data using the Supabase CLI. It uploads only the encrypted archive and checksum, then deletes older matching artifacts so that only the newest two backups remain. Artifacts have a 90-day maximum retention setting; the two-copy retention rule is the effective limit during normal weekly operation.
+The workflow exports roles, schema and data using the Supabase CLI. Because the CLI excludes Supabase-managed schemas such as `realtime`, the workflow also exports custom RLS policies from `realtime` into `realtime-policies.sql`; this preserves the room broadcast policy. It uploads only the encrypted archive and checksum, then deletes older matching artifacts so that only the newest two backups remain. Artifacts have a 90-day maximum retention setting; the two-copy retention rule is the effective limit during normal weekly operation.
 
 ## Restore outline
 
