@@ -10,6 +10,8 @@ export function useReactionRush({
 }: UseReactionRushOptions) {
   const [score, setScore] = useState(0)
   const scoreRef = useRef(0)
+  const soloTimerRef = useRef<number | null>(null)
+  const onSaveScoreRef = useRef(onSaveScore)
 
   const [rounds, setRounds] = useState(() => {
     const savedRounds = localStorage.getItem('friendBattleRounds')
@@ -25,6 +27,14 @@ export function useReactionRush({
   const [time, setTime] = useState(10)
 
   useEffect(() => {
+    onSaveScoreRef.current = onSaveScore
+  }, [onSaveScore])
+
+  useEffect(() => () => {
+    if (soloTimerRef.current !== null) window.clearInterval(soloTimerRef.current)
+  }, [])
+
+  useEffect(() => {
     localStorage.setItem('friendBattleBest', String(best))
   }, [best])
 
@@ -38,17 +48,19 @@ export function useReactionRush({
     setTime(10)
     setPlaying(true)
 
+    if (soloTimerRef.current !== null) window.clearInterval(soloTimerRef.current)
     let remaining = 10
 
-    const timer = window.setInterval(() => {
+    soloTimerRef.current = window.setInterval(() => {
       remaining -= 1
       setTime(remaining)
 
       if (remaining <= 0) {
-        window.clearInterval(timer)
+        if (soloTimerRef.current !== null) window.clearInterval(soloTimerRef.current)
+        soloTimerRef.current = null
         setPlaying(false)
         setRounds((previous) => previous + 1)
-        void onSaveScore(scoreRef.current)
+        void onSaveScoreRef.current(scoreRef.current)
       }
     }, 1000)
   }
