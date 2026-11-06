@@ -153,7 +153,7 @@ Deno.serve(async (req: Request) => {
         p_user_id: telegramId,
       });
       if (error) return errorResponse(error);
-      await broadcast(supabase, roomId, data?.matchFinished ? "match_finished" : "round_finished", data);
+      await broadcast(supabase, roomId, data?.matchFinished ? "match_finished" : "round_finished");
       return respond(data);
     }
 
@@ -193,7 +193,7 @@ Deno.serve(async (req: Request) => {
       p_user_id: telegramId,
     });
     if (error) return errorResponse(error);
-    await broadcast(supabase, roomId, "match_started", data);
+    await broadcast(supabase, roomId, "match_started");
     return respond(data);
   } catch (error) {
     console.error("Reaction Rush function error:", error instanceof Error ? error.message : "Unknown error");
@@ -205,14 +205,13 @@ async function broadcast(
   supabase: SupabaseClient,
   roomId: string,
   event: string,
-  data: unknown = {},
 ): Promise<void> {
   try {
     const channel = supabase.channel(`room:${roomId}`, { config: { private: true } });
     const sent = await channel.send({
       type: "broadcast",
       event,
-      payload: { roomId, source: "reaction-rush", data },
+      payload: { roomId, source: "reaction-rush" },
     });
     if (sent !== "ok") console.warn("Reaction Rush broadcast was not acknowledged:", sent);
     await supabase.removeChannel(channel);
