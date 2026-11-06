@@ -194,7 +194,7 @@ Deno.serve(async (req: Request) => {
 });
 
 async function broadcast(
-  supabase: SupabaseClient<any, "public", "public", any, any>,
+  supabase: SupabaseClient,
   roomId: string,
   event: string,
   data: unknown = {},
