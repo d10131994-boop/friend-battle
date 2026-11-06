@@ -359,6 +359,25 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
             </section>
           )}
 
+          {room.status === 'finished' && room.rematchStatus === 'accepted' && (
+            <section className="game-card">
+              <h2>ВСЕ СОГЛАСНЫ НА РЕВАНШ!</h2>
+              <p>Запускаем новую партию {room.gameId === 'brain-battle' ? 'с новым набором вопросов' : 'с новым матчем'}.</p>
+              {isHost && !gameScreen && (
+                <button
+                  className="play-button"
+                  onClick={() => {
+                    rematchStartRequestedRef.current = null
+                    startGame()
+                  }}
+                  disabled={loading}
+                >
+                  ЗАПУСТИТЬ РЕВАНШ
+                </button>
+              )}
+            </section>
+          )}
+
           {room.status === 'finished' && (room.rematchStatus === 'declined' || room.rematchStatus === 'expired') && (
             <section className="game-card">
               <p>Реванш отменён. Все игроки остаются в комнате. Чтобы начать новую игру, подтвердите готовность.</p>
