@@ -29,6 +29,8 @@ The current canonical sources are:
 
 Do not reapply an already-deployed patch or restore the retired conflicting lifecycle SQL file.
 
+**Pending AI-branch SQL refactor:** `universal_lobby_reaction_rush.sql` no longer deletes Reaction Rush rows from the shared Multiplayer RPC; the new `reaction_rush_room_lifecycle.sql` owns that cleanup through a room-status trigger. These two source changes must be promoted and applied together. Production still has the previous shared RPC and does not yet have the new trigger.
+
 ## Baseline decision
 
 The agreed approach is to capture a fresh baseline snapshot from the current live Production schema. Do not recreate or backfill the old migration history, and do not apply the baseline snapshot to the live database. The baseline must be generated from a real database dump, reviewed for managed-schema exclusions and custom Realtime policies, then committed as the starting point for future reproducible migrations. The Supabase CLI excludes managed schemas such as `realtime`; the backup workflow separately exports the live custom `realtime` RLS policies to `realtime-policies.sql`. Include and review that file when assembling the baseline; do not assume `schema.sql` alone captures the Realtime security configuration.
