@@ -38,7 +38,7 @@ Frontend changes in this audit:
 
 - Added a shared Edge Function SQL error mapper. Expected PostgreSQL business errors return stable HTTP statuses/messages; raw database messages are no longer sent to clients.
 - Added Deno unit tests for the shared error mapper and included them in CI.
-- Added a transactional Multiplayer Core SQL integration script covering room creation, membership, host-only game selection, start/finish, stale-session rejection, idempotent finish and leave-during-match reset. It now also asserts that the Reaction Rush-owned cleanup hook removes an interrupted match. CI parses this SQL but does not execute it.
+- Added a transactional Multiplayer Core SQL integration script covering room creation, membership, host-only game selection, start/finish, stale-session rejection, idempotent finish and leave-during-match reset. It now also asserts that the Reaction Rush-owned cleanup hook removes an interrupted match and the Brain Battle-owned hook cancels its interrupted match. CI parses this SQL but does not execute it.
 - The AI branch removes direct Reaction Rush match-table deletion from the shared Multiplayer action RPC and adds a Reaction Rush-owned room-reset cleanup trigger, matching Brain Battle's game-owned cleanup hook. This source refactor is not yet deployed to Production; the updated RPC and trigger must be promoted and applied together.
 - The development Realtime smoke test remains manual and does not verify multi-device match lifecycle or network-failure reconnects.
 - No isolated disposable Supabase database is currently wired into CI, so database integration and concurrency tests remain unexecuted automatically.
