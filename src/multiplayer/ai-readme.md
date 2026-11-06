@@ -28,10 +28,10 @@ The module entrypoint is `src/multiplayer/index.ts`; it re-exports:
 
 Important types:
 - `MultiplayerAuth`: `{ initData: string }`. The value is Telegram Web App initData and is forwarded unchanged to the server.
-- `MultiplayerRoom`: `roomId`, nullable `gameId`, `inviteCode`, `status`, `players`, nullable `maxPlayers`, and lifecycle timestamps.
+- `MultiplayerRoom`: `roomId`, nullable `gameId`, `inviteCode`, `status`, `players`, nullable `maxPlayers`, lifecycle timestamps, `rematchStatus`, `rematchDeadlineAt`, and `rematchVotes`.
 - `MultiplayerPlayer`: `userId`, `displayName`, `isReady`, `isHost`, `joinedAt`, `lastSeenAt`, `wins`, `matchesPlayed`.
 - `MultiplayerRoomStatus`: `waiting | starting | playing | finished | cancelled`.
-- `MultiplayerService`: `createRoom`, `selectGame`, `joinRoom`, `getRoom`, `setReady`, `leaveRoom`, `closeRoom`, `heartbeat`, `getRoomToken`.
+- `MultiplayerService`: `createRoom`, `selectGame`, `joinRoom`, `getRoom`, `setReady`, `voteRematch`, `leaveRoom`, `closeRoom`, `heartbeat`, `getRoomToken`.
 
 The adapter is created with `createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })`. Its action names can be overridden through the optional `actions` map. Service factories wrap adapter failures in `MultiplayerError` with a user-facing message and retain the original error in `cause`.
 
@@ -173,11 +173,20 @@ Ownership boundary:
 - Game modules own their match tables, scoring, winner calculation and game-specific cleanup. They integrate through an explicit trusted server contract rather than direct cross-module table access.
 - All transitions must remain server-authoritative, membership-checked, retry-safe where promised and serialized with a documented lock order.
 
-Standard rematch behavior (agreed product contract):
-- After a match finishes, the remaining room members have 60 seconds to vote.
-- A rematch starts only if every remaining member votes yes.
-- One no vote or an unanswered vote at the deadline cancels the rematch; the completed session ends and players remain in the room.
-- A unanimous yes starts a new match of the same selected game without requiring game selection again.
-- The vote/deadline is bound to the exact completed match/session so stale votes cannot affect a later match.
+Standard session lifecycle modes are stored in `common_multiplayer_game_rules.lifecycle_mode`:
+- `default`: Multiplayer opens a 60-second unanimous rematch vote after a game server finishes a match.
+- `custom`: Multiplayer does not create the default vote window; the game module is responsible for its own custom post-match lifecycle.
+- `disabled`: no rematch lifecycle is opened.
 
-**Implementation status:** this is the accepted architecture contract, not a claim that all three modes or rematch voting are already implemented. The current public API and Production schema do not yet expose a persisted lifecycle-mode setting or standard rematch-vote RPC/table. Do not build a game integration that assumes those features exist until their implementation and migration are delivered and tested.
+Current Reaction Rush and Brain Battle rules use `default` (the column default). The public room snapshot includes `rematchStatus`, `rematchDeadlineAt`, and the votes for the current completed session.
+
+Default rematch behavior implemented in the AI branch:
+- A room enters `rematchStatus: open` for 60 seconds after `finish_game`.
+- Every current room member must vote `yes`. A single `no` sets `declined`; an unanswered vote becomes `expired` on the next authoritative room refresh after the deadline.
+- Room membership and game selection are locked while voting is open, so the vote electorate cannot silently change. Existing members may reconnect; a member may still leave. If the remaining members have all voted yes after a leave, the vote becomes accepted.
+- Unanimous approval sets `accepted`. The host client automatically asks the selected game module to start the next match; the database accepts that start only for the exact accepted room state. The selected game is retained.
+- Votes are scoped to the exact prior `started_at` session and cleared when the next match starts.
+- Brain Battle selects 10 questions from a 20-question server bank while excluding the immediately previous match's question IDs, so a rematch gets a different question set. Reaction Rush creates a fresh match row through its own game-owned RPC.
+- `custom` is an extension point for game-owned hooks; neither current game uses it.
+
+**Deployment status:** the schema, SQL functions, Edge Function actions, client adapter, both game UIs, and integration test source are implemented on this AI branch. The timestamped migration is `supabase/migrations/20261106152000_multiplayer_rematch_lifecycle.sql`. It has not been applied to Production and must be promoted/applied together with the updated game SQL/Edge Function/frontend code. The SQL integration script is `supabase/tests/multiplayer_rematch.sql`; CI parses it but does not execute it.
