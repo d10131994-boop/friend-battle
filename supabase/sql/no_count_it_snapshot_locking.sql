@@ -14,7 +14,7 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE='P0002'; END IF;
  SELECT public.multiplayer_room_snapshot(p_room_id) INTO v_room;
  SELECT * INTO v_match FROM public.games_no_count_it_matches
- WHERE room_id=p_room_id AND status IN ('preparing','playing','completed','technical_aborted')
+ WHERE room_id=p_room_id AND status IN ('preparing','playing','completed','technical_aborted','cancelled')
  ORDER BY created_at DESC LIMIT 1 FOR UPDATE;
  IF NOT FOUND THEN RETURN jsonb_build_object('room',v_room,'match',NULL); END IF;
  SELECT * INTO v_round FROM public.games_no_count_it_rounds
