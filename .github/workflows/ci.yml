@@ -62,6 +62,7 @@ jobs:
           deno check --node-modules-dir=auto supabase/functions/reaction-rush/index.ts
           deno check --node-modules-dir=auto supabase/functions/brain-battle/index.ts
           deno test supabase/functions/_shared/errors_test.ts
+          deno test supabase/functions/brain-battle/questions_test.ts
 
   sql-syntax:
     name: Parse PostgreSQL SQL patches
