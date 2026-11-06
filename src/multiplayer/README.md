@@ -26,8 +26,8 @@ Public client actions:
 
 | Action | Input | Result |
 | --- | --- | --- |
-| `create_room` | `gameId`, optional `maxPlayers` | Room snapshot |
-| `join_room` | `inviteCode` | Room snapshot |
+| `create_room` | optional `maxPlayers` | Room snapshot with `gameId: null` |
+| `select_game` | `roomId`, `gameId` | Room snapshot; host-only |\n| `join_room` | `inviteCode` | Room snapshot |
 | `get_room` | `roomId` | Room snapshot |
 | `set_ready` | `roomId`, `isReady` | Room snapshot |
 | `leave_room` | `roomId` | Room snapshot after leaving; cancelled state if last member |
@@ -131,7 +131,7 @@ cleanup can cancel a room even after a game session has finished.
 - Joining by invite code is allowed while the room is `waiting` or
   `finished` and has capacity. Existing members can reconnect in either
   state even when the room is at capacity.
-- A player who explicitly calls `leave_room` is removed immediately.
+- A player who explicitly calls `leave_room` is removed immediately. If the room is in `playing`, the current Reaction Rush match is deleted, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready.
 - If the host explicitly leaves and other players remain, the host role is
   transferred to the remaining player with the earliest `joined_at`. A stable
   player ID breaks timestamp ties.
