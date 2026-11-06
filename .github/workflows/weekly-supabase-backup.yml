@@ -1,0 +1,89 @@
+name: Weekly Supabase database backup
+
+on:
+  schedule:
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: weekly-supabase-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump, encrypt and retain the latest two backups
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required secrets
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          test -n "$SUPABASE_DB_URL" || { echo "::error::Add the SUPABASE_DB_URL repository secret."; exit 1; }
+          test -n "$BACKUP_ENCRYPTION_PASSPHRASE" || { echo "::error::Add the BACKUP_ENCRYPTION_PASSPHRASE repository secret."; exit 1; }
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.81.3
+
+      - name: Create logical database dump
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          supabase db dump --db-url "$SUPABASE_DB_URL" --role-only --file backup/roles.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" --file backup/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" --data-only --use-copy \
+            --exclude storage.buckets_vectors --exclude storage.vector_indexes \
+            --file backup/data.sql
+          test -s backup/roles.sql
+          test -s backup/schema.sql
+          test -s backup/data.sql
+          tar -czf supabase-db-backup.tar.gz -C backup .
+          sha256sum supabase-db-backup.tar.gz > supabase-db-backup.sha256
+
+      - name: Encrypt backup before artifact upload
+        env:
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "$BACKUP_ENCRYPTION_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 \
+            --output supabase-db-backup.tar.gz.gpg supabase-db-backup.tar.gz
+          rm -rf backup supabase-db-backup.tar.gz
+
+      - name: Upload encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-db-backup-${{ github.run_id }}
+          path: |
+            supabase-db-backup.tar.gz.gpg
+            supabase-db-backup.sha256
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Retain only the latest two backups
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 }
+            );
+            const backups = artifacts
+              .filter((artifact) => artifact.name.startsWith("supabase-db-backup-") && !artifact.expired)
+              .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+            for (const artifact of backups.slice(2)) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+            }
