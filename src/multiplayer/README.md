@@ -245,12 +245,15 @@ responses cannot update a stopped watcher.
 ## Server and Supabase prerequisites
 
 The canonical shared room lifecycle SQL is
-`supabase/sql/universal_lobby_reaction_rush.sql`. Reaction Rush owns interrupted-match cleanup through
-`supabase/sql/reaction_rush_room_lifecycle.sql`; Brain Battle owns its cleanup hook in
-`supabase/sql/brain_battle_multiplayer.sql`. The shared Multiplayer action RPC does not directly access game-specific match tables. Its
-`public.multiplayer_execute_action` definition is deployed in Production and
-is the authoritative implementation for room creation, game selection,
-readiness, membership, heartbeat and shared room transitions.
+`supabase/sql/universal_lobby_reaction_rush.sql`. The AI branch now moves
+Reaction Rush interrupted-match cleanup into its own hook in
+`supabase/sql/reaction_rush_room_lifecycle.sql`; Brain Battle already owns its
+cleanup hook in `supabase/sql/brain_battle_multiplayer.sql`. The updated shared
+Multiplayer action RPC no longer directly accesses game-specific match tables.
+This refactor is not yet deployed: Production still runs the previous RPC until
+the AI-branch SQL changes are promoted and applied together. The Production
+`public.multiplayer_execute_action` remains authoritative for room creation,
+game selection, readiness, membership, heartbeat and shared room transitions.
 
 Room-maintenance helpers are kept separately in
 `supabase/sql/multiplayer_room_maintenance.sql`. In particular,
