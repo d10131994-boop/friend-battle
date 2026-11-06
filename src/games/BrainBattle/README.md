@@ -11,13 +11,13 @@ Multiplayer uses the shared Multiplayer Core and Database module:
 
 - Universal rooms support 2–4 players.
 - The host selects Brain Battle and starts a match after every player is ready.
-- The server selects and stores ten questions for each match. Correct answers
-  and explanations are never returned to clients.
+- The server selects and stores ten questions from a 20-question bank for each match. A rematch excludes the immediately previous match's question IDs, so it uses a different set. Correct answers and explanations are never returned to clients.
 - The server validates each answer, response time, and score.
 - A question advances as soon as every active player has answered, or when its
   15-second deadline expires. Missing answers are recorded as skips.
 - The highest total score wins. A tie has no winner.
 - Match wins and match counts are recorded in the common room statistics.
+- After a completed match, the shared Multiplayer Core opens a 60-second unanimous rematch vote. An approved rematch starts Brain Battle again with a fresh question set and without selecting the game again.
 - Leaving a room during a match cancels that match through the shared room
   lifecycle. Remaining players return to the room lobby.
 

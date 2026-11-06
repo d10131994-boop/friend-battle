@@ -3,12 +3,12 @@ name: CI
 on:
   push:
     branches:
-      - '**-AI*'
+      - '**/*-AI'
   pull_request:
     branches:
       - main
-      - friend-battle-01-release
-      - 'friend-battle-01/**'
+      - friend-battle-03-release
+      - 'friend-battle-03/**'
   workflow_dispatch:
 
 permissions:
@@ -19,8 +19,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build and lint common modules
+  build-and-lint:
+    name: Production build and full source lint
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -29,27 +29,88 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Production build
         run: npm run build
 
-      - name: Lint common modules
-        shell: bash
-        run: |
-          paths=()
-          for path in src/database src/multiplayer; do
-            if [ -d "$path" ]; then
-              paths+=("$path")
-            fi
-          done
+      - name: Lint all source
+        run: npm run lint
 
-          if [ "${#paths[@]}" -gt 0 ]; then
-            npx eslint "${paths[@]}"
-          else
-            echo "No common modules are present yet; scoped lint is skipped."
-          fi
+      - name: Check patch whitespace
+        run: git diff --check
+
+  edge-functions:
+    name: Check Supabase Edge Functions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check Edge Functions
+        run: |
+          deno check --node-modules-dir=auto supabase/functions/multiplayer/index.ts
+          deno check --node-modules-dir=auto supabase/functions/reaction-rush/index.ts
+          deno check --node-modules-dir=auto supabase/functions/brain-battle/index.ts
+          deno check --node-modules-dir=auto supabase/functions/no-count-it/index.ts
+          deno test supabase/functions/_shared/errors_test.ts
+          deno test supabase/functions/brain-battle/questions_test.ts
+
+  sql-syntax:
+    name: Parse PostgreSQL SQL patches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PostgreSQL parser
+        run: python -m pip install --disable-pip-version-check pglast
+
+      - name: Parse SQL patches
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from pglast import parse_sql
+
+          files = sorted([*Path("supabase/sql").rglob("*.sql"), *Path("supabase/tests").rglob("*.sql")])
+          if not files:
+              raise SystemExit("No SQL files found under supabase/sql or supabase/tests")
+
+          failed = False
+          for path in files:
+              try:
+                  parse_sql(path.read_text(encoding="utf-8"))
+                  print(f"OK {path}")
+              except Exception as error:
+                  failed = True
+                  print(f"ERROR {path}: {error}")
+
+          # Enforce the module ownership boundary: shared Multiplayer room
+          # transitions must not query or mutate game-specific match tables.
+          shared_sql = Path("supabase/sql/universal_lobby_reaction_rush.sql").read_text(encoding="utf-8")
+          start = shared_sql.index("CREATE OR REPLACE FUNCTION public.multiplayer_execute_action")
+          end = shared_sql.index("CREATE OR REPLACE FUNCTION public.reaction_rush_start_match", start)
+          shared_rpc = shared_sql[start:end]
+          forbidden = ("games_reaction_rush_", "games_brain_battle_")
+          for table_prefix in forbidden:
+              if table_prefix in shared_rpc:
+                  failed = True
+                  print(f"ERROR shared Multiplayer RPC references game-owned table prefix: {table_prefix}")
+
+          if failed:
+              raise SystemExit(1)
+          PY

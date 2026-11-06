@@ -51,11 +51,9 @@ export default function ReactionRushMultiplayer({
   const [showFinalResults, setShowFinalResults] = useState(true)
   const [realtimeStatus, setRealtimeStatus] = useState('Подключаемся...')
   const [leaderboard, setLeaderboard] = useState<Array<{
-    user_id: string
     display_name: string
     wins: number
     matches_played: number
-    total_taps: number
     best_match_score: number
   }>>([])
   const [showLeaderboard, setShowLeaderboard] = useState(false)
@@ -79,8 +77,10 @@ export default function ReactionRushMultiplayer({
     }
   }, [])
 
+  const roomId = room?.roomId
+
   const refreshMatch = useCallback(async () => {
-    if (!room?.roomId) return
+    if (!roomId) return
     const response = await invokeGame<{
       room: MultiplayerRoom
       match: ReactionRushMatch | null
@@ -92,7 +92,7 @@ export default function ReactionRushMultiplayer({
     } else if (response.match?.status === 'completed') {
       setShowFinalResults(true)
     }
-  }, [room?.roomId, invokeGame, acceptRoom])
+  }, [roomId, invokeGame, acceptRoom])
 
   useEffect(() => {
     if (!room?.roomId || !auth.initData) return
@@ -118,15 +118,20 @@ export default function ReactionRushMultiplayer({
 
   useEffect(() => {
     if (!room?.roomId || room.status === 'cancelled') return
-    void refreshMatch().catch((error: unknown) => {
-      setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.'))
-    })
+    const initialRefresh = window.setTimeout(() => {
+      void refreshMatch().catch((error: unknown) => {
+        setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.'))
+      })
+    }, 0)
     const timer = window.setInterval(() => {
       void refreshMatch().catch((error: unknown) => {
         setMessage(getErrorMessage(error, 'Не удалось обновить состояние матча.'))
       })
     }, 1200)
-    return () => window.clearInterval(timer)
+    return () => {
+      window.clearTimeout(initialRefresh)
+      window.clearInterval(timer)
+    }
   }, [room?.roomId, room?.status, refreshMatch])
 
   useEffect(() => {
@@ -495,7 +500,7 @@ export default function ReactionRushMultiplayer({
           <h2>ЛИДЕРБОРД REACTION RUSH</h2>
           {leaderboard.length === 0 && <p>Пока нет завершённых матчей.</p>}
           {leaderboard.map((player, index) => (
-            <p key={player.user_id}>
+            <p key={`${player.display_name}-${index}`}>
               {index + 1}. {player.display_name} — {player.wins} побед · лучший счёт {player.best_match_score}
             </p>
           ))}

@@ -7,6 +7,7 @@ This document describes the shared rules for game modules in Friend Battle. It i
 The current game directories use PascalCase:
 - `src/games/BrainBattle/`
 - `src/games/ReactionRush/`
+- `src/games/NoCountIt/`
 
 Each game currently owns its screens/components, game-specific state and logic, and (where implemented) its game-specific multiplayer UI and data contract. There is no shared generic game engine or game UI framework in `src/games` that a new game must extend. Do not invent a global registry, base class or generic game controller without a concrete requirement.
 
@@ -189,3 +190,18 @@ When documenting behavior, distinguish:
 - actual current client/server implementation;
 - SQL patches that conflict or may not be deployed;
 - tests that were actually run.
+
+
+## 11. Shared room UI and match-only game screens
+
+The shared application room experience is owned by `src/menus/MultiplayerRoomMenu.tsx`. It creates/joins the room, selects the game, manages common readiness and host-only start, and owns the room Realtime session and common player/stat display.
+
+A multiplayer game screen is mounted with an existing `MultiplayerRoom` and receives:
+- `initData`;
+- `room`;
+- `startRequested`;
+- `onRoomUpdate(room)`;
+- `onReturnToRoom()`;
+- `onStartRequestHandled()`.
+
+The game screen owns its game-specific match snapshot, gameplay actions, timer, scoring display and results. It must not recreate or leave the shared room, select a game, toggle common readiness, or build a second generic room UI. Keep these operations in the menus layer. The current implementation has match-only components `BrainBattleMatch` and `ReactionRushMatch`; the older room components remain in the tree as legacy code and are no longer routed by `App.tsx`.

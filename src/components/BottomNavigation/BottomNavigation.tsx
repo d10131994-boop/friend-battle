@@ -1,14 +1,12 @@
 type BottomNavigationProps = {
-  activeTab: 'games' | 'rating' | 'profile'
+  activeTab: 'games' | 'profile'
   onGames: () => void
-  onRating: () => void
   onProfile: () => void
 }
 
 function BottomNavigation({
   activeTab,
   onGames,
-  onRating,
   onProfile,
 }: BottomNavigationProps) {
   return (
@@ -18,13 +16,6 @@ function BottomNavigation({
         onClick={onGames}
       >
         ⚔️<span>Игры</span>
-      </button>
-
-      <button
-        className={`nav-item ${activeTab === 'rating' ? 'active' : ''}`}
-        onClick={onRating}
-      >
-        🏆<span>Рейтинг</span>
       </button>
 
       <button
