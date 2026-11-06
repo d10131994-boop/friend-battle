@@ -31,19 +31,18 @@ BEGIN
   WHERE id = p_room_id
   FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
-  IF v_room.status <> 'playing' THEN
-    RAISE EXCEPTION 'Match is no longer active' USING ERRCODE = '55000';
-  END IF;
 
   SELECT * INTO v_match
   FROM public.games_brain_battle_matches
   WHERE id = p_match_id AND room_id = p_room_id
   FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Match not found' USING ERRCODE = 'P0002'; END IF;
+  -- Preserve idempotent reads for completed/cancelled matches even though the
+  -- shared room is no longer in the playing state.
   IF v_match.status <> 'playing' THEN
     RETURN pg_catalog.jsonb_build_object('status', v_match.status, 'matchFinished', v_match.status = 'completed');
   END IF;
-  IF v_room.started_at IS DISTINCT FROM v_match.started_at THEN
+  IF v_room.status <> 'playing' OR v_room.started_at IS DISTINCT FROM v_match.started_at THEN
     RAISE EXCEPTION 'Match is no longer active' USING ERRCODE = '55000';
   END IF;
 
