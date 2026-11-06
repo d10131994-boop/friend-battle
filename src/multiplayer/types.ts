@@ -3,6 +3,7 @@
 export type MultiplayerGameId =
   | 'reaction-rush'
   | 'brain-battle'
+  | 'no-count-it'
   | (string & {})
 
 export type MultiplayerRoomStatus =

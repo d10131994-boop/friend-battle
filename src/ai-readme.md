@@ -225,6 +225,7 @@ DROP, TRUNCATE, массовый DELETE и другие необратимые �
 | `src/games/ai-readme.md` | Общая архитектура игровых модулей, разделение solo/multiplayer, интеграция с Multiplayer/Database и правила создания игр. |
 | `src/games/BrainBattle/ai-readme.md` | Реализация Brain Battle: solo и multiplayer, вопросы, серверные действия, scoring, результаты и известные ограничения. |
 | `src/games/ReactionRush/ai-readme.md` | Реализация Reaction Rush: solo и multiplayer, раунды, taps, scoring, leaderboard и известные ограничения. |
+| `src/games/NoCountIt/ai-readme.md` | Реализация NoCountIt: multiplayer-раунды, генерация сцен, серверная оценка, Storage и ограничения. |
 
 ### Порядок чтения
 
