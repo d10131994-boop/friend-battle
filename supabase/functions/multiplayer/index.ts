@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { sqlErrorResponse } from "../_shared/errors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -209,13 +210,14 @@ Deno.serve(async (req: Request) => {
     });
 
     if (error) {
-      console.warn("Multiplayer action rejected:", action, error.code, error.message);
-      if (error.code === "P0002") return fail("Комната не найдена", 404);
-      if (error.code === "42501") return fail("Недостаточно прав для этой операции", 403);
-      if (error.code === "23505") return fail("Игрок уже состоит в комнате", 409);
-      if (error.code === "55000" || error.code === "54000") return fail(error.message, 409);
-      if (error.code === "22023") return fail(error.message, 400);
-      return fail("Не удалось выполнить действие с комнатой", 500);
+      return sqlErrorResponse(error, corsHeaders, {
+        operation: `multiplayer:${action}`,
+        fallbackMessage: "Не удалось выполнить действие с комнатой",
+        messages: {
+          P0002: "Комната не найдена",
+          23505: "Игрок уже состоит в комнате",
+        },
+      });
     }
 
     if (action === "get_room_token") {
