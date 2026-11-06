@@ -105,8 +105,6 @@ All three game/server Edge Functions use `supabase/functions/_shared/errors.ts` 
 
 The database adapter validates the Edge Function response before exposing it as a `MultiplayerRoom`, heartbeat result or room token. It rejects unknown statuses, malformed timestamps, invalid player fields and malformed token responses. Do not bypass these parsers or cast untrusted function responses directly to domain types.
 
-The database adapter validates the Edge Function response before exposing it as a `MultiplayerRoom`, heartbeat result or room token. It rejects unknown statuses, malformed timestamps, invalid player fields and malformed token responses. Do not bypass these parsers or cast untrusted function responses directly to domain types.
-
 ## 7. Canonical SQL implementation and maintenance functions
 
 The canonical shared room lifecycle implementation is `supabase/sql/universal_lobby_reaction_rush.sql`. It defines `public.multiplayer_execute_action` and the shared room snapshot, including:
