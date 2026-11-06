@@ -45,7 +45,7 @@ BEGIN
     ) ORDER BY question_number
   )
   INTO v_questions
-  FROM generate_series(1, 10) AS question_number;
+  FROM generate_series(1, 10) AS series(question_number);
 
   -- First match: Host wins.
   v_started := public.brain_battle_start_match(v_room_id, v_host, v_questions);
@@ -55,10 +55,10 @@ BEGIN
     match_id, room_id, user_id, question_index, selected_answer,
     is_correct, response_time_ms, score
   )
-  SELECT v_match_id, v_room_id, p.user_id, question_index, 0,
+  SELECT v_match_id, v_room_id, p.user_id, series.question_index, 0,
          true, 1000, CASE WHEN p.user_id = v_host THEN 150 ELSE 100 END
   FROM public.common_multiplayer_players p
-  CROSS JOIN generate_series(0, 9) AS question_index
+  CROSS JOIN generate_series(0, 9) AS series(question_index)
   WHERE p.room_id = v_room_id;
 
   UPDATE public.games_brain_battle_matches
@@ -101,7 +101,7 @@ BEGIN
     ) ORDER BY question_number
   )
   INTO v_questions
-  FROM generate_series(1, 10) AS question_number;
+  FROM generate_series(1, 10) AS series(question_number);
 
   v_started := public.brain_battle_start_match(v_room_id, v_host, v_questions);
   v_match_id := (v_started->>'matchId')::uuid;
@@ -110,10 +110,10 @@ BEGIN
     match_id, room_id, user_id, question_index, selected_answer,
     is_correct, response_time_ms, score
   )
-  SELECT v_match_id, v_room_id, p.user_id, question_index, 0,
+  SELECT v_match_id, v_room_id, p.user_id, series.question_index, 0,
          true, 1000, CASE WHEN p.user_id = v_guest THEN 150 ELSE 100 END
   FROM public.common_multiplayer_players p
-  CROSS JOIN generate_series(0, 9) AS question_index
+  CROSS JOIN generate_series(0, 9) AS series(question_index)
   WHERE p.room_id = v_room_id;
 
   UPDATE public.games_brain_battle_matches
