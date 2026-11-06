@@ -43,6 +43,15 @@ Frontend changes in this audit:
 - The development Realtime smoke test remains manual and does not verify multi-device match lifecycle or network-failure reconnects.
 - No isolated disposable Supabase database is currently wired into CI, so database integration and concurrency tests remain unexecuted automatically.
 
+## Leaderboards
+
+- The product has no global cross-game leaderboard. Leaderboards are game-specific features only.
+- Removed the obsolete global rating screen/navigation and the client call that attempted to write solo scores to the legacy `leaderboard` table.
+- Solo Reaction Rush personal best and rounds remain local to the player's device; they are not submitted to a global ranking.
+- Reaction Rush multiplayer keeps its own `games_reaction_rush_leaderboard`, populated by its game-specific server logic.
+- Production had no legacy `public.leaderboard` table, while the old `save-score` Edge Function still attempted to access it. The client no longer calls this endpoint; Production `save-score` was deployed as a retirement response (HTTP 410, version 21). Its source is preserved at `supabase/functions/save-score/index.ts` on the AI branch.
+- No global leaderboard table was created and no player ranking data was migrated or deleted.
+
 ## Backups
 
 - Added a weekly Sunday 04:00 UTC logical database backup workflow.
