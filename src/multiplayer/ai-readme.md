@@ -110,7 +110,7 @@ The database adapter validates the Edge Function response before exposing it as 
 The canonical shared room lifecycle implementation is `supabase/sql/universal_lobby_reaction_rush.sql`. It defines `public.multiplayer_execute_action` and the shared room snapshot, including:
 - creating a room before a game is selected and later selecting an enabled game;
 - room capacity of 2–4 and game-specific min/max player rules;
-- host/readiness checks when starting a match;
+- host/readiness checks for an initial match and unanimous-vote validation for an approved rematch;
 - returning remaining players to the waiting room when someone leaves during play; game-specific match cleanup is delegated to each game's own database hook;
 - room membership checks for member actions and server-only game lifecycle actions.
 
