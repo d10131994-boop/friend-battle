@@ -1,6 +1,7 @@
 -- Shared Multiplayer rematch lifecycle.
 -- Apply after universal_lobby_reaction_rush.sql and brain_battle_multiplayer.sql.
--- Safe to apply once; schema additions are idempotent.
+-- Schema additions are idempotent; function definitions replace the existing
+-- core and game-owned start hooks with their rematch-aware contracts.
 
 ALTER TABLE public.common_multiplayer_rooms
   ADD COLUMN IF NOT EXISTS rematch_status text
@@ -133,6 +134,9 @@ BEGIN
         last_seen_at = pg_catalog.clock_timestamp()
     WHERE room_id = v_room.id AND user_id = p_user_id;
     IF FOUND THEN RETURN public.multiplayer_room_snapshot(v_room.id); END IF;
+    IF v_room.rematch_status = 'open' THEN
+      RAISE EXCEPTION 'Room membership is locked during rematch voting' USING ERRCODE = '55000';
+    END IF;
     SELECT count(*) INTO v_player_count FROM public.common_multiplayer_players WHERE room_id = v_room.id;
     IF v_player_count >= COALESCE(v_room.max_players, 4) THEN
       RAISE EXCEPTION 'Room is full' USING ERRCODE = '54000';
@@ -247,7 +251,7 @@ BEGIN
       END IF;
       RAISE EXCEPTION 'Rematch voting is closed' USING ERRCODE = '55000';
     END IF;
-    IF p_payload->>'vote' NOT IN ('yes', 'no') THEN
+    IF p_payload->>'vote' IS DISTINCT FROM 'yes' AND p_payload->>'vote' IS DISTINCT FROM 'no' THEN
       RAISE EXCEPTION 'vote must be yes or no' USING ERRCODE = '22023';
     END IF;
     INSERT INTO public.common_multiplayer_rematch_votes(room_id, session_started_at, user_id, vote)
@@ -275,8 +279,8 @@ BEGIN
     RETURN public.multiplayer_room_snapshot(v_room_id);
   ELSIF p_action = 'select_game' THEN
     IF NOT v_is_host THEN RAISE EXCEPTION 'Only the host can select a game' USING ERRCODE = '42501'; END IF;
-    IF v_room.status NOT IN ('waiting', 'finished') THEN
-      RAISE EXCEPTION 'Game selection is locked during a match' USING ERRCODE = '55000';
+    IF v_room.status NOT IN ('waiting', 'finished') OR v_room.rematch_status = 'open' THEN
+      RAISE EXCEPTION 'Game selection is locked during a match or rematch vote' USING ERRCODE = '55000';
     END IF;
     v_game_id := pg_catalog.btrim(p_payload->>'gameId');
     IF v_game_id IS NULL OR NOT EXISTS (
@@ -300,6 +304,21 @@ BEGIN
     RETURN public.multiplayer_room_snapshot(v_room_id);
   ELSIF p_action = 'leave_room' THEN
     DELETE FROM public.common_multiplayer_players WHERE room_id = v_room_id AND user_id = p_user_id;
+    IF v_room.status = 'finished' AND v_room.rematch_status = 'open' THEN
+      SELECT NOT EXISTS (
+        SELECT 1 FROM public.common_multiplayer_players p
+        LEFT JOIN public.common_multiplayer_rematch_votes v
+          ON v.room_id = p.room_id
+         AND v.session_started_at = v_room.started_at
+         AND v.user_id = p.user_id
+         AND v.vote = 'yes'
+        WHERE p.room_id = v_room_id AND v.user_id IS NULL
+      ) INTO v_all_yes;
+      IF v_all_yes THEN
+        UPDATE public.common_multiplayer_rooms SET rematch_status = 'accepted'
+        WHERE id = v_room_id AND rematch_status = 'open';
+      END IF;
+    END IF;
     IF v_room.status = 'playing' THEN
       UPDATE public.common_multiplayer_rooms
       SET status = 'waiting', game_id = NULL, started_at = NULL, finished_at = NULL
@@ -469,6 +488,7 @@ BEGIN
   );
 END;
 $function$;
+
 
 REVOKE ALL ON FUNCTION public.reaction_rush_start_match(uuid, text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.brain_battle_start_match(uuid, text, jsonb) FROM PUBLIC, anon, authenticated;
