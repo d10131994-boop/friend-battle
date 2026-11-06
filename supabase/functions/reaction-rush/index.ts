@@ -149,6 +149,7 @@ Deno.serve(async (req: Request) => {
         p_room_id: roomId,
         p_match_id: matchId,
         p_round_number: roundNumber,
+        p_user_id: telegramId,
       });
       if (error) return errorResponse(error);
       await broadcast(supabase, roomId, data?.matchFinished ? "match_finished" : "round_finished", data);
