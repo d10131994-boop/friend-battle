@@ -101,13 +101,9 @@ The reviewed Multiplayer Edge Function explicitly broadcasts only `room_updated`
 
 ## 6. Error handling
 
-The Edge Function maps known SQL error codes to HTTP responses:
-- `P0002` → 404 room not found;
-- `42501` → 403 permission/membership failure;
-- `23505` → 409 duplicate membership;
-- `55000` and `54000` → 409 lifecycle/capacity conflict;
-- `22023` → 400 invalid input/action;
-- other SQL errors → generic 500.
+All three game/server Edge Functions use `supabase/functions/_shared/errors.ts` for SQL error mapping. Expected PostgreSQL business errors map to stable HTTP statuses (404, 403, 409 or 400); raw PostgreSQL messages and codes are not returned to clients. Unknown database failures return a generic 500 and are logged with operation and SQLSTATE only. A function may override a safe, user-facing message for a known code without changing its HTTP status.
+
+The database adapter validates the Edge Function response before exposing it as a `MultiplayerRoom`, heartbeat result or room token. It rejects unknown statuses, malformed timestamps, invalid player fields and malformed token responses. Do not bypass these parsers or cast untrusted function responses directly to domain types.
 
 The database adapter validates the Edge Function response before exposing it as a `MultiplayerRoom`, heartbeat result or room token. It rejects unknown statuses, malformed timestamps, invalid player fields and malformed token responses. Do not bypass these parsers or cast untrusted function responses directly to domain types.
 
@@ -138,6 +134,7 @@ The SQL directory contains explicit SQL patches and snapshots, not a fully repro
 - Use the room snapshot as canonical state. Treat Realtime messages as invalidation signals and fetch a fresh snapshot after subscription/reconnect.
 - Keep operations retry-safe and do not assume a Broadcast was delivered just because a database mutation succeeded.
 - `src/multiplayer/DevSmokeTest.tsx` is a temporary development-only smoke surface gated by Vite development mode and `?multiplayer-smoke=1`. It exercises room creation, token issuance, private Realtime subscription, initial snapshot and a readiness Broadcast. It is not a complete multiplayer integration test and does not verify multi-device joining, match start/finish, leave semantics or reconnect under real network failure.
+- Deno unit tests for pure Edge Function helpers live beside the functions (for example, `supabase/functions/_shared/errors_test.ts`) and run in CI. Database lifecycle integration tests must run against an isolated local/test database, never as part of a production deploy workflow. See `supabase/tests/README.md` for the current test layers and limitations.
 - Do not claim live Supabase integration, deployment, or end-to-end behavior has been verified unless the corresponding test was actually run against the target environment.
 
 ## 9. Change discipline
