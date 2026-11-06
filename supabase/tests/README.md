@@ -15,7 +15,7 @@ This directory is reserved for database-level integration tests. Tests here must
 - Only the host can select a game, close a room or start a match.
 - Room membership and game lifecycle transitions are serialized with a consistent room-first lock order.
 - A stale match/session identifier cannot finish or mutate a newer room session.
-- Leaving during a match follows the shared room lifecycle contract and cancels game-specific active state.
+- Leaving during a match follows the shared room lifecycle contract; each game module's own database hook cancels or cleans its active match state without direct game-table access from Multiplayer.
 - A finished/cancelled room cleanup cascades to game-specific rows.
 - Repeated requests are idempotent where the public API promises retry safety.
 - Game-specific match state remains owned by the game module; Multiplayer must not query game-specific tables directly.
