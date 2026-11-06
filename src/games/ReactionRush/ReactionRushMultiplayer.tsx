@@ -285,7 +285,7 @@ export default function ReactionRushMultiplayer({
     }
   }
 
-  async function startMatch() {
+  const startMatch = useCallback(async () => {
     if (!room) return
     setLoading(true)
     setMessage('')
@@ -308,13 +308,18 @@ export default function ReactionRushMultiplayer({
         myScore: 0,
       })
       finishRequestedRef.current = null
+      rematchStartRequestedRef.current = null
       acceptRoom(started.room)
     } catch (error) {
       setMessage(getErrorMessage(error, 'Не удалось начать матч.'))
+      if (room.rematchStatus === 'accepted') {
+        rematchStartRequestedRef.current = null
+        void refreshMatch().catch(() => undefined)
+      }
     } finally {
       setLoading(false)
     }
-  }
+  }, [room, invokeGame, acceptRoom, refreshMatch])
 
   async function tap() {
     if (!room || !match || match.status !== 'playing' || room.status !== 'playing' || remaining <= 0) return
@@ -385,7 +390,7 @@ export default function ReactionRushMultiplayer({
     if (rematchStartRequestedRef.current === sessionKey) return
     rematchStartRequestedRef.current = sessionKey
     void startMatch()
-  }, [room?.status, room?.rematchStatus, room?.startedAt, isHost])
+  }, [room?.status, room?.rematchStatus, room?.startedAt, isHost, startMatch])
 
   return (
     <main className="app">
