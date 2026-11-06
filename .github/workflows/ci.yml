@@ -58,9 +58,9 @@ jobs:
 
       - name: Type-check Edge Functions
         run: |
-          deno check supabase/functions/multiplayer/index.ts
-          deno check supabase/functions/reaction-rush/index.ts
-          deno check supabase/functions/brain-battle/index.ts
+          deno check --node-modules-dir=auto supabase/functions/multiplayer/index.ts
+          deno check --node-modules-dir=auto supabase/functions/reaction-rush/index.ts
+          deno check --node-modules-dir=auto supabase/functions/brain-battle/index.ts
 
   sql-syntax:
     name: Parse PostgreSQL SQL patches
