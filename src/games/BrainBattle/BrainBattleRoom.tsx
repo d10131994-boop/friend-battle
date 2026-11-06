@@ -69,6 +69,7 @@ export default function BrainBattleRoom({
   const [showFinalResults, setShowFinalResults] = useState(true)
   const [realtimeStatus, setRealtimeStatus] = useState('Подключаемся...')
   const sessionRef = useRef<ReturnType<typeof createMultiplayerRoomSession> | null>(null)
+  const rematchStartRequestedRef = useRef<string | null>(null)
   const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
 
   const invokeGame = useCallback(async <T,>(body: Record<string, unknown>): Promise<T> => {
@@ -229,6 +230,20 @@ export default function BrainBattleRoom({
     }
   }
 
+  async function voteRematch(vote: 'yes' | 'no') {
+    if (!room) return
+    setLoading(true)
+    setMessage('')
+    try {
+      const updated = await multiplayer.voteRematch(auth, { roomId: room.roomId, vote })
+      acceptRoom(updated)
+    } catch (error) {
+      setMessage(getErrorMessage(error, 'Не удалось отправить голос за реванш.'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function startMatch() {
     if (!room) return
     setLoading(true)
@@ -315,6 +330,16 @@ export default function BrainBattleRoom({
     remaining > 0,
   )
   const results = match?.finalResults ?? []
+  const rematchYesVotes = room?.rematchVotes.filter((vote) => vote.vote === 'yes').length ?? 0
+  const myRematchVote = room?.rematchVotes.find((vote) => vote.userId === telegramId)?.vote
+
+  useEffect(() => {
+    if (!room || room.status !== 'finished' || room.rematchStatus !== 'accepted' || !isHost) return
+    const sessionKey = room.startedAt ?? room.roomId
+    if (rematchStartRequestedRef.current === sessionKey) return
+    rematchStartRequestedRef.current = sessionKey
+    void startMatch()
+  }, [room?.status, room?.rematchStatus, room?.startedAt, isHost])
 
   return (
     <main className="app">
@@ -383,6 +408,20 @@ export default function BrainBattleRoom({
                   ))}
                   <p>{match.winnerUserId ? 'Победитель получает победу в счёте комнаты!' : 'Ничья! В этот раз без победителя.'}</p>
                   <button className="invite-button" onClick={() => setShowFinalResults(false)}>ЗАКРЫТЬ РЕЗУЛЬТАТЫ</button>
+                  {room.rematchStatus === 'open' && (
+                    <>
+                      <p>Реванш: {rematchYesVotes} из {room.players.length} игроков согласились. Голосование до {room.rematchDeadlineAt ? new Date(room.rematchDeadlineAt).toLocaleTimeString() : 'окончания 60 секунд'}.</p>
+                      {myRematchVote ? <p>Твой голос: {myRematchVote === 'yes' ? 'ЗА' : 'ПРОТИВ'}</p> : (
+                        <>
+                          <button className="play-button" onClick={() => void voteRematch('yes')} disabled={loading}>ДА, РЕВАНШ!</button>
+                          <button className="invite-button" onClick={() => void voteRematch('no')} disabled={loading}>НЕТ, ЗАКОНЧИТЬ</button>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {(room.rematchStatus === 'declined' || room.rematchStatus === 'expired') && (
+                    <p>Реванш отменён. Все игроки остаются в комнате — можно подготовить новую игру.</p>
+                  )}
                 </section>
               )}
 
@@ -412,13 +451,13 @@ export default function BrainBattleRoom({
                     <button className="invite-button" onClick={() => void toggleReady()} disabled={loading}>
                       {me?.isReady ? 'ОТМЕНИТЬ ГОТОВНОСТЬ' : 'Я ГОТОВ 🧠'}
                     </button>
-                    {isHost ? (
+                    {room.rematchStatus !== 'open' && (isHost ? (
                       <button className="play-button" onClick={() => void startMatch()} disabled={loading || !canStart}>
-                        {room.status === 'finished' ? 'НАЧАТЬ РЕВАНШ' : 'НАЧАТЬ БИТВУ'}
+                        НАЧАТЬ БИТВУ
                       </button>
                     ) : (
                       <p>Ожидаем, пока ведущий начнёт матч.</p>
-                    )}
+                    ))}
                     {room.players.length < 2 && <p>Для начала битвы нужен хотя бы ещё один игрок.</p>}
                     {room.players.length >= 2 && !allReady && <p>Все игроки должны подтвердить готовность.</p>}
                   </>
