@@ -158,6 +158,13 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "get_match") {
+      const { error: roomError } = await supabase.rpc("multiplayer_execute_action", {
+        p_action: "get_room",
+        p_user_id: telegramId,
+        p_display_name: displayName,
+        p_payload: { roomId },
+      });
+      if (roomError) return errorResponse(roomError);
       const { data, error } = await supabase.rpc("reaction_rush_match_snapshot", {
         p_room_id: roomId,
         p_user_id: telegramId,
