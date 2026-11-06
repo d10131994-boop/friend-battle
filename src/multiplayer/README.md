@@ -126,6 +126,22 @@ players, and start another session in the same room. `cancelled` is the
 terminal room state. Leaving by the last player, host closure, or idle
 cleanup can cancel a room even after a game session has finished.
 
+## Standard rematch lifecycle
+
+The shared game-rule row has a `lifecycle_mode` setting:
+
+- `default`: after the trusted game server finishes a match, the room opens a 60-second rematch vote;
+- `custom`: the Multiplayer Core does not open a standard vote; the game module owns its custom post-match flow;
+- `disabled`: no rematch flow is offered.
+
+For `default`, every current room member must vote yes. One no vote declines the rematch; unanswered votes expire at the deadline. While voting is open, new members cannot join and the selected game cannot be changed. Existing members can reconnect, and members can leave. The vote is tied to the exact completed session.
+
+When every remaining member has voted yes, the room snapshot reports `rematchStatus: accepted`. The host client then triggers the selected game's trusted start action. Multiplayer validates the accepted vote and starts the same selected game without another readiness round or game selection. The game module creates its own new match state. Vote rows are removed when the new session starts.
+
+The public room snapshot includes `rematchStatus`, `rematchDeadlineAt`, and `rematchVotes`. Player clients submit a vote through `voteRematch(auth, { roomId, vote: 'yes' | 'no' })`.
+
+Current Brain Battle uses a 20-question server-side bank and selects ten questions for each match while excluding the immediately previous match's question IDs. Current Reaction Rush creates a new game-owned match record.
+
 ## Room lifecycle and reconnect
 
 - Creating a room inserts the creator as its first player and host.
