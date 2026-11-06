@@ -3,7 +3,7 @@ name: AI branch build
 on:
   push:
     branches:
-      - '**-AI*'
+      - '**-AI'
   workflow_dispatch:
 
 permissions:
