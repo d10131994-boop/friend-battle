@@ -195,7 +195,7 @@ export default function NoCountItMatch({
 
           {(currentRound.status === 'showing' || currentRound.status === 'answering' || isReveal) && (
             <section className="game-card">
-              {currentRound.imageUrl && (
+              {currentRound.status === 'showing' && currentRound.imageUrl && (
                 <img src={currentRound.imageUrl} alt="Банка с конфетами" style={{ width: '100%', maxWidth: 420, display: 'block', margin: '0 auto' }} />
               )}
               <h2>Сколько конфет цвета «{currentRound.targetColor ?? '…'}»?</h2>
