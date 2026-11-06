@@ -185,6 +185,30 @@ BEGIN
   IF v_room->>'rematchStatus' IS NOT NULL OR v_room->>'rematchDeadlineAt' IS NOT NULL THEN
     RAISE EXCEPTION 'Disabled lifecycle must not open a standard rematch vote';
   END IF;
+
+  -- Custom mode delegates post-match behavior to the game module.
+  UPDATE public.common_multiplayer_game_rules SET lifecycle_mode = 'custom'
+  WHERE game_id = 'reaction-rush';
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_host || '_disabled', 'Host',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_guest || '_disabled', 'Guest',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  v_room := public.multiplayer_execute_action(
+    'start_game', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush')
+  );
+  v_started_at := v_room->>'startedAt';
+  v_room := public.multiplayer_execute_action(
+    'finish_game', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush', 'startedAt', v_started_at)
+  );
+  IF v_room->>'rematchStatus' IS NOT NULL OR v_room->>'rematchDeadlineAt' IS NOT NULL THEN
+    RAISE EXCEPTION 'Custom lifecycle must not open the standard Multiplayer vote';
+  END IF;
 END;
 $test$;
 
