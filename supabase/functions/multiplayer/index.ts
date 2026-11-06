@@ -8,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const JWT_KEY_ID = "d27b354d-84aa-4d2a-864e-e953408cb575";
-const TOKEN_LIFETIME_SECONDS = 3600;
+const TOKEN_LIFETIME_SECONDS = 600;
 const GAME_SERVER_USER_ID = "__game_server__";
 
 type TelegramUser = { id: number; first_name?: string; username?: string };
