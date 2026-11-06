@@ -89,7 +89,7 @@ Use `createMultiplayerRoomSession` when a screen needs a managed room connection
 - a `createRoomWatcher` subscription;
 - cleanup of timers, visibility listener and watcher on stop.
 
-Only one room session can be active at a time on the shared Realtime client. Tokens are cached in memory by room ID; they are not persisted to browser storage. Heartbeats are skipped while the document is hidden. On visibility return, the session sends a heartbeat and checks the token. A `cancelled` room snapshot stops the session. A `finished` snapshot does not stop it, because the room can be reused.
+Only one room session can be active at a time on the shared Realtime client. Tokens are cached in memory by the pair of room ID and verified Telegram user ID; they are not persisted to browser storage. The cache entry is cleared when the room session stops. Heartbeats are skipped while the document is hidden. On visibility return, the session sends a heartbeat and checks the token. A `cancelled` room snapshot stops the session. A `finished` snapshot does not stop it, because the room can be reused.
 
 The Edge Function issues an ES256 JWT with `role: authenticated`, `sub`, `telegram_id` and `room_id` claims, a one-hour lifetime and a configured key ID. Install it using `database.realtime.setAuth(accessToken)` before subscribing to the private topic `room:<roomId>`.
 
