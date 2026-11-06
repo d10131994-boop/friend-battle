@@ -99,19 +99,22 @@ export default function NoCountItMatch({
   const roundReady = readyRoundKey === roundKey
   const answerInput = answerDraft.roundKey === roundKey ? answerDraft.value : ''
 
+  const showStartedAt = currentRound?.showStartedAt ?? null
+  const answerDeadline = currentRound?.answerDeadline ?? null
+
   useEffect(() => {
-    if (!currentRound) return
+    if (!showStartedAt && !answerDeadline) return
     const update = () => {
       const now = Date.now()
-      const showAt = currentRound.showStartedAt ? Date.parse(currentRound.showStartedAt) : null
-      const deadline = currentRound.answerDeadline ? Date.parse(currentRound.answerDeadline) : null
+      const showAt = showStartedAt ? Date.parse(showStartedAt) : null
+      const deadline = answerDeadline ? Date.parse(answerDeadline) : null
       setImageRemaining(showAt ? Math.max(0, Math.ceil((showAt + 5000 - now) / 1000)) : 0)
       setRemaining(deadline ? Math.max(0, Math.ceil((deadline - now) / 1000)) : 0)
     }
     update()
     const timer = window.setInterval(update, 100)
     return () => window.clearInterval(timer)
-  }, [currentRound?.status, currentRound?.showStartedAt, currentRound?.answerDeadline])
+  }, [showStartedAt, answerDeadline])
 
   async function submitAnswer() {
     if (!match || !currentRound || currentRound.status !== 'answering' ||
