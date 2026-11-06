@@ -155,7 +155,7 @@ export default function NoCountItMatch({
     setAnswerDraft({ roundKey, value: answerInput + digit })
   }
 
-  const isFinished = match?.status === 'completed' || match?.status === 'technical_aborted'
+  const isFinished = match?.status === 'completed' || match?.status === 'technical_aborted' || match?.status === 'cancelled'
   const isReveal = currentRound?.status === 'revealing' || currentRound?.status === 'completed'
 
   return (
@@ -246,10 +246,12 @@ export default function NoCountItMatch({
 
       {isFinished && match && (
         <section className="game-card">
-          <h2>{match.status === 'technical_aborted' ? 'НЕ УДАЛОСЬ ПОДГОТОВИТЬ РАУНД' : 'МАТЧ ЗАВЕРШЁН'}</h2>
+          <h2>{match.status === 'technical_aborted' ? 'НЕ УДАЛОСЬ ПОДГОТОВИТЬ РАУНД' : match.status === 'cancelled' ? 'МАТЧ ПРЕРВАН' : 'МАТЧ ЗАВЕРШЁН'}</h2>
           {match.status === 'technical_aborted'
             ? <p>Никто не успел подготовить изображение. Ошибки не начислены, комната сохранена.</p>
-            : <>
+            : match.status === 'cancelled'
+              ? <p>Игрок покинул комнату, и матч был прерван. Комната остаётся доступной.</p>
+              : <>
               {match.finalResults?.map((player) => (
                 <p key={player.userId}>{player.userId === match.winnerUserId ? '🏆 ' : ''}{player.displayName}: <strong>{player.totalError}</strong> ошибок</p>
               ))}
