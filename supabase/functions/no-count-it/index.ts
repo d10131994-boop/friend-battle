@@ -197,7 +197,6 @@ Deno.serve(async(req:Request)=>{
     const {data:signed,error:signedError}=await db.storage.from("no-count-it-scenes").createSignedUrl(current.round.imagePath,600);
     if(!signedError&&signed?.signedUrl){current.round.imageUrl=signed.signedUrl;delete current.round.imagePath;}
   }
-  await broadcast(db,roomId,"round_updated");
   return respond({room:latest.room??room,match:current??null});
  }catch(error){
   console.error("NoCountIt function error",error instanceof Error?error.message:"Unknown error");
