@@ -132,7 +132,7 @@ cleanup can cancel a room even after a game session has finished.
 - Joining by invite code is allowed while the room is `waiting` or
   `finished` and has capacity. Existing members can reconnect in either
   state even when the room is at capacity.
-- A player who explicitly calls `leave_room` is removed immediately. If the room is in `playing`, the current Reaction Rush match is deleted, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready.
+- A player who explicitly calls `leave_room` is removed immediately. If the room is in `playing`, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. Each game module owns cleanup of its interrupted match state through its own database lifecycle hook; Multiplayer does not directly access game match tables.
 - If the host explicitly leaves and other players remain, the host role is
   transferred to the remaining player with the earliest `joined_at`. A stable
   player ID breaks timestamp ties.
@@ -195,8 +195,8 @@ The trusted server authorizes a member and issues a short-lived ES256 JWT
 containing `role: authenticated`, `telegram_id`, and `room_id`. Its lifetime
 is one hour. The JWT header's `kid` identifies the imported ES256 signing key.
 The client refreshes five minutes before expiry only while the room session is
-active. Tokens are cached in memory by room ID: returning to a room reuses its
-token if it is still valid; otherwise the client requests a new token. Only
+active. Tokens are cached in memory by room ID and verified Telegram user ID,
+and the cache entry is cleared when the room session stops. Only
 one room is active at a time on the shared Supabase client. Pausing or closing
 the app stops refresh; on resume, the client checks expiry.
 
@@ -245,7 +245,9 @@ responses cannot update a stopped watcher.
 ## Server and Supabase prerequisites
 
 The canonical shared room lifecycle SQL is
-`supabase/sql/universal_lobby_reaction_rush.sql`. Its
+`supabase/sql/universal_lobby_reaction_rush.sql`. Reaction Rush owns interrupted-match cleanup through
+`supabase/sql/reaction_rush_room_lifecycle.sql`; Brain Battle owns its cleanup hook in
+`supabase/sql/brain_battle_multiplayer.sql`. The shared Multiplayer action RPC does not directly access game-specific match tables. Its
 `public.multiplayer_execute_action` definition is deployed in Production and
 is the authoritative implementation for room creation, game selection,
 readiness, membership, heartbeat and shared room transitions.
