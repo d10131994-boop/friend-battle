@@ -7,6 +7,7 @@ import type { MultiplayerRoom } from '../multiplayer'
 import { telegramUser } from '../services/telegram'
 import BrainBattleMatch from '../games/BrainBattle/BrainBattleMatch'
 import ReactionRushMatch from '../games/ReactionRush/ReactionRushMatch'
+import NoCountItMatch from '../games/NoCountIt/NoCountItMatch'
 
 const multiplayer = createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })
 
@@ -278,6 +279,19 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     )
   }
 
+  if (gameScreen && room?.gameId === 'no-count-it') {
+    return (
+      <NoCountItMatch
+        initData={initData}
+        room={room}
+        startRequested={startRequested}
+        onRoomUpdate={acceptRoom}
+        onReturnToRoom={returnToRoom}
+        onStartRequestHandled={() => setStartRequested(false)}
+      />
+    )
+  }
+
   if (gameScreen && room?.gameId === 'reaction-rush') {
     return (
       <ReactionRushMatch
@@ -402,12 +416,14 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
                   <option value="">Выбери игру</option>
                   <option value="reaction-rush">Reaction Rush</option>
                   <option value="brain-battle">Brain Battle</option>
+                  <option value="no-count-it">NoCountIt</option>
                 </select>
               ) : (
-                <p>Выбрана игра: {room.gameId === 'reaction-rush' ? 'Reaction Rush' : room.gameId === 'brain-battle' ? 'Brain Battle' : 'Пока не выбрана'}</p>
+                <p>Выбрана игра: {room.gameId === 'reaction-rush' ? 'Reaction Rush' : room.gameId === 'brain-battle' ? 'Brain Battle' : room.gameId === 'no-count-it' ? 'NoCountIt' : 'Пока не выбрана'}</p>
               )}
               {room.gameId === 'reaction-rush' && <p>Три раунда по 10 секунд. От 2 до 4 игроков.</p>}
               {room.gameId === 'brain-battle' && <p>10 вопросов, 15 секунд на ответ. От 2 до 4 игроков.</p>}
+              {room.gameId === 'no-count-it' && <p>Три раунда на оценку количества конфет. От 2 до 4 игроков.</p>}
               {room.gameId && (
                 <>
                   {!isHost && (
