@@ -58,5 +58,8 @@ export function placeCandies(colors: NoCountItCandyColor[], random: () => number
     if (!accepted) throw new Error(`Could not place candy ${index + 1} within scene constraints.`)
     placed.push(accepted)
   }
-  return placed.map(({ radius: _radius, ...object }) => object)
+  return placed.map(({ radius, ...object }) => {
+    void radius
+    return object
+  })
 }
