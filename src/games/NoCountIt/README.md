@@ -35,4 +35,4 @@ All deadlines and competitive outcomes are server-authoritative. Realtime events
 
 The planned private Storage bucket is `no-count-it-scenes`. Scene SVGs are uploaded as `image/svg+xml`; short-lived signed URLs are issued only after the server verifies room membership. Scene files are retained for 24 hours after match completion and removed by a retry-safe cleanup process.
 
-The server API, SQL schema, Storage bucket and policies are introduced in later implementation steps. This README describes the agreed game contract; it must be updated if implementation details change.
+The game tables, trusted SQL RPCs, `no-count-it` Edge Function and private `no-count-it-scenes` bucket have been provisioned in Production. Browser access to game tables is revoked; game operations pass through the Telegram-authenticated Edge Function. The bucket is private, accepts only SVG files up to 1 MiB, and signed image URLs are issued for 10 minutes. The agreed 24-hour asset cleanup is not yet implemented. Early departure during an active match also still needs its game-specific handling and UI result flow.
