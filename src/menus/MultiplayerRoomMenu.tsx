@@ -30,6 +30,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   const [gameScreen, setGameScreen] = useState(false)
   const sessionRef = useRef<ReturnType<typeof createMultiplayerRoomSession> | null>(null)
   const autoReadyKeyRef = useRef<string | null>(null)
+  const rematchStartRequestedRef = useRef<string | null>(null)
   const inviteAttemptedRef = useRef(false)
   const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
 
@@ -82,6 +83,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
 
   useEffect(() => {
     if (!room || !auth.initData || (room.status !== 'waiting' && room.status !== 'finished')) return
+    if (room.rematchStatus === 'open' || room.rematchStatus === 'accepted') return
     const me = room.players.find((player) => player.userId === telegramId)
     if (!me?.isHost || me.isReady) return
     const key = room.roomId + ':' + room.status + ':' + me.userId
@@ -153,6 +155,20 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     }
   }
 
+  async function voteRematch(vote: 'yes' | 'no') {
+    if (!room) return
+    setLoading(true)
+    setMessage('')
+    try {
+      const updated = await multiplayer.voteRematch(auth, { roomId: room.roomId, vote })
+      acceptRoom(updated)
+    } catch (error) {
+      setMessage(errorMessage(error, 'Не удалось отправить голос за реванш.'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function toggleReady() {
     if (!room) return
     const me = room.players.find((player) => player.userId === telegramId)
@@ -201,11 +217,11 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     window.open(shareUrl, '_blank')
   }
 
-  function startGame() {
+  const startGame = useCallback(() => {
     setMessage('')
     setStartRequested(true)
     setGameScreen(true)
-  }
+  }, [])
 
   function returnToRoom() {
     setGameScreen(false)
@@ -220,10 +236,34 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     room?.gameId &&
     room.status !== 'playing' &&
     room.status !== 'cancelled' &&
+    room.rematchStatus !== 'open' &&
+    room.rematchStatus !== 'accepted' &&
     room.players.length >= 2 &&
     room.players.length <= 4 &&
     allReady,
   )
+
+  const rematchYesVotes = room?.rematchVotes.filter((vote) => vote.vote === 'yes').length ?? 0
+  const myRematchVote = room?.rematchVotes.find((vote) => vote.userId === telegramId)?.vote
+
+  useEffect(() => {
+    if (!room || room.status !== 'finished' || room.rematchStatus !== 'open' || !room.rematchDeadlineAt) return
+    const delay = Math.max(0, Date.parse(room.rematchDeadlineAt) - Date.now() + 100)
+    const timer = window.setTimeout(() => {
+      void multiplayer.getRoom(auth, { roomId: room.roomId })
+        .then(acceptRoom)
+        .catch((error: unknown) => setMessage(errorMessage(error, 'Не удалось завершить голосование за реванш.')))
+    }, delay)
+    return () => window.clearTimeout(timer)
+  }, [room?.roomId, room?.status, room?.rematchStatus, room?.rematchDeadlineAt, auth, acceptRoom])
+
+  useEffect(() => {
+    if (!room || room.status !== 'finished' || room.rematchStatus !== 'accepted' || !isHost || gameScreen) return
+    const sessionKey = room.startedAt ?? room.roomId
+    if (rematchStartRequestedRef.current === sessionKey) return
+    rematchStartRequestedRef.current = sessionKey
+    startGame()
+  }, [room?.status, room?.rematchStatus, room?.startedAt, isHost, gameScreen, startGame])
 
   if (gameScreen && room?.gameId === 'brain-battle') {
     return (
@@ -304,7 +344,29 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
             <p>Победа в матче приносит 1 победу в общий счёт комнаты.</p>
           </section>
 
-          {room.status !== 'playing' && room.status !== 'cancelled' && (
+          {room.status === 'finished' && room.rematchStatus === 'open' && (
+            <section className="game-card">
+              <h2>РЕВАНШ?</h2>
+              <p>За реванш проголосовали {rematchYesVotes} из {room.players.length} игроков. Голосование до {room.rematchDeadlineAt ? new Date(room.rematchDeadlineAt).toLocaleTimeString() : 'конца 60 секунд'}.</p>
+              {myRematchVote ? (
+                <p>Твой голос: {myRematchVote === 'yes' ? 'ЗА' : 'ПРОТИВ'}</p>
+              ) : (
+                <>
+                  <button className="play-button" onClick={() => void voteRematch('yes')} disabled={loading}>ДА, РЕВАНШ!</button>
+                  <button className="invite-button" onClick={() => void voteRematch('no')} disabled={loading}>НЕТ, ЗАКОНЧИТЬ</button>
+                </>
+              )}
+            </section>
+          )}
+
+          {room.status === 'finished' && (room.rematchStatus === 'declined' || room.rematchStatus === 'expired') && (
+            <section className="game-card">
+              <p>Реванш отменён. Все игроки остаются в комнате. Чтобы начать новую игру, подтвердите готовность.</p>
+            </section>
+          )}
+
+          {room.status !== 'playing' && room.status !== 'cancelled'
+            && room.rematchStatus !== 'open' && room.rematchStatus !== 'accepted' && (
             <section className="game-card">
               <h2>ВЫБОР ИГРЫ</h2>
               {isHost ? (
@@ -340,7 +402,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
                   )}
                   {isHost ? (
                     <button className="play-button" onClick={startGame} disabled={loading || !canStart}>
-                      {room.status === 'finished' ? 'НАЧАТЬ РЕВАНШ' : 'НАЧАТЬ'}
+                      НАЧАТЬ
                     </button>
                   ) : (
                     <p>Ожидаем, пока ведущий начнёт игру.</p>
