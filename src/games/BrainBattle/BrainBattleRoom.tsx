@@ -407,7 +407,6 @@ export default function BrainBattleRoom({
                     </p>
                   ))}
                   <p>{match.winnerUserId ? 'Победитель получает победу в счёте комнаты!' : 'Ничья! В этот раз без победителя.'}</p>
-                  <button className="invite-button" onClick={() => setShowFinalResults(false)}>ЗАКРЫТЬ РЕЗУЛЬТАТЫ</button>
                   {room.rematchStatus === 'open' && (
                     <>
                       <p>Реванш: {rematchYesVotes} из {room.players.length} игроков согласились. Голосование до {room.rematchDeadlineAt ? new Date(room.rematchDeadlineAt).toLocaleTimeString() : 'окончания 60 секунд'}.</p>
@@ -451,7 +450,7 @@ export default function BrainBattleRoom({
                     <button className="invite-button" onClick={() => void toggleReady()} disabled={loading}>
                       {me?.isReady ? 'ОТМЕНИТЬ ГОТОВНОСТЬ' : 'Я ГОТОВ 🧠'}
                     </button>
-                    {room.rematchStatus !== 'open' && (isHost ? (
+                    {room.rematchStatus !== 'open' && room.rematchStatus !== 'accepted' && (isHost ? (
                       <button className="play-button" onClick={() => void startMatch()} disabled={loading || !canStart}>
                         НАЧАТЬ БИТВУ
                       </button>
