@@ -183,7 +183,7 @@ Current Reaction Rush and Brain Battle rules use `default` (the column default).
 Default rematch behavior implemented in the AI branch:
 - A room enters `rematchStatus: open` for 60 seconds after `finish_game`.
 - Every current room member must vote `yes`. A single `no` sets `declined`; an unanswered vote becomes `expired` on the next authoritative room refresh after the deadline.
-- Room membership and game selection are locked while voting is open or accepted, so the vote electorate cannot silently change. Existing members may reconnect; a member may still leave. If the remaining members have all voted yes after a leave, the vote becomes accepted.
+- Room membership and game selection are locked while voting is open or accepted, so the vote electorate cannot silently change. Existing members may reconnect; a member may still leave. If the remaining members have all voted yes after a leave and still meet the game's minimum player count, the vote becomes accepted; otherwise it is declined.
 - Unanimous approval sets `accepted`. The host client automatically asks the selected game module to start the next match; the database accepts that start only for the exact accepted room state. The selected game is retained.
 - Votes are scoped to the exact prior `started_at` session and cleared when the next match starts.
 - Brain Battle selects 10 questions from a 20-question server bank while excluding the immediately previous match's question IDs, so a rematch gets a different question set. Reaction Rush creates a fresh match row through its own game-owned RPC.
