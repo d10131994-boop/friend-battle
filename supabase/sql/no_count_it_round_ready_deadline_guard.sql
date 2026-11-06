@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.no_count_it_round_ready(p_room_id uuid,p_match
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO '' AS $function$
 DECLARE
  v_room public.common_multiplayer_rooms%ROWTYPE; v_match public.games_no_count_it_matches%ROWTYPE;
- v_round public.games_no_count_it_rounds%ROWTYPE; v_waiting integer; v_ready integer;
+ v_round public.games_no_count_it_rounds%ROWTYPE; v_unready integer; v_ready integer;
  v_now timestamptz:=pg_catalog.clock_timestamp();
 BEGIN
  SELECT * INTO v_room FROM public.common_multiplayer_rooms WHERE id=p_room_id FOR UPDATE;
@@ -19,9 +19,9 @@ BEGIN
   IF NOT FOUND AND NOT EXISTS(SELECT 1 FROM public.games_no_count_it_round_players WHERE match_id=p_match_id AND round_number=v_match.current_round AND user_id=p_user_id AND status='ready') THEN
    RAISE EXCEPTION 'Player is not eligible for this round' USING ERRCODE='42501';
   END IF;
-  SELECT count(*) FILTER(WHERE status IN ('preparing','ready')),count(*) FILTER(WHERE status='ready') INTO v_waiting,v_ready
+  SELECT count(*) FILTER(WHERE status='preparing'),count(*) FILTER(WHERE status='ready') INTO v_unready,v_ready
   FROM public.games_no_count_it_round_players WHERE match_id=p_match_id AND round_number=v_match.current_round;
-  IF v_waiting>0 THEN RETURN jsonb_build_object('status','waiting','readyCount',v_ready); END IF;
+  IF v_unready>0 THEN RETURN jsonb_build_object('status','waiting','readyCount',v_ready); END IF;
  ELSE
   IF NOT EXISTS(SELECT 1 FROM public.games_no_count_it_round_players WHERE match_id=p_match_id AND round_number=v_match.current_round AND user_id=p_user_id) THEN
    RAISE EXCEPTION 'Player is not in this match' USING ERRCODE='42501';
