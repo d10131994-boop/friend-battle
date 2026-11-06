@@ -148,7 +148,7 @@ Deno.serve(async (req: Request) => {
         p_questions: selectQuestions(previousIds),
       });
       if (error) return errorResponse(error);
-      await broadcast(supabase, roomId, "match_started", data);
+      await broadcast(supabase, roomId, "match_started");
       return respond(data);
     }
 
@@ -175,7 +175,6 @@ Deno.serve(async (req: Request) => {
         supabase,
         roomId,
         advanced?.matchFinished ? "match_finished" : advanced?.status === "advanced" ? "question_advanced" : "answer_submitted",
-        { questionIndex, userId },
       );
       return respond(data);
     }
@@ -224,14 +223,13 @@ async function broadcast(
   supabase: SupabaseClient,
   roomId: string,
   event: string,
-  data: unknown = {},
 ): Promise<void> {
   try {
     const channel = supabase.channel(`room:${roomId}`, { config: { private: true } });
     const sent = await channel.send({
       type: "broadcast",
       event,
-      payload: { roomId, source: "brain-battle", data },
+      payload: { roomId, source: "brain-battle" },
     });
     if (sent !== "ok") console.warn("Brain Battle broadcast was not acknowledged:", sent);
     await supabase.removeChannel(channel);
