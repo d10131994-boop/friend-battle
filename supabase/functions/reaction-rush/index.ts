@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { sqlErrorResponse } from "../_shared/errors.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -76,12 +77,12 @@ function fail(message: string, status: number): Response {
   return respond({ error: message }, status);
 }
 
-function errorResponse(error: { code?: string; message?: string }): Response {
-  if (error.code === "P0002") return fail("Комната не найдена", 404);
-  if (error.code === "42501") return fail("Недостаточно прав для этой операции", 403);
-  if (error.code === "55000" || error.code === "54000") return fail(error.message ?? "Действие сейчас недоступно", 409);
-  if (error.code === "22023") return fail(error.message ?? "Некорректный запрос", 400);
-  return fail("Не удалось выполнить действие Reaction Rush", 500);
+function errorResponse(error: { code?: string }): Response {
+  return sqlErrorResponse(error, corsHeaders, {
+    operation: "reaction-rush",
+    fallbackMessage: "Не удалось выполнить действие Reaction Rush",
+    messages: { P0002: "Комната не найдена" },
+  });
 }
 
 Deno.serve(async (req: Request) => {
