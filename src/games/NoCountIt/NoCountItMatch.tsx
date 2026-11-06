@@ -105,7 +105,7 @@ export default function NoCountItMatch({
     readyAttemptRef.current = roundKey
     void invokeGame({ action: 'round_ready', roomId: room.roomId, matchId: match?.matchId })
       .then(() => refreshMatch())
-      .then(() => setRoundReady(true))
+      .then(() => setReadyRoundKey(roundKey))
       .catch((error: unknown) => {
         readyAttemptRef.current = null
         setMessage(errorMessage(error))
