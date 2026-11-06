@@ -86,16 +86,18 @@ export default function BrainBattleRoom({
     }
   }, [])
 
+  const roomId = room?.roomId
+
   const refreshMatch = useCallback(async () => {
-    if (!room?.roomId) return
+    if (!roomId) return
     const snapshot = await invokeGame<BrainBattleSnapshot>({
       action: 'get_match',
-      roomId: room.roomId,
+      roomId,
     })
     acceptRoom(snapshot.room)
     setMatch(snapshot.match)
     if (snapshot.match?.status === 'completed') setShowFinalResults(true)
-  }, [room?.roomId, invokeGame, acceptRoom])
+  }, [roomId, invokeGame, acceptRoom])
 
   useEffect(() => {
     if (!room?.roomId || !auth.initData || room.status === 'cancelled') return
