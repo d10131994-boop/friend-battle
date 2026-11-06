@@ -22,6 +22,7 @@ The current repository stores reviewed SQL sources and patches under `supabase/s
 
 The current canonical sources are:
 - `supabase/sql/universal_lobby_reaction_rush.sql` — shared Multiplayer lifecycle and canonical Reaction Rush implementation;
+- `supabase/sql/reaction_rush_room_lifecycle.sql` — Reaction Rush-owned cleanup hook for room reset/cancellation;
 - `supabase/sql/multiplayer_room_maintenance.sql` — idle-room maintenance helpers;
 - `supabase/sql/brain_battle_multiplayer.sql` — Brain Battle schema and server-side functions;
 - `supabase/sql/add_reaction_rush_scores_room_id_index.sql` — standalone index patch.
