@@ -29,6 +29,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   const [realtimeStatus, setRealtimeStatus] = useState('Подключаемся...')
   const [startRequested, setStartRequested] = useState(false)
   const [gameScreen, setGameScreen] = useState(false)
+  const [activeGameId, setActiveGameId] = useState<MultiplayerRoom['gameId']>(null)
   const sessionRef = useRef<ReturnType<typeof createMultiplayerRoomSession> | null>(null)
   const autoReadyKeyRef = useRef<string | null>(null)
   const rematchStartRequestedRef = useRef<string | null>(null)
@@ -37,6 +38,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
 
   const acceptRoom = useCallback((nextRoom: MultiplayerRoom) => {
     setRoom(nextRoom)
+    if (nextRoom.gameId) setActiveGameId(nextRoom.gameId)
     if (nextRoom.status === 'playing') setGameScreen(true)
     if (nextRoom.status === 'cancelled') {
       setGameScreen(false)
@@ -148,6 +150,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     setMessage('')
     try {
       const updated = await multiplayer.selectGame(auth, { roomId: room.roomId, gameId })
+      setActiveGameId(gameId)
       acceptRoom(updated)
     } catch (error) {
       setMessage(errorMessage(error, 'Не удалось выбрать игру.'))
@@ -199,6 +202,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
       await multiplayer.leaveRoom(auth, { roomId: room.roomId })
       await sessionRef.current?.stop()
       setRoom(null)
+      setActiveGameId(null)
       setGameScreen(false)
       setStartRequested(false)
       onBack()
@@ -279,7 +283,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     )
   }
 
-  if (gameScreen && room?.gameId === 'no-count-it') {
+  if (gameScreen && (room?.gameId === 'no-count-it' || (activeGameId === 'no-count-it' && room?.status === 'waiting'))) {
     return (
       <NoCountItMatch
         initData={initData}
