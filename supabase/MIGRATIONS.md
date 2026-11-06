@@ -16,6 +16,8 @@ The Production history inspected during this audit contains:
 | 20261106111607 | reaction_rush_finish_round_membership_auth |
 | 20261106111617 | remove_legacy_reaction_rush_finish_round_signature |
 
+The AI branch adds `20261106152000_multiplayer_rematch_lifecycle`; it is not yet present in Production migration history and must not be treated as deployed.
+
 ## Repository state
 
 The current repository stores reviewed SQL sources and patches under `supabase/sql/`. These files are not yet a complete, timestamped, reproducible `supabase/migrations/` chain. A filename in `supabase/sql/` does not prove that a patch is applied to Production.
@@ -25,9 +27,12 @@ The current canonical sources are:
 - `supabase/sql/reaction_rush_room_lifecycle.sql` — Reaction Rush-owned cleanup hook for room reset/cancellation;
 - `supabase/sql/multiplayer_room_maintenance.sql` — idle-room maintenance helpers;
 - `supabase/sql/brain_battle_multiplayer.sql` — Brain Battle schema and server-side functions;
+- `supabase/sql/multiplayer_rematch_lifecycle.sql` — shared lifecycle modes, 60-second unanimous rematch voting, and rematch-aware game start hooks;
 - `supabase/sql/add_reaction_rush_scores_room_id_index.sql` — standalone index patch.
 
 Do not reapply an already-deployed patch or restore the retired conflicting lifecycle SQL file.
+
+**Pending AI-branch rematch implementation:** `supabase/migrations/20261106152000_multiplayer_rematch_lifecycle.sql` adds `default` / `custom` / `disabled` lifecycle modes, a session-scoped vote table, a 60-second default rematch window, and rematch-aware Reaction Rush / Brain Battle start hooks. The migration and associated client/server code are AI-branch only and have not been applied to Production.
 
 **Pending AI-branch SQL refactor:** `universal_lobby_reaction_rush.sql` no longer deletes Reaction Rush rows from the shared Multiplayer RPC; the new `reaction_rush_room_lifecycle.sql` owns that cleanup through a room-status trigger. These two source changes must be promoted and applied together. Production still has the previous shared RPC and does not yet have the new trigger.
 
