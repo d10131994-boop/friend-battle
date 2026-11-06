@@ -116,6 +116,8 @@ The canonical shared room lifecycle implementation is `supabase/sql/universal_lo
 
 The deployed Production definition of `public.multiplayer_execute_action` was inspected and matches this canonical implementation. Do not apply an alternate definition of this RPC over it.
 
+`supabase/sql/reaction_rush_room_lifecycle.sql` owns Reaction Rush match cleanup when a room is reset from `playing` to `waiting` or transitions to `cancelled`. The shared Multiplayer action RPC changes only common room/player state; it must not directly access Reaction Rush match tables. Brain Battle uses its own `brain_battle_cancel_active_match_on_room_reset` trigger in `supabase/sql/brain_battle_multiplayer.sql`.
+
 `supabase/sql/multiplayer_room_maintenance.sql` contains separate room-maintenance helpers and deliberately does not redefine `multiplayer_execute_action`:
 - `multiplayer_cancel_idle_rooms()` is used by the active Production Cron job `multiplayer-room-idle-cleanup`, which runs every 30 seconds and cancels rooms with no player heartbeat for 10 minutes. Keep this function and its Cron dependency in sync.
 - `multiplayer_record_heartbeat(room_id, user_id)` is a legacy standalone helper. The current application heartbeat flow uses the `heartbeat` action of `multiplayer_execute_action`; no current repository call site invokes the standalone helper. Do not introduce a new caller without reviewing its membership and locking behavior.
