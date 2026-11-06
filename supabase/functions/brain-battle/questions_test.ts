@@ -1,4 +1,4 @@
-import { assertEquals, assertNotEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1";
 import { selectQuestions } from "./questions.ts";
 
 Deno.test("selects ten distinct questions without reusing the previous match set", () => {
@@ -21,5 +21,5 @@ Deno.test("falls back to a fresh shuffled bank when fewer than ten unseen questi
 
   assertEquals(selected.length, 10);
   assertEquals(new Set(ids).size, 10);
-  assertNotEquals(ids.length, 0);
+  assertEquals(ids.length, 10);
 });
