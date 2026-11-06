@@ -88,6 +88,11 @@ export default function NoCountItMatch({
   const roundKey = match && currentRound ? `${match.matchId}:${currentRound.roundNumber}` : null
 
   useEffect(() => {
+    setRoundReady(false)
+    setAnswerInput('')
+  }, [roundKey])
+
+  useEffect(() => {
     if (!roundKey || !currentRound || currentRound.status !== 'preparing' ||
       myRoundPlayer?.status !== 'preparing' || readyAttemptRef.current === roundKey) return
     readyAttemptRef.current = roundKey
@@ -139,7 +144,7 @@ export default function NoCountItMatch({
   }
 
   function appendDigit(digit: string) {
-    if (answerInput.length >= 6 || myRoundPlayer?.answer !== null) return
+    if (answerInput.length >= 19 || myRoundPlayer?.answer !== null) return
     setAnswerInput((value) => value + digit)
   }
 
