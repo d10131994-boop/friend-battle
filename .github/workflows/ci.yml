@@ -97,6 +97,18 @@ jobs:
                   failed = True
                   print(f"ERROR {path}: {error}")
 
+          # Enforce the module ownership boundary: shared Multiplayer room
+          # transitions must not query or mutate game-specific match tables.
+          shared_sql = Path("supabase/sql/universal_lobby_reaction_rush.sql").read_text(encoding="utf-8")
+          start = shared_sql.index("CREATE OR REPLACE FUNCTION public.multiplayer_execute_action")
+          end = shared_sql.index("CREATE OR REPLACE FUNCTION public.reaction_rush_start_match", start)
+          shared_rpc = shared_sql[start:end]
+          forbidden = ("games_reaction_rush_", "games_brain_battle_")
+          for table_prefix in forbidden:
+              if table_prefix in shared_rpc:
+                  failed = True
+                  print(f"ERROR shared Multiplayer RPC references game-owned table prefix: {table_prefix}")
+
           if failed:
               raise SystemExit(1)
           PY
