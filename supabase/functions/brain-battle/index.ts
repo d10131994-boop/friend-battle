@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -233,7 +233,7 @@ Deno.serve(async (req: Request) => {
 });
 
 async function broadcast(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any, "public", "public", any, any>,
   roomId: string,
   event: string,
   data: unknown = {},
