@@ -26,10 +26,12 @@ Public client actions:
 
 | Action | Input | Result |
 | --- | --- | --- |
-| `create_room` | `gameId`, optional `maxPlayers` | Room snapshot |
+| `create_room` | optional `maxPlayers` | Room snapshot with `gameId: null` |
+| `select_game` | `roomId`, `gameId` | Room snapshot; host-only |
 | `join_room` | `inviteCode` | Room snapshot |
 | `get_room` | `roomId` | Room snapshot |
 | `set_ready` | `roomId`, `isReady` | Room snapshot |
+| `vote_rematch` | `roomId`, `vote: yes \| no` | Updated room snapshot with vote state |
 | `leave_room` | `roomId` | Room snapshot after leaving; cancelled state if last member |
 | `close_room` | `roomId` | Room snapshot; host-only |
 | `heartbeat` | `roomId` | Acknowledgement and server time |
@@ -37,7 +39,7 @@ Public client actions:
 
 The server returns normalized room snapshots with `roomId`, `gameId`,
 `inviteCode`, `status`, `players`, `maxPlayers`, `createdAt`,
-`startedAt`, and `finishedAt`. Each player includes `userId`,
+`startedAt`, `finishedAt`, `rematchStatus`, `rematchDeadlineAt`, and `rematchVotes`. Each player includes `userId`,
 `displayName`, `isReady`, `isHost`, `joinedAt`, and `lastSeenAt`.
 
 ### Trusted game-server actions
@@ -105,10 +107,7 @@ stored `game_id`; a game server cannot start or finish another game's room.
 These actions are also protected by the database function's
 `service_role`-only execute permission.
 
-`start_game` succeeds only while the room is `waiting` or `finished`, and
-only when every current player is ready and has sent a heartbeat within the
-last 90 seconds. The returned `startedAt` identifies that particular game
-session. The game server must pass that exact value to `finish_game`; this
+`start_game` succeeds only while the room is `waiting` or `finished`. An initial match requires every current player to be ready and to have sent a heartbeat within the last 90 seconds. A `default` rematch instead requires the exact finished session to have an accepted unanimous vote; the current player count must still satisfy the game's min/max rules. The returned `startedAt` identifies that particular game session. The game server must pass that exact value to `finish_game`; this
 prevents a delayed finish request from an older game from ending a newer game
 in the same room. Repeating `finish_game` for the same already-finished
 session is safe and idempotent.
@@ -125,13 +124,29 @@ players, and start another session in the same room. `cancelled` is the
 terminal room state. Leaving by the last player, host closure, or idle
 cleanup can cancel a room even after a game session has finished.
 
+## Standard rematch lifecycle
+
+The shared game-rule row has a `lifecycle_mode` setting:
+
+- `default`: after the trusted game server finishes a match, the room opens a 60-second rematch vote;
+- `custom`: the Multiplayer Core does not open a standard vote; the game module owns its custom post-match flow;
+- `disabled`: no rematch flow is offered.
+
+For `default`, every current room member must vote yes. One no vote declines the rematch; unanswered votes expire at the deadline. While voting is open or accepted, new members cannot join and the selected game cannot be changed. Existing members can reconnect, and members can leave. If a member leaves, the remaining players must still meet the game's minimum player count; otherwise the rematch is declined. The vote is tied to the exact completed session.
+
+When every remaining member has voted yes, the room snapshot reports `rematchStatus: accepted`. The host client then triggers the selected game's trusted start action. Multiplayer validates the accepted vote and starts the same selected game without another readiness round or game selection. The game module creates its own new match state. Vote rows are removed when the new session starts.
+
+The public room snapshot includes `rematchStatus`, `rematchDeadlineAt`, and `rematchVotes`. Player clients submit a vote through `voteRematch(auth, { roomId, vote: 'yes' | 'no' })`.
+
+Current Brain Battle uses a 20-question server-side bank and selects ten questions for each match while excluding the immediately previous match's question IDs. Current Reaction Rush creates a new game-owned match record.
+
 ## Room lifecycle and reconnect
 
 - Creating a room inserts the creator as its first player and host.
 - Joining by invite code is allowed while the room is `waiting` or
   `finished` and has capacity. Existing members can reconnect in either
   state even when the room is at capacity.
-- A player who explicitly calls `leave_room` is removed immediately.
+- A player who explicitly calls `leave_room` is removed immediately. If the room is in `playing`, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. In current Production, the shared RPC still deletes the interrupted Reaction Rush match, while Brain Battle cancels its match through a game-owned trigger. The pending AI-branch SQL refactor moves Reaction Rush cleanup into its own trigger so Multiplayer no longer accesses game-specific match tables.
 - If the host explicitly leaves and other players remain, the host role is
   transferred to the remaining player with the earliest `joined_at`. A stable
   player ID breaks timestamp ties.
@@ -194,8 +209,8 @@ The trusted server authorizes a member and issues a short-lived ES256 JWT
 containing `role: authenticated`, `telegram_id`, and `room_id`. Its lifetime
 is one hour. The JWT header's `kid` identifies the imported ES256 signing key.
 The client refreshes five minutes before expiry only while the room session is
-active. Tokens are cached in memory by room ID: returning to a room reuses its
-token if it is still valid; otherwise the client requests a new token. Only
+active. Tokens are cached in memory by room ID and verified Telegram user ID,
+and the cache entry is cleared when the room session stops. Only
 one room is active at a time on the shared Supabase client. Pausing or closing
 the app stops refresh; on resume, the client checks expiry.
 
@@ -243,10 +258,24 @@ responses cannot update a stopped watcher.
 
 ## Server and Supabase prerequisites
 
-The SQL changes required by this contract are in
-`supabase/sql/multiplayer_game_lifecycle.sql`. Apply this patch to the
-existing Multiplayer schema before deploying the updated Edge Function. The
-live Supabase project has not been changed as part of this branch work.
+The canonical shared room lifecycle SQL is
+`supabase/sql/universal_lobby_reaction_rush.sql`. The AI branch now moves
+Reaction Rush interrupted-match cleanup into its own hook in
+`supabase/sql/reaction_rush_room_lifecycle.sql`; Brain Battle already owns its
+cleanup hook in `supabase/sql/brain_battle_multiplayer.sql`. The updated shared
+Multiplayer action RPC no longer directly accesses game-specific match tables.
+This refactor is not yet deployed: Production still runs the previous RPC until
+the AI-branch SQL changes are promoted and applied together. The Production
+`public.multiplayer_execute_action` remains authoritative for room creation,
+game selection, readiness, membership, heartbeat and shared room transitions.
+
+Room-maintenance helpers are kept separately in
+`supabase/sql/multiplayer_room_maintenance.sql`. In particular,
+`multiplayer_cancel_idle_rooms()` is called by the active Production Cron
+job `multiplayer-room-idle-cleanup` every 30 seconds. Do not remove or rename
+that function without updating the Cron job. The old
+`multiplayer_game_lifecycle.sql` patch was removed because it redefined the
+shared action RPC with incompatible behavior; do not restore or apply it.
 
 The Edge Function validates Telegram `initData` for player actions and the
 separate game-server secret for `start_game` / `finish_game`. It calls a

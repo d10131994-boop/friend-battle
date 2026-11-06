@@ -17,6 +17,7 @@ import type {
   MultiplayerService,
   SetPlayerReadyParams,
   SelectGameParams,
+  VoteRematchParams,
 } from './types'
 import { MultiplayerError } from './types'
 
@@ -27,6 +28,7 @@ export interface DatabaseMultiplayerActions {
   joinRoom: string
   getRoom: string
   setReady: string
+  voteRematch: string
   leaveRoom: string
   closeRoom: string
   heartbeat: string
@@ -46,6 +48,7 @@ const DEFAULT_ACTIONS: DatabaseMultiplayerActions = {
   joinRoom: 'join_room',
   getRoom: 'get_room',
   setReady: 'set_ready',
+  voteRematch: 'vote_rematch',
   leaveRoom: 'leave_room',
   closeRoom: 'close_room',
   heartbeat: 'heartbeat',
@@ -118,7 +121,12 @@ function parseMultiplayerRoom(value: unknown): MultiplayerRoom {
       (typeof value.maxPlayers === 'number' && Number.isInteger(value.maxPlayers))) &&
     isNullableTimestamp(value.createdAt) &&
     isNullableTimestamp(value.startedAt) &&
-    isNullableTimestamp(value.finishedAt)
+    isNullableTimestamp(value.finishedAt) &&
+    (value.rematchStatus === null || ['open', 'accepted', 'declined', 'expired'].includes(String(value.rematchStatus))) &&
+    isNullableTimestamp(value.rematchDeadlineAt) &&
+    Array.isArray(value.rematchVotes) && value.rematchVotes.every((vote) =>
+      isRecord(vote) && isNonEmptyString(vote.userId) && (vote.vote === 'yes' || vote.vote === 'no')
+    )
 
   if (!valid) {
     throw new MultiplayerError(
@@ -220,6 +228,9 @@ export function createDatabaseMultiplayerAdapter(
         roomId: params.roomId,
         isReady: params.isReady,
       }),
+
+    voteRematch: (auth: MultiplayerAuth, params: VoteRematchParams) =>
+      invokeRoom('voteRematch', auth, { roomId: params.roomId, vote: params.vote }),
 
     leaveRoom: (auth: MultiplayerAuth, params: LeaveRoomParams) =>
       invokeRoom('leaveRoom', auth, { roomId: params.roomId }),

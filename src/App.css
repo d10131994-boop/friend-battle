@@ -379,37 +379,6 @@ h1 span {
   transition: transform .12s, filter .12s;
 }
 
-.leaderboard-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 18px 0;
-}
-.leaderboard-list > p {
-  padding: 14px;
-  border: 2px solid #f3d48b;
-  border-radius: 14px;
-  background: #fff6df;
-  color: #79502e;
-  font-size: 13px;
-  font-weight: 800;
-  text-align: center;
-}
-.leaderboard-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 13px;
-  border: 2px solid #f1d18a;
-  border-radius: 15px;
-  background: linear-gradient(135deg, #fff8e8, #f3dba9);
-  box-shadow: 0 3px 0 #a96a32, 0 5px 9px rgba(49, 34, 18, .14);
-}
-.leaderboard-row > span { min-width: 28px; color: #89522c; font-size: 23px; font-weight: 900; text-align: center; }
-.leaderboard-row > div { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
-.leaderboard-row > div strong { overflow: hidden; color: #57351f; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.leaderboard-row small { color: #986d49; font-size: 11px; }
-.leaderboard-row > strong { color: #bd7025; font-size: 19px; font-weight: 1000; }
 
 .bottom-nav {
   position: fixed;

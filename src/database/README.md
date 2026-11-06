@@ -41,10 +41,15 @@ Multiplayer layer reloads the room through its trusted server API after
 receiving an event. The Database module does not issue tokens or decide room
 membership; those checks belong on the server.
 
-Private Broadcast authorization is not operational until the signing key is
-activated, the server token issuer is deployed, and matching Realtime RLS
-policies are installed. Do not enable or deploy those Supabase changes as part
-of client-only work.
+Private Broadcast authorization is configured in Production for
+Multiplayer. The trusted Multiplayer Edge Function issues one-hour ES256
+JWTs scoped to a room and Telegram user; the Realtime RLS policy allows
+authenticated subscribers to receive Broadcast messages only from the topic
+matching the JWT `room_id` claim and requires a `telegram_id` claim.
+The client must obtain the token through Multiplayer and call
+`realtime.setAuth(token)` before subscribing. Existing tokens are not
+immediately revoked when a player leaves; they may remain valid until expiry.
+A live multi-player Telegram smoke test remains a separate verification step.
 
 ## Schema and migrations
 

@@ -1,6 +1,6 @@
 # Multiplayer Core — AI integration guide
 
-This document describes the Multiplayer module for AI-assisted development. It complements the human-oriented `README.md`; it does not replace it. The implementation and SQL currently selected for deployment remain the source of truth for what actually works. Where the repository contains conflicting SQL implementations, the conflict is called out explicitly below.
+This document describes the Multiplayer module for AI-assisted development. It complements the human-oriented `README.md`; it does not replace it. The implementation and SQL currently selected for deployment remain the source of truth for what actually works. The canonical deployed SQL implementation and any remaining integration-test gaps are documented below.
 
 ## 1. Responsibility boundaries
 
@@ -28,10 +28,10 @@ The module entrypoint is `src/multiplayer/index.ts`; it re-exports:
 
 Important types:
 - `MultiplayerAuth`: `{ initData: string }`. The value is Telegram Web App initData and is forwarded unchanged to the server.
-- `MultiplayerRoom`: `roomId`, nullable `gameId`, `inviteCode`, `status`, `players`, nullable `maxPlayers`, and lifecycle timestamps.
+- `MultiplayerRoom`: `roomId`, nullable `gameId`, `inviteCode`, `status`, `players`, nullable `maxPlayers`, lifecycle timestamps, `rematchStatus`, `rematchDeadlineAt`, and `rematchVotes`.
 - `MultiplayerPlayer`: `userId`, `displayName`, `isReady`, `isHost`, `joinedAt`, `lastSeenAt`, `wins`, `matchesPlayed`.
 - `MultiplayerRoomStatus`: `waiting | starting | playing | finished | cancelled`.
-- `MultiplayerService`: `createRoom`, `selectGame`, `joinRoom`, `getRoom`, `setReady`, `leaveRoom`, `closeRoom`, `heartbeat`, `getRoomToken`.
+- `MultiplayerService`: `createRoom`, `selectGame`, `joinRoom`, `getRoom`, `setReady`, `voteRematch`, `leaveRoom`, `closeRoom`, `heartbeat`, `getRoomToken`.
 
 The adapter is created with `createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })`. Its action names can be overridden through the optional `actions` map. Service factories wrap adapter failures in `MultiplayerError` with a user-facing message and retain the original error in `cause`.
 
@@ -63,11 +63,11 @@ The agreed product vocabulary may call the waiting state “lobby”, but the cu
 ### Current API operations
 
 - `createRoom(auth, { maxPlayers? })`: creates a room and inserts the creator as host. The TypeScript params do not contain `gameId`.
-- `selectGame(auth, { roomId, gameId })`: public client contract and Edge Function action exist. Intended permission is host-only; the earlier universal-lobby SQL implements host-only selection of an enabled game while the room is `waiting` or `finished`. **The later `multiplayer_game_lifecycle.sql` replacement of the action function does not implement `select_game`; against that function the request reaches “Unknown multiplayer action”.**
+- `selectGame(auth, { roomId, gameId })`: public client contract and Edge Function action exist. The canonical deployed `multiplayer_execute_action` in `universal_lobby_reaction_rush.sql` implements host-only selection of an enabled game while the room is `waiting` or `finished`.
 - `joinRoom(auth, { inviteCode })`: invite code is normalized client-side (whitespace removed, uppercase) and sent to the server. The SQL lowercases the code for lookup. Joining is intended for `waiting` or `finished` rooms; existing members can reconnect even if the room is full.
 - `getRoom(auth, { roomId })`: returns the canonical room snapshot to an existing member.
 - `setReady(auth, { roomId, isReady })`: updates the current member's readiness. The reviewed lifecycle SQL permits this in `waiting` or `finished`.
-- `leaveRoom(auth, { roomId })`: removes the current member. The lifecycle SQL transfers host to the remaining member with the earliest `joined_at` (then player ID) when the host leaves. See the mid-match discrepancy below.
+- `leaveRoom(auth, { roomId })`: removes the current member. If the room is playing, the current Reaction Rush match is deleted, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. If the host leaves, host role transfers to the remaining member with the earliest `joined_at` (then player ID).
 - `closeRoom(auth, { roomId })`: host-only cancellation in the reviewed lifecycle SQL.
 - `heartbeat(auth, { roomId })`: updates server-side `last_seen_at` and returns the server timestamp.
 - `getRoomToken(auth, { roomId })`: issues a room-scoped JWT for private Realtime.
@@ -89,7 +89,7 @@ Use `createMultiplayerRoomSession` when a screen needs a managed room connection
 - a `createRoomWatcher` subscription;
 - cleanup of timers, visibility listener and watcher on stop.
 
-Only one room session can be active at a time on the shared Realtime client. Tokens are cached in memory by room ID; they are not persisted to browser storage. Heartbeats are skipped while the document is hidden. On visibility return, the session sends a heartbeat and checks the token. A `cancelled` room snapshot stops the session. A `finished` snapshot does not stop it, because the room can be reused.
+Only one room session can be active at a time on the shared Realtime client. Tokens are cached in memory by the pair of room ID and verified Telegram user ID; they are not persisted to browser storage. The cache entry is cleared when the room session stops. Heartbeats are skipped while the document is hidden. On visibility return, the session sends a heartbeat and checks the token. A `cancelled` room snapshot stops the session. A `finished` snapshot does not stop it, because the room can be reused.
 
 The Edge Function issues an ES256 JWT with `role: authenticated`, `sub`, `telegram_id` and `room_id` claims, a one-hour lifetime and a configured key ID. Install it using `database.realtime.setAuth(accessToken)` before subscribing to the private topic `room:<roomId>`.
 
@@ -101,57 +101,30 @@ The reviewed Multiplayer Edge Function explicitly broadcasts only `room_updated`
 
 ## 6. Error handling
 
-The Edge Function maps known SQL error codes to HTTP responses:
-- `P0002` → 404 room not found;
-- `42501` → 403 permission/membership failure;
-- `23505` → 409 duplicate membership;
-- `55000` and `54000` → 409 lifecycle/capacity conflict;
-- `22023` → 400 invalid input/action;
-- other SQL errors → generic 500.
+All three game/server Edge Functions use `supabase/functions/_shared/errors.ts` for SQL error mapping. Expected PostgreSQL business errors map to stable HTTP statuses (404, 403, 409 or 400); raw PostgreSQL messages and codes are not returned to clients. Unknown database failures return a generic 500 and are logged with operation and SQLSTATE only. A function may override a safe, user-facing message for a known code without changing its HTTP status.
 
 The database adapter validates the Edge Function response before exposing it as a `MultiplayerRoom`, heartbeat result or room token. It rejects unknown statuses, malformed timestamps, invalid player fields and malformed token responses. Do not bypass these parsers or cast untrusted function responses directly to domain types.
 
-## 7. Intended architecture vs repository discrepancies
+## 7. Canonical SQL implementation and maintenance functions
 
-The following are known inconsistencies in the checked-in SQL/API. This documentation task does not fix them. Do not claim the affected flows work end-to-end until a separate implementation task resolves and verifies them.
+The canonical shared room lifecycle implementation is `supabase/sql/universal_lobby_reaction_rush.sql`. It defines `public.multiplayer_execute_action` and the shared room snapshot, including:
+- creating a room before a game is selected and later selecting an enabled game;
+- room capacity of 2–4 and game-specific min/max player rules;
+- host/readiness checks for an initial match and unanimous-vote validation for an approved rematch;
+- returning remaining players to the waiting room when someone leaves during play; game-specific match cleanup is delegated to each game's own database hook;
+- room membership checks for member actions and server-only game lifecycle actions.
 
-### A. Create room without a selected game
+Before the current AI-branch refactor, the deployed Production definition of `public.multiplayer_execute_action` matched the canonical source. This branch now removes direct Reaction Rush match-table cleanup from that shared RPC and delegates it to `supabase/sql/reaction_rush_room_lifecycle.sql`. The updated RPC and the new game-owned trigger must be promoted and applied together; Production still runs the previous definition until then. Do not apply an alternate definition of this RPC over it.
 
-**Intended contract:** create a room before selecting a game; the room's `gameId` is initially `null`. The host selects a supported game later through `select_game`.
+`supabase/sql/reaction_rush_room_lifecycle.sql` owns Reaction Rush match cleanup when a room is reset from `playing` to `waiting` or transitions to `cancelled`. The shared Multiplayer action RPC changes only common room/player state; it must not directly access Reaction Rush match tables. Brain Battle uses its own `brain_battle_cancel_active_match_on_room_reset` trigger in `supabase/sql/brain_battle_multiplayer.sql`.
 
-**Repository evidence:**
-- `CreateRoomParams` exposes only optional `maxPlayers`.
-- `databaseAdapter.ts` sends `create_room` without `gameId`.
-- `multiplayer/index.ts` and the Edge Function expose `select_game`.
-- `universal_lobby_reaction_rush.sql` implements no-game creation and later game selection.
-- The later `multiplayer_game_lifecycle.sql` implementation requires non-empty `gameId` during `create_room`, and does not implement `select_game`.
+`supabase/sql/multiplayer_room_maintenance.sql` contains separate room-maintenance helpers and deliberately does not redefine `multiplayer_execute_action`:
+- `multiplayer_cancel_idle_rooms()` is used by the active Production Cron job `multiplayer-room-idle-cleanup`, which runs every 30 seconds and cancels rooms with no player heartbeat for 10 minutes. Keep this function and its Cron dependency in sync.
+- `multiplayer_record_heartbeat(room_id, user_id)` is a legacy standalone helper. The current application heartbeat flow uses the `heartbeat` action of `multiplayer_execute_action`; no current repository call site invokes the standalone helper. Do not introduce a new caller without reviewing its membership and locking behavior.
 
-Therefore the public TypeScript flow does not match that later SQL function and cannot be assumed to work end-to-end against it.
+The former `multiplayer_game_lifecycle.sql` file was removed because its alternate `multiplayer_execute_action` definition conflicted with the canonical deployed RPC. Its two maintenance functions were preserved in `multiplayer_room_maintenance.sql`. Never restore the old file or apply a competing definition of the shared action RPC.
 
-### B. Room capacity and game rules
-
-**Intended contract:** a room has a maximum capacity of four players; each enabled game registers its own minimum and maximum player counts in `common_multiplayer_game_rules`. Multiplayer should enforce the selected game's registered limits when starting a match.
-
-**Repository evidence:**
-- `universal_lobby_reaction_rush.sql` sets the room capacity constraint to 2–4, defaults capacity to 4, creates `common_multiplayer_game_rules`, and checks registered min/max values when starting a match.
-- Game SQL files register their game-specific player limits in that table.
-- The later `multiplayer_game_lifecycle.sql` checks `maxPlayers` only against 1–100 at room creation and does not consult `common_multiplayer_game_rules` in its `start_game` branch.
-
-Do not describe the 1–100 validation as the intended product rule. Equally, do not claim the four-player/game-specific constraints are enforced by the later replacement RPC without checking which SQL implementation is actually deployed.
-
-### C. Leaving during a match
-
-**Intended product behavior:** if a player leaves during a match, the current match is interrupted, the player is removed, and remaining players return to the waiting/lobby state; if no players remain, the room is cancelled.
-
-**Repository evidence:**
-- `universal_lobby_reaction_rush.sql` resets a playing room to `waiting`, clears `game_id` and match timestamps, and resets remaining players' readiness.
-- The later `multiplayer_game_lifecycle.sql` `leave_room` branch removes the player and may transfer host, but does not reset a playing room to `waiting` or cancel the active game-specific match. It only cancels the room when no players remain.
-
-This later implementation does not satisfy the agreed mid-match leave behavior. Do not work around it inside a game module; it needs a dedicated Multiplayer/SQL task.
-
-### D. Conflicting SQL files
-
-`universal_lobby_reaction_rush.sql` and `multiplayer_game_lifecycle.sql` both define `public.multiplayer_execute_action` with materially different behavior. SQL execution order determines which definition is active. The repository states that `supabase/sql` is currently a set of explicit SQL patches rather than a reproducible migration history. Before changing or applying Multiplayer SQL, inspect the actual deployed database definition and confirm the intended patch order. Do not infer the live Supabase state from repository file names alone.
+The SQL directory contains explicit SQL patches and snapshots, not a fully reproducible migration chain. For any SQL change, inspect the actual deployed database definition and migration history first; repository filenames alone do not prove what is live.
 
 ## 8. Development and verification guidance
 
@@ -161,6 +134,7 @@ This later implementation does not satisfy the agreed mid-match leave behavior. 
 - Use the room snapshot as canonical state. Treat Realtime messages as invalidation signals and fetch a fresh snapshot after subscription/reconnect.
 - Keep operations retry-safe and do not assume a Broadcast was delivered just because a database mutation succeeded.
 - `src/multiplayer/DevSmokeTest.tsx` is a temporary development-only smoke surface gated by Vite development mode and `?multiplayer-smoke=1`. It exercises room creation, token issuance, private Realtime subscription, initial snapshot and a readiness Broadcast. It is not a complete multiplayer integration test and does not verify multi-device joining, match start/finish, leave semantics or reconnect under real network failure.
+- Deno unit tests for pure Edge Function helpers live beside the functions (for example, `supabase/functions/_shared/errors_test.ts`) and run in CI. Database lifecycle integration tests must run against an isolated local/test database, never as part of a production deploy workflow. See `supabase/tests/README.md` for the current test layers and limitations.
 - Do not claim live Supabase integration, deployment, or end-to-end behavior has been verified unless the corresponding test was actually run against the target environment.
 
 ## 9. Change discipline
@@ -172,7 +146,7 @@ When changing Multiplayer's public API, lifecycle, auth, Realtime, token format,
 4. update the human README when its user-facing guidance becomes stale;
 5. report source-level checks separately from build/lint, database deployment and real integration tests.
 
-Do not silently reconcile conflicting SQL by choosing whichever version appears more convenient. Record the discrepancy and resolve it in a separately scoped change.
+Do not introduce a second definition of `public.multiplayer_execute_action`. The canonical implementation is `universal_lobby_reaction_rush.sql`; room-maintenance helpers belong in `multiplayer_room_maintenance.sql`.
 
 
 ## 10. Shared room UI ownership
@@ -184,3 +158,35 @@ Game modules receive an already-created `MultiplayerRoom` and own only their mat
 The menu automatically marks the host ready when a newly created room or a finished room returns to the waiting state, because the agreed UI does not show the host a Ready button while the lifecycle start operation still requires every member to be ready. This is client orchestration only; the server remains authoritative.
 
 The current Telegram Mini App share flow uses a single invite URL through `https://t.me/share/url`. Telegram's share sheet does not return a list of chosen recipients to the Mini App, so the client cannot show a truthful live count of selected contacts. The room snapshot and server-side capacity remain the source for actual participant counts. The shared invite deep-link prefix is `fb_`; the application continues to accept legacy `rr_` and `bb_` prefixes for existing links.
+
+## 11. Extensible game-session lifecycle contract
+
+The shared lifecycle-mode contract has three modes:
+
+- `default`: Multiplayer Core owns the common room start/finish transitions and opens the standard unanimous rematch vote after a completed match. The game module still owns its match state and trusted game-specific start hook.
+- `custom`: Multiplayer Core continues to own room membership, participant identity, authorization, host/room transitions and security boundaries. The game module owns its custom post-match/rematch flow through explicit trusted hooks. This is an extension point; neither current game uses it yet.
+- `disabled`: Multiplayer Core still coordinates the room's playing/finished state, but does not open a rematch vote. Room membership, participant authorization and room security remain Multiplayer responsibilities.
+
+Ownership boundary:
+- Multiplayer may operate only on common room, player, game-rule, room-stat and shared lifecycle data.
+- Multiplayer must not read or mutate a game's match/answer/score tables directly.
+- Game modules own their match tables, scoring, winner calculation and game-specific cleanup. They integrate through an explicit trusted server contract rather than direct cross-module table access.
+- All transitions must remain server-authoritative, membership-checked, retry-safe where promised and serialized with a documented lock order.
+
+Standard session lifecycle modes are stored in `common_multiplayer_game_rules.lifecycle_mode`:
+- `default`: Multiplayer opens a 60-second unanimous rematch vote after a game server finishes a match.
+- `custom`: Multiplayer does not create the default vote window; the game module is responsible for its own custom post-match lifecycle.
+- `disabled`: no rematch lifecycle is opened.
+
+Current Reaction Rush and Brain Battle rules use `default` (the column default). The public room snapshot includes `rematchStatus`, `rematchDeadlineAt`, and the votes for the current completed session.
+
+Default rematch behavior implemented in the AI branch:
+- A room enters `rematchStatus: open` for 60 seconds after `finish_game`.
+- Every current room member must vote `yes`. A single `no` sets `declined`; an unanswered vote becomes `expired` on the next authoritative room refresh after the deadline.
+- Room membership and game selection are locked while voting is open or accepted, so the vote electorate cannot silently change. Existing members may reconnect; a member may still leave. If the remaining members have all voted yes after a leave and still meet the game's minimum player count, the vote becomes accepted; otherwise it is declined.
+- Unanimous approval sets `accepted`. The host client automatically asks the selected game module to start the next match; the database accepts that start only for the exact accepted room state. The selected game is retained.
+- Votes are scoped to the exact prior `started_at` session and cleared when the next match starts.
+- Brain Battle selects 10 questions from a 20-question server bank while excluding the immediately previous match's question IDs, so a rematch gets a different question set. Reaction Rush creates a fresh match row through its own game-owned RPC.
+- `custom` is an extension point for game-owned hooks; neither current game uses it.
+
+**Deployment status:** the schema, SQL functions, Edge Function actions, client adapter, both game UIs, and integration test source are implemented on this AI branch. The timestamped migration is `supabase/migrations/20261106152000_multiplayer_rematch_lifecycle.sql`. It has not been applied to Production and must be promoted/applied together with the updated game SQL/Edge Function/frontend code. The SQL integration script is `supabase/tests/multiplayer_rematch.sql`; CI parses it but does not execute it.
