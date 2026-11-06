@@ -64,7 +64,9 @@ All game tables are private to trusted server operations. Browser clients access
 
 The planned private Storage bucket is `no-count-it-scenes`. Use signed URLs issued after membership validation. Retain scene assets for 24 hours after match completion and clean them with a retry-safe scheduled process.
 
-These objects are planned until their migrations, function and bucket have actually been deployed. Never describe them as live before verifying Production.
+Production currently contains all four game tables with RLS enabled and no browser policies; execute access is restricted to `service_role`. The private `no-count-it-scenes` bucket is live, limited to SVG and 1 MiB, and the `no-count-it` Edge Function is deployed. Production migration history includes `no_count_it_multiplayer_schema`, `no_count_it_round_progression`, `no_count_it_match_rpcs`, `no_count_it_preparation_deadline`, `no_count_it_round_ready_deadline_guard`, `no_count_it_round_ready_waiting_count_fix` and `no_count_it_snapshot_locking`. Signed URLs currently expire after 10 minutes. The 24-hour object cleanup is not yet scheduled; do not claim retention enforcement is active.
+
+Known remaining lifecycle gap: the shared Multiplayer `leave_room` resets a playing room to waiting and clears its selected game. NoCountIt does not yet have a game-specific hook to preserve and display early-winner results or correctly mark an individual leaver while multiple players remain. Do not claim the agreed early-departure behavior is implemented.
 
 ## 7. Client integration boundary
 
