@@ -340,10 +340,6 @@ BEGIN
     IF v_room.status <> 'finished' OR v_room.rematch_status <> 'open'
        OR v_room.rematch_deadline_at IS NULL
        OR v_room.rematch_deadline_at <= pg_catalog.clock_timestamp() THEN
-      IF v_room.rematch_status = 'open' AND v_room.rematch_deadline_at <= pg_catalog.clock_timestamp() THEN
-        UPDATE public.common_multiplayer_rooms SET rematch_status = 'expired'
-        WHERE id = v_room_id AND rematch_status = 'open';
-      END IF;
       RAISE EXCEPTION 'Rematch voting is closed' USING ERRCODE = '55000';
     END IF;
     IF p_payload->>'vote' IS DISTINCT FROM 'yes' AND p_payload->>'vote' IS DISTINCT FROM 'no' THEN
