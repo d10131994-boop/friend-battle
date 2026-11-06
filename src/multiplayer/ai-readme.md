@@ -161,11 +161,11 @@ The current Telegram Mini App share flow uses a single invite URL through `https
 
 ## 11. Extensible game-session lifecycle contract
 
-The agreed target contract has three lifecycle modes:
+The shared lifecycle-mode contract has three modes:
 
-- `default`: Multiplayer Core owns the standard start/finish flow and the standard rematch vote. Game-specific code still owns its match state and exposes explicit server-side lifecycle hooks.
-- `custom`: Multiplayer Core continues to own room membership, participant identity, authorization, host/room transitions and security boundaries. The game supplies explicit hooks for its custom match start, finish and cancellation semantics.
-- `disabled`: no automatic shared start/finish/rematch orchestration is applied for that game. Room membership, participant authorization and room security remain Multiplayer responsibilities.
+- `default`: Multiplayer Core owns the common room start/finish transitions and opens the standard unanimous rematch vote after a completed match. The game module still owns its match state and trusted game-specific start hook.
+- `custom`: Multiplayer Core continues to own room membership, participant identity, authorization, host/room transitions and security boundaries. The game module owns its custom post-match/rematch flow through explicit trusted hooks. This is an extension point; neither current game uses it yet.
+- `disabled`: Multiplayer Core still coordinates the room's playing/finished state, but does not open a rematch vote. Room membership, participant authorization and room security remain Multiplayer responsibilities.
 
 Ownership boundary:
 - Multiplayer may operate only on common room, player, game-rule, room-stat and shared lifecycle data.
@@ -183,7 +183,7 @@ Current Reaction Rush and Brain Battle rules use `default` (the column default).
 Default rematch behavior implemented in the AI branch:
 - A room enters `rematchStatus: open` for 60 seconds after `finish_game`.
 - Every current room member must vote `yes`. A single `no` sets `declined`; an unanswered vote becomes `expired` on the next authoritative room refresh after the deadline.
-- Room membership and game selection are locked while voting is open, so the vote electorate cannot silently change. Existing members may reconnect; a member may still leave. If the remaining members have all voted yes after a leave, the vote becomes accepted.
+- Room membership and game selection are locked while voting is open or accepted, so the vote electorate cannot silently change. Existing members may reconnect; a member may still leave. If the remaining members have all voted yes after a leave, the vote becomes accepted.
 - Unanimous approval sets `accepted`. The host client automatically asks the selected game module to start the next match; the database accepts that start only for the exact accepted room state. The selected game is retained.
 - Votes are scoped to the exact prior `started_at` session and cleared when the next match starts.
 - Brain Battle selects 10 questions from a 20-question server bank while excluding the immediately previous match's question IDs, so a rematch gets a different question set. Reaction Rush creates a fresh match row through its own game-owned RPC.
