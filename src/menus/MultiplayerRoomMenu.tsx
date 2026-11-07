@@ -8,6 +8,7 @@ import { telegramUser } from '../services/telegram'
 import BrainBattleMatch from '../games/BrainBattle/BrainBattleMatch'
 import ReactionRushMatch from '../games/ReactionRush/ReactionRushMatch'
 import NoCountItMatch from '../games/NoCountIt/NoCountItMatch'
+import RockPaperScissorsMatch from '../games/rockPaperScissors/RockPaperScissorsMatch'
 
 const multiplayer = createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })
 
@@ -148,7 +149,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     void joinRoom(inviteCode)
   }, [inviteCode, room, joinRoom])
 
-  async function selectGame(gameId: 'reaction-rush' | 'brain-battle' | 'no-count-it') {
+  async function selectGame(gameId: 'reaction-rush' | 'brain-battle' | 'no-count-it' | 'rock-paper-scissors') {
     if (!room) return
     setLoading(true)
     setMessage('')
@@ -232,7 +233,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     room.status !== 'playing' &&
     room.status !== 'cancelled' &&
     room.players.length >= 2 &&
-    room.players.length <= 4 &&
+    room.players.length <= Math.min(room.maxPlayers ?? 4, room.gameId === 'rock-paper-scissors' ? 2 : 4) &&
     allReady,
   )
 
@@ -252,6 +253,19 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   if (gameScreen && (room?.gameId === 'no-count-it' || (activeGameId === 'no-count-it' && room?.status === 'waiting'))) {
     return (
       <NoCountItMatch
+        initData={initData}
+        room={room}
+        startRequested={startRequested}
+        onRoomUpdate={acceptRoom}
+        onReturnToRoom={returnToRoom}
+        onStartRequestHandled={() => setStartRequested(false)}
+      />
+    )
+  }
+
+  if (gameScreen && room?.gameId === 'rock-paper-scissors') {
+    return (
+      <RockPaperScissorsMatch
         initData={initData}
         room={room}
         startRequested={startRequested}
