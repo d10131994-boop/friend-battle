@@ -1,0 +1,194 @@
+name: Branch cleanup audit
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: branch-cleanup-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Audit obsolete task branches (dry run)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect branches and publish cleanup report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Report-only. Never delete refs.
+            // Release branches are never candidates.
+            // Keep task branches from the latest two release generations.
+            // Older regular tasks: candidate only if no commits ahead of main.
+            // Older AI tasks: candidate only if no commits ahead of matching parent.
+            // Unknown names, missing parents, open PRs, or API errors => keep.
+
+            const branches = await github.paginate(
+              github.rest.repos.listBranches,
+              { owner, repo, per_page: 100 }
+            );
+            const names = new Set(branches.map(branch => branch.name));
+            const releases = [...names]
+              .map(name => {
+                const match = name.match(/^friend-battle-(\d+)-release$/);
+                return match ? Number(match[1]) : null;
+              })
+              .filter(value => value !== null);
+
+            if (releases.length === 0) {
+              core.setFailed("No release branch matching friend-battle-NN-release was found; refusing to classify branches.");
+              return;
+            }
+
+            const latestRelease = Math.max(...releases);
+            const keepFromRelease = Math.max(0, latestRelease - 1);
+            const openPulls = await github.paginate(
+              github.rest.pulls.list,
+              { owner, repo, state: "open", per_page: 100 }
+            );
+            const branchesWithOpenPR = new Set(openPulls.map(pr => pr.head.ref));
+
+            const rows = [];
+            const compare = async (base, head) => {
+              const result = await github.rest.repos.compareCommitsWithBasehead({
+                owner,
+                repo,
+                basehead: base + "..." + head,
+              });
+              return result.data;
+            };
+
+            for (const branch of branches) {
+              const name = branch.name;
+
+              if (name === "main") {
+                rows.push({ name, status: "KEEP", reason: "основная ветка" });
+                continue;
+              }
+
+              if (branch.protected) {
+                rows.push({ name, status: "KEEP", reason: "защищённая GitHub ветка" });
+                continue;
+              }
+
+              if (/^friend-battle-\d+-release$/.test(name)) {
+                rows.push({ name, status: "KEEP", reason: "релизные ветки не удаляются никогда" });
+                continue;
+              }
+
+              const taskMatch = name.match(/^friend-battle-(\d+)\/(.+)$/);
+              if (!taskMatch) {
+                rows.push({ name, status: "KEEP", reason: "нестандартное имя — ручная проверка" });
+                continue;
+              }
+
+              const releaseNumber = Number(taskMatch[1]);
+              if (releaseNumber >= keepFromRelease) {
+                rows.push({
+                  name,
+                  status: "KEEP",
+                  reason: "защищённая зона: релиз " + String(releaseNumber).padStart(2, "0") + " (сохраняем два последних поколения)",
+                });
+                continue;
+              }
+
+              if (branchesWithOpenPR.has(name)) {
+                rows.push({ name, status: "KEEP", reason: "есть открытый pull request" });
+                continue;
+              }
+
+              const suffix = taskMatch[2];
+              const aiMatch = suffix.match(/^(.*)-AI(?:-\d+)?$/);
+
+              try {
+                if (aiMatch) {
+                  const parent = "friend-battle-" + String(releaseNumber).padStart(2, "0") + "/" + aiMatch[1];
+                  if (!names.has(parent)) {
+                    rows.push({ name, status: "KEEP", reason: "не найдена родительская task-ветка: " + parent });
+                    continue;
+                  }
+
+                  if (branchesWithOpenPR.has(parent)) {
+                    rows.push({ name, status: "KEEP", reason: "у родительской ветки открыт pull request: " + parent });
+                    continue;
+                  }
+
+                  const comparison = await compare(parent, name);
+                  if (comparison.ahead_by === 0 && !comparison.too_large) {
+                    rows.push({
+                      name,
+                      status: "CANDIDATE",
+                      reason: "AI-изменения уже содержатся в родительской ветке " + parent,
+                    });
+                  } else {
+                    rows.push({
+                      name,
+                      status: "KEEP",
+                      reason: comparison.too_large
+                        ? "сравнение слишком большое — нужна ручная проверка"
+                        : "есть " + (comparison.ahead_by ?? "неизвестно") + " уникальных коммитов относительно родительской ветки",
+                    });
+                  }
+                } else {
+                  const comparison = await compare("main", name);
+                  if (comparison.ahead_by === 0 && !comparison.too_large) {
+                    rows.push({
+                      name,
+                      status: "CANDIDATE",
+                      reason: "нет уникальных коммитов относительно main",
+                    });
+                  } else {
+                    rows.push({
+                      name,
+                      status: "KEEP",
+                      reason: comparison.too_large
+                        ? "сравнение слишком большое — нужна ручная проверка"
+                        : "есть " + (comparison.ahead_by ?? "неизвестно") + " уникальных коммитов относительно main",
+                    });
+                  }
+                }
+              } catch (error) {
+                rows.push({
+                  name,
+                  status: "KEEP",
+                  reason: "ошибка проверки GitHub API — оставляем в безопасности: " + error.message,
+                });
+              }
+            }
+
+            const candidates = rows.filter(row => row.status === "CANDIDATE");
+            const kept = rows.filter(row => row.status === "KEEP");
+            const lines = [
+              "## Branch cleanup audit — dry run",
+              "",
+              "- Последний найденный релиз: **" + String(latestRelease).padStart(2, "0") + "**",
+              "- Сохраняем task-ветки релизов: **" + String(keepFromRelease).padStart(2, "0") + "** и новее",
+              "- Режим: **только отчёт, без удаления веток**",
+              "- Кандидаты на удаление: **" + candidates.length + "**",
+              "- Сохранено: **" + kept.length + "**",
+              "",
+              "### Кандидаты на удаление",
+              "",
+              ...(candidates.length
+                ? candidates.map(row => "- " + row.name + " — " + row.reason)
+                : ["- Нет"]),
+              "",
+              "### Сохранённые ветки",
+              "",
+              ...kept.map(row => "- " + row.name + " — " + row.reason),
+              "",
+              "> Ничего не удалено. Сомнительные случаи остаются нетронутыми.",
+            ];
+
+            await core.summary.addRaw(lines.join("\n")).write();
+            core.info("Audit completed: " + candidates.length + " candidates, " + kept.length + " kept.");
