@@ -43,7 +43,7 @@ The Edge Function verifies Telegram `initData` and derives the acting Telegram u
 
 `rock_paper_scissors_match_snapshot` locks the shared room before the game match, advances a due phase using database time, applies default rock to missing choices, and returns a caller-specific snapshot. During `choosing`, the snapshot returns the caller's own choice but masks the opponent's choice. Both choices become visible only in `revealing` and `result`.
 
-Clients poll the canonical snapshot and use server phase timestamps only to render the countdown. A disconnected player remains a room member unless they explicitly leave. The three-second deadline is not paused or extended; a player who reconnects before it expires can still submit a choice, otherwise rock is assigned.
+Clients poll the canonical snapshot, estimate the server/client clock offset from the returned `serverNow`, and use the server phase deadline to render a consistent countdown. A disconnected player remains a room member unless they explicitly leave. The three-second deadline is not paused or extended; a player who reconnects before it expires can still submit a choice, otherwise rock is assigned.
 
 ## 4. Multiplayer Core integration
 
