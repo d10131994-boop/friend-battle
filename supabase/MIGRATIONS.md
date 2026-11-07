@@ -51,7 +51,7 @@ The removal migration `20261107090000_remove_multiplayer_rematch` is recorded as
 
 The task branch adds `20261108100000_multiplayer_active_match_departure.sql`. It extends the canonical shared action RPC with a trusted, Democracy Merge-only `leave_active_match` action. This migration is pending and has not been applied to Production. It must be reviewed and tested with the matching Multiplayer Edge Function and Democracy Merge game-owned departure trigger before any Production application.
 
-The task branch also adds `20261108113000_democracy_merge_multiplayer.sql` with canonical source `supabase/sql/democracy_merge_multiplayer.sql`. It creates Democracy Merge's private multiplayer match/player tables, game-owned departure and room-cancellation triggers, and a five-minute disconnect-expiry Cron job. This migration is pending and has not been applied to Production. It depends on `leave_active_match` from the preceding Multiplayer migration and must be tested on an isolated Supabase database before any Production application.
+The task branch also adds `20261108113000_democracy_merge_multiplayer.sql` with canonical source `supabase/sql/democracy_merge_multiplayer.sql`. It creates Democracy Merge's private multiplayer match/player tables, trusted start/snapshot RPCs, game-owned departure and room-cancellation triggers, and a five-minute disconnect-expiry Cron job. This migration is pending and has not been applied to Production. It depends on `leave_active_match` from the preceding Multiplayer migration and must be tested on an isolated Supabase database before any Production application.
 
 ## Baseline decision
 
