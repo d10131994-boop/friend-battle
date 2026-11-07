@@ -177,7 +177,7 @@ DECLARE
   v_started jsonb;
   v_started_at timestamptz;
   v_match_id uuid;
-  v_now timestamptz := pg_catalog.clock_timestamp();
+  v_now timestamptz;
   v_player_count integer;
 BEGIN
   SELECT * INTO v_room
@@ -211,6 +211,7 @@ BEGIN
     pg_catalog.jsonb_build_object('roomId', p_room_id, 'gameId', 'rock-paper-scissors')
   );
   v_started_at := (v_started->>'startedAt')::timestamptz;
+  v_now := pg_catalog.clock_timestamp();
 
   INSERT INTO public.games_rock_paper_scissors_matches(
     room_id, started_at, status, current_round, phase, phase_started_at, phase_deadline
@@ -255,7 +256,7 @@ DECLARE
   v_match public.games_rock_paper_scissors_matches%ROWTYPE;
   v_now timestamptz := pg_catalog.clock_timestamp();
 BEGIN
-  IF p_choice NOT IN ('rock', 'scissors', 'paper') THEN
+  IF p_choice IS NULL OR p_choice NOT IN ('rock', 'scissors', 'paper') THEN
     RAISE EXCEPTION 'Invalid choice' USING ERRCODE = '22023';
   END IF;
 
@@ -417,16 +418,16 @@ BEGIN
 
       UPDATE public.games_rock_paper_scissors_matches
       SET phase = 'revealing',
-          phase_started_at = v_match.phase_deadline,
-          phase_deadline = v_match.phase_deadline + interval '4 seconds'
+          phase_started_at = v_now,
+          phase_deadline = v_now + interval '4 seconds'
       WHERE id = v_match.id;
       v_advanced := true;
 
     ELSIF v_match.phase = 'revealing' THEN
       UPDATE public.games_rock_paper_scissors_matches
       SET phase = 'result',
-          phase_started_at = v_match.phase_deadline,
-          phase_deadline = v_match.phase_deadline + interval '4 seconds'
+          phase_started_at = v_now,
+          phase_deadline = v_now + interval '4 seconds'
       WHERE id = v_match.id;
       v_advanced := true;
 
@@ -453,7 +454,7 @@ BEGIN
         SET status = 'completed',
             winner_user_id = v_match_winner,
             final_results = COALESCE(v_players, '[]'::jsonb),
-            completed_at = v_match.phase_deadline
+            completed_at = v_now
         WHERE id = v_match.id;
 
         INSERT INTO public.common_multiplayer_room_stats(
@@ -484,8 +485,8 @@ BEGIN
         UPDATE public.games_rock_paper_scissors_matches
         SET current_round = v_next_round,
             phase = 'choosing',
-            phase_started_at = v_match.phase_deadline,
-            phase_deadline = v_match.phase_deadline + interval '3 seconds'
+            phase_started_at = v_now,
+            phase_deadline = v_now + interval '3 seconds'
         WHERE id = v_match.id;
       END IF;
       v_advanced := true;
