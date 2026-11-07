@@ -235,8 +235,10 @@ BEGIN
   )
   RETURNING id INTO v_match_id;
 
-  INSERT INTO public.games_rock_paper_scissors_match_players(match_id, room_id, user_id, display_name)
-  SELECT v_match_id, p_room_id, p.user_id, p.display_name
+  INSERT INTO public.games_rock_paper_scissors_match_players(
+    match_id, room_id, user_id, display_name, joined_at
+  )
+  SELECT v_match_id, p_room_id, p.user_id, p.display_name, p.joined_at
   FROM public.common_multiplayer_players p
   WHERE p.room_id = p_room_id
   ORDER BY p.joined_at, p.id;
