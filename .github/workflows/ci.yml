@@ -9,6 +9,8 @@ on:
       - main
       - friend-battle-03-release
       - 'friend-battle-03/**'
+      - friend-battle-04-release
+      - 'friend-battle-04/**'
   workflow_dispatch:
 
 permissions:
@@ -62,7 +64,9 @@ jobs:
           deno check --node-modules-dir=auto supabase/functions/reaction-rush/index.ts
           deno check --node-modules-dir=auto supabase/functions/brain-battle/index.ts
           deno check --node-modules-dir=auto supabase/functions/no-count-it/index.ts
+          deno check --node-modules-dir=auto supabase/functions/rock-paper-scissors/index.ts
           deno test supabase/functions/_shared/errors_test.ts
+          deno test supabase/functions/rock-paper-scissors/gameRules_test.ts
           deno test supabase/functions/brain-battle/questions_test.ts
 
   sql-syntax:

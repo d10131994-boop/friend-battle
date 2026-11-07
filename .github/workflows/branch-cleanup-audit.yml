@@ -1,0 +1,69 @@
+name: Branch cleanup audit
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Режим работы"
+        required: true
+        type: choice
+        options:
+          - report
+          - delete
+        default: report
+      confirm_delete:
+        description: 'Для удаления введи точное слово DELETE'
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: branch-cleanup-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Build branch cleanup report (read only)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Inspect branches and publish report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runBranchCleanup = require(process.env.GITHUB_WORKSPACE + "/.github/scripts/branch-cleanup.cjs");
+            await runBranchCleanup({ github, context, core, mode: "report" });
+
+  cleanup:
+    name: Delete verified obsolete branches
+    runs-on: ubuntu-latest
+    needs: audit
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'delete') }}
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Recheck and delete confirmed candidates
+        uses: actions/github-script@v7
+        env:
+          CONFIRM_DELETE: ${{ inputs.confirm_delete }}
+        with:
+          script: |
+            const runBranchCleanup = require(process.env.GITHUB_WORKSPACE + "/.github/scripts/branch-cleanup.cjs");
+            const mode = context.eventName === "push" ? "auto" : "delete";
+            await runBranchCleanup({ github, context, core, mode });
