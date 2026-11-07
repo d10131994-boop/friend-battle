@@ -5,7 +5,7 @@ import {
   generateCharacterSequence,
   placeCharacter,
 } from '../../../src/games/DemocracyMerge/logic/gameEngine.ts'
-import type { Board } from './gameEngine.ts'
+import type { Board } from '../../../src/games/DemocracyMerge/logic/gameEngine.ts'
 
 Deno.test('only orthogonally adjacent equal characters form a group', () => {
   const board = createEmptyBoard()
