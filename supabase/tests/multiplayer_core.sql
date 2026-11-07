@@ -273,10 +273,10 @@ BEGIN
     'start_game', '__game_server__', 'Game server',
     jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge')
   );
-  v_first_started_at := v_room->>'startedAt';
+  v_started_at := v_room->>'startedAt';
 
   -- A normal client cannot invoke the trusted departure action.
-  v_blocked := false;
+  v_rejected := false;
   BEGIN
     PERFORM public.multiplayer_execute_action(
       'leave_active_match', v_guest || '_dm_leave', 'DM guest 1',
@@ -284,9 +284,9 @@ BEGIN
         'playerUserId', v_guest || '_dm_leave')
     );
   EXCEPTION WHEN SQLSTATE '42501' THEN
-    v_blocked := true;
+    v_rejected := true;
   END;
-  IF NOT v_blocked THEN
+  IF NOT v_rejected THEN
     RAISE EXCEPTION 'Only the trusted game server may request active-match departure';
   END IF;
 
@@ -298,7 +298,7 @@ BEGIN
   );
   IF v_room->>'status' <> 'playing'
      OR v_room->>'gameId' <> 'democracy-merge'
-     OR v_room->>'startedAt' <> v_first_started_at
+     OR v_room->>'startedAt' <> v_started_at
      OR jsonb_array_length(v_room->'players') <> 2 THEN
     RAISE EXCEPTION 'Active-match departure must preserve the room and ongoing session';
   END IF;
