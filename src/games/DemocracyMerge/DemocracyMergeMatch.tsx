@@ -108,14 +108,14 @@ export default function DemocracyMergeMatch({
       }
     }
     void refresh()
-    const interval = match?.status === 'completed' || match?.status === 'cancelled'
+    const interval = snapshot?.match?.status === 'completed' || snapshot?.match?.status === 'cancelled'
       ? null
       : window.setInterval(() => { void refresh() }, 1500)
     return () => {
       active = false
       if (interval !== null) window.clearInterval(interval)
     }
-  }, [initData, room.roomId, match?.status, onRoomUpdate])
+  }, [initData, room.roomId, snapshot?.match?.status, onRoomUpdate])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 250)
@@ -146,14 +146,16 @@ export default function DemocracyMergeMatch({
   }, [startRequested, meInRoom?.isHost, room.status, startMatch])
 
   useEffect(() => {
-    if (!match?.deadlineAt) return
-    const remaining = Date.parse(match.deadlineAt) - now
-    if (remaining > 0 && remaining <= 60_000 && oneMinuteNoticeRef.current !== match.matchId) {
-      oneMinuteNoticeRef.current = match.matchId
+    const deadlineAt = snapshot?.match?.deadlineAt
+    const matchId = snapshot?.match?.matchId
+    if (!deadlineAt || !matchId) return
+    const remaining = Date.parse(deadlineAt) - now
+    if (remaining > 0 && remaining <= 60_000 && oneMinuteNoticeRef.current !== matchId) {
+      oneMinuteNoticeRef.current = matchId
       setOneMinuteNotice(true)
       oneMinuteTimeoutRef.current = window.setTimeout(() => setOneMinuteNotice(false), 3000)
     }
-  }, [match?.deadlineAt, match?.matchId, now])
+  }, [snapshot?.match?.deadlineAt, snapshot?.match?.matchId, now])
 
   useEffect(() => () => {
     if (oneMinuteTimeoutRef.current !== null) window.clearTimeout(oneMinuteTimeoutRef.current)
