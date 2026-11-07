@@ -192,6 +192,7 @@ Deno.serve(async (req: Request) => {
       let result: Record<string, unknown> | null = null;
       const rewards: Array<Record<string, unknown>> = [];
 
+      try {
       if (body.action === "place_character") {
         if (!Number.isInteger(body.cellIndex) || !match.currentCharacter) {
           return fail("Выберите свободную клетку для текущего персонажа", 400);
@@ -268,6 +269,10 @@ Deno.serve(async (req: Request) => {
         }
       } else {
         status = "surrendered";
+      }
+
+      } catch (actionError) {
+        return fail(actionError instanceof Error ? actionError.message : "Некорректное действие", 400);
       }
 
       if (status !== "active") {
