@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export type GameId = 'reaction-rush' | 'brain-battle'
+export type GameId = 'reaction-rush' | 'brain-battle' | 'democracy-merge'
 
 type SoloRoomMenuProps = {
   onBack: () => void
@@ -27,6 +27,7 @@ export function SoloRoomMenu({ onBack, onStart }: SoloRoomMenuProps) {
         <select className="invite-input" value={gameId} onChange={(event) => setGameId(event.target.value as GameId)}>
           <option value="reaction-rush">Reaction Rush</option>
           <option value="brain-battle">Brain Battle</option>
+          <option value="democracy-merge">Democracy Merge</option>
         </select>
         <button className="play-button" onClick={() => onStart(gameId)}>НАЧАТЬ</button>
       </section>
