@@ -39,6 +39,10 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     setRoom(nextRoom)
     if (nextRoom.gameId) setActiveGameId(nextRoom.gameId)
     if (nextRoom.status === 'playing') setGameScreen(true)
+    if (nextRoom.status === 'finished') {
+      setGameScreen(false)
+      setStartRequested(false)
+    }
     if (nextRoom.status === 'cancelled') {
       setGameScreen(false)
       setMessage('Эта комната закрыта.')
@@ -216,18 +220,6 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     setGameScreen(false)
     setStartRequested(false)
   }
-
-  useEffect(() => {
-    if (!gameScreen || room?.status !== 'finished' || !room.finishedAt) return
-    const finishedAt = Date.parse(room.finishedAt)
-    if (!Number.isFinite(finishedAt)) return
-    const delay = Math.max(0, finishedAt + 60_000 - Date.now())
-    const timer = window.setTimeout(() => {
-      setGameScreen(false)
-      setStartRequested(false)
-    }, delay)
-    return () => window.clearTimeout(timer)
-  }, [gameScreen, room?.status, room?.finishedAt])
 
   const me = room?.players.find((player) => player.userId === telegramId)
   const isHost = Boolean(me?.isHost)
