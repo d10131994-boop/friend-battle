@@ -84,6 +84,7 @@ BEGIN
   END IF;
 
   -- A stale finish request cannot finish the newer match.
+  v_blocked := false;
   BEGIN
     PERFORM public.multiplayer_execute_action(
       'finish_game', '__game_server__', 'Game server',
