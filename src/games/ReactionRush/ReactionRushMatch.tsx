@@ -9,6 +9,7 @@ type ReactionRushMatchState = {
   roundNumber: number
   roundStartedAt: string
   startedAt: string
+  completedAt: string | null
   status: 'playing' | 'completed'
   myScore: number
   finalResults?: ReactionRushResult[] | null
@@ -170,6 +171,33 @@ export default function ReactionRushMatch({
     }
   }
 
+  const finishAndReturn = useCallback(async () => {
+    if (room.status !== 'playing') {
+      onReturnToRoom()
+      return
+    }
+    setLoading(true)
+    setMessage('')
+    try {
+      const response = await invokeGame<{ room: MultiplayerRoom }>({ action: 'return_to_room', roomId: room.roomId })
+      onRoomUpdate(response.room)
+      onReturnToRoom()
+    } catch (error) {
+      setMessage(getErrorMessage(error, 'Не удалось вернуться в комнату.'))
+    } finally {
+      setLoading(false)
+    }
+  }, [invokeGame, room.status, room.roomId, onRoomUpdate, onReturnToRoom])
+
+  useEffect(() => {
+    if (!match || match.status !== 'completed' || room.status !== 'playing' || !match.completedAt) return
+    const completedAt = Date.parse(match.completedAt)
+    if (!Number.isFinite(completedAt)) return
+    const delay = Math.max(0, completedAt + 60_000 - Date.now())
+    const timer = window.setTimeout(() => { void finishAndReturn() }, delay)
+    return () => window.clearTimeout(timer)
+  }, [match?.matchId, match?.status, match?.completedAt, room.status, finishAndReturn])
+
   const finalResults = match?.status === 'completed' ? match.finalResults ?? [] : []
 
   return (
@@ -212,7 +240,7 @@ export default function ReactionRushMatch({
           ))}
           <p>{match.winnerUserId ? 'Победитель получает победу в общем счёте комнаты!' : 'Ничья! В этот раз без победителя.'}</p>
           <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
-          <button className="play-button" onClick={onReturnToRoom}>ВЕРНУТЬСЯ В КОМНАТУ</button>
+          <button className="play-button" onClick={() => void finishAndReturn()} disabled={loading}>ВЕРНУТЬСЯ В КОМНАТУ</button>
         </section>
       )}
 
