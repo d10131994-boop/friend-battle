@@ -63,7 +63,7 @@ BEGIN
   v_match := public.rock_paper_scissors_start_match(v_room_id, v_host, 'Test host');
   v_match_id := (v_match->'match'->>'matchId')::uuid;
   v_started_at := v_match->'match'->>'startedAt';
-  IF v_match->'match'->>'phase' <> 'choosing'
+  IF v_match->'match'->>'phase' IS DISTINCT FROM 'choosing'
     OR v_match->'room'->>'status' <> 'playing'
   THEN
     RAISE EXCEPTION 'New match must start in the choosing phase';
@@ -86,8 +86,8 @@ BEGIN
     RAISE EXCEPTION 'Opponent choice leaked during the choosing phase';
   END IF;
 
-  -- Three consecutive wins end the match; each round has a 3s choice,
-  -- 4s reveal and 4s result phase. Force deadlines forward in this isolated test.
+  -- A draw awards no points; three later wins end the match. Each round has
+  -- a 3s choice, 4s reveal and 4s result phase. Force deadlines in this test.
   FOR v_round IN 1..4 LOOP
     IF v_round = 1 THEN
       PERFORM public.rock_paper_scissors_submit_choice(
@@ -106,7 +106,7 @@ BEGIN
     SET phase_deadline = pg_catalog.clock_timestamp() - interval '1 second'
     WHERE id = v_match_id AND phase = 'choosing';
     v_match := public.rock_paper_scissors_match_snapshot(v_room_id, v_host);
-    IF v_match->'match'->>'phase' <> 'revealing' THEN
+    IF v_match->'match'->>'phase' IS DISTINCT FROM 'revealing' THEN
       RAISE EXCEPTION 'Expired choice phase did not reveal both choices';
     END IF;
     IF v_round = 1 THEN
@@ -128,7 +128,7 @@ BEGIN
     SET phase_deadline = pg_catalog.clock_timestamp() - interval '1 second'
     WHERE id = v_match_id AND phase = 'revealing';
     v_match := public.rock_paper_scissors_match_snapshot(v_room_id, v_host);
-    IF v_match->'match'->>'phase' <> 'result' THEN
+    IF v_match->'match'->>'phase' IS DISTINCT FROM 'result' THEN
       RAISE EXCEPTION 'Reveal phase did not advance to the result phase';
     END IF;
 
@@ -138,7 +138,7 @@ BEGIN
     v_match := public.rock_paper_scissors_match_snapshot(v_room_id, v_host);
 
     IF v_round < 4 AND (
-      v_match->'match'->>'status' <> 'playing'
+      v_match->'match'->>'status' IS DISTINCT FROM 'playing'
       OR (v_match->'match'->>'currentRound')::integer <> v_round + 1
       OR v_match->'match'->>'phase' <> 'choosing'
     ) THEN
@@ -146,7 +146,7 @@ BEGIN
     END IF;
   END LOOP;
 
-  IF v_match->'match'->>'status' <> 'completed'
+  IF v_match->'match'->>'status' IS DISTINCT FROM 'completed'
     OR v_match->'match'->>'winnerUserId' <> v_host
   THEN
     RAISE EXCEPTION 'The first player should win after three winning rounds';
@@ -155,7 +155,7 @@ BEGIN
   SELECT wins, matches_played INTO v_wins, v_matches
   FROM public.common_multiplayer_room_stats
   WHERE room_id = v_room_id AND user_id = v_host;
-  IF v_wins <> 1 OR v_matches <> 1 THEN
+  IF v_wins IS DISTINCT FROM 1 OR v_matches IS DISTINCT FROM 1 THEN
     RAISE EXCEPTION 'Winner room statistics were not updated exactly once';
   END IF;
 
@@ -167,7 +167,7 @@ BEGIN
       'startedAt', v_started_at
     )
   );
-  IF v_room->>'status' <> 'finished' THEN
+  IF v_room->>'status' IS DISTINCT FROM 'finished' THEN
     RAISE EXCEPTION 'Completed match did not return the shared room to finished';
   END IF;
 
@@ -212,7 +212,7 @@ BEGIN
     'leave_room', v_guest_leave, 'Test guest',
     jsonb_build_object('roomId', v_room_id)
   );
-  IF v_room->>'status' <> 'waiting' OR v_room->>'gameId' IS NOT NULL THEN
+  IF v_room->>'status' IS DISTINCT FROM 'waiting' OR v_room->>'gameId' IS NOT NULL THEN
     RAISE EXCEPTION 'Leaving during play did not reset the common room';
   END IF;
   IF NOT EXISTS (
