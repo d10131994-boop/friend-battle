@@ -4,7 +4,7 @@ import {
   countFreeCells,
   type Board,
   type CharacterLevel,
-} from './gameEngine'
+} from './gameEngine.ts'
 
 export type ToolType = 'saw' | 'storage' | 'swap' | 'replace'
 export type ToolInventory = Record<ToolType, number>
