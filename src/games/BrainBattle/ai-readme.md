@@ -44,7 +44,7 @@ The room flow in the client is:
 - players toggle common readiness;
 - host starts the match through the `brain-battle` Edge Function;
 - clients submit answers and refresh game snapshots;
-- the game UI presents final results and returns to the room menu for a possible rematch.
+- the game UI presents final results and returns all participants to the room when a member chooses Return to room or the 60-second results window expires.
 
 The room screen refreshes the game-specific match snapshot on an approximately 1.2-second interval in addition to the shared room Realtime watcher. This is current implementation behavior, not a universal polling requirement. Timers displayed in the browser are presentation only; the server timestamps and SQL checks determine whether an answer is accepted.
 
@@ -64,12 +64,12 @@ The client must not send an authoritative user ID, correct answer, score, winner
 The Edge Function:
 1. fetches the canonical room through `multiplayer_execute_action(get_room)`;
 2. verifies that Brain Battle is selected;
-3. verifies that the caller is a room member; the host starts an initial match, while any current member may trigger a rematch only after the shared room has an accepted unanimous vote;
+3. verifies that the caller is a room member; only the host may start a match; every new match requires the normal shared readiness flow;
 4. selects/shuffles the server-side question bank, excluding IDs from the immediately previous completed match;
 5. calls `brain_battle_start_match`;
 6. broadcasts `match_started` to the private room topic.
 
-The SQL function repeats the critical checks: room exists, Brain Battle is selected, caller is a current member who is either the host or is triggering an already-approved rematch, and exactly 10 valid questions with four answers and a valid correct-answer index are supplied. The shared Multiplayer RPC independently validates readiness for an initial match or unanimous approval for a default rematch. It starts the shared room session and creates the game-specific match record.
+The SQL function repeats the critical checks: room exists, Brain Battle is selected, caller is the current room host, and exactly 10 valid questions with four answers and a valid correct-answer index are supplied. The shared Multiplayer RPC independently validates player count and readiness for every new match. It starts the shared room session and creates the game-specific match record.
 
 ### submit_answer
 
@@ -119,17 +119,17 @@ The game Edge Function broadcasts private room-topic events such as:
 
 These events are notifications. The room watcher in Multiplayer listens to the shared room event set and refreshes the common room snapshot; Brain Battle separately refreshes its game-specific snapshot. Do not treat Broadcast payloads as canonical match state.
 
-## 7. Shared lifecycle and rematch integration
+## 7. Shared results and room return
 
-The current AI-branch canonical shared room lifecycle is defined in supabase/sql/universal_lobby_reaction_rush.sql. When a player leaves during a match, the shared room returns to waiting; the Brain Battle-owned trigger in supabase/sql/brain_battle_multiplayer.sql marks its active match cancelled. Multiplayer does not directly update Brain Battle match or answer tables.
+The game-specific SQL marks the Brain Battle match `completed`, stores `completed_at`, final results and common room statistics, but leaves the shared room in `playing` while results are displayed. The room snapshot includes the match's `completedAt` timestamp.
 
-Both current games use lifecycle mode default. After a completed match, Multiplayer opens a 60-second unanimous rematch vote. Once accepted, the host client automatically requests the next match. The trusted SQL layer validates the accepted vote before starting it.
+The result screen's Return to room action calls the Brain Battle Edge Function's `return_to_room` action. The function verifies membership and terminal match status, then calls the trusted shared `finish_game` operation with the exact match `startedAt`. If no one returns manually, the client calls the same action 60 seconds after `completedAt`. The first successful call marks the shared room `finished` and broadcasts the room update to all players.
 
-For Brain Battle, supabase/functions/brain-battle/questions.ts contains the trusted question bank and selector. The Edge Function reads the immediately previous completed match's question IDs and excludes them when selecting the next set. The current bank contains 20 questions and each match uses 10, so consecutive completed matches receive disjoint question sets. If fewer than 10 unseen questions remain, the selector falls back to the full bank; this is a deliberate fallback, not a guarantee of permanent non-repetition across an unlimited number of matches.
+A subsequent match is an ordinary new match: the host starts it only after all current players have confirmed readiness. There is no rematch vote or automatic restart. The next question set continues to exclude IDs from the immediately previous completed match when enough unseen questions remain; this behavior applies to any consecutive matches, not a special rematch.
 
-The selector is covered by questions_test.ts. The transactional brain_battle_rematch.sql script covers two consecutive matches, winner/statistics accumulation, and repeated-completion idempotency. Database lifecycle SQL scripts are parsed by CI but are not executed there.
+The selector is covered by `questions_test.ts`. The transactional `brain_battle_consecutive_matches.sql` script covers two matches in one room, the result-screen room state, readiness before the second match, winner/statistics accumulation, and repeated-completion idempotency. Database lifecycle SQL scripts are parsed by CI but are not executed there.
 
-Deployment distinction: the rematch migration and current lifecycle SQL are present on the AI branch but have not been applied to Production. Production's live schema/migration history must be checked separately before any deployment. Do not infer deployed behavior from this branch's files.
+The removal migration `20261107090000_remove_multiplayer_rematch.sql` drops the deployed rematch schema and guard after replacing the shared and game-owned SQL functions. It must be promoted and applied together with the game Edge Functions and frontend. Do not edit or reapply the historical migration that originally introduced rematch.
 
 ## 8. Security and change rules
 
@@ -144,7 +144,7 @@ Deployment distinction: the rematch migration and current lifecycle SQL are pres
 
 ## 9. Verification
 
-Test solo mode separately from multiplayer. Multiplayer verification should cover create/join/select, 2–4 players, readiness, host start, question snapshots, answer validation, duplicate answers, deadlines, unanswered skips, score calculation, tie/winner, common stats, finish, rematch, leave during match, disconnect/reconnect and concurrent answer/advance requests.
+Test solo mode separately from multiplayer. Multiplayer verification should cover create/join/select, 2–4 players, readiness, host start, question snapshots, answer validation, duplicate answers, deadlines, unanswered skips, score calculation, tie/winner, common stats, finish, results return/timeout, leave during match, disconnect/reconnect and concurrent answer/advance requests.
 
 A successful build does not prove that the Edge Function, SQL, Realtime policies or live multi-device flow are deployed and working. Report these checks separately.
 
