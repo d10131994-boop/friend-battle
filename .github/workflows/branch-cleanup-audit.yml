@@ -29,12 +29,10 @@ jobs:
             // Safety policy:
             // - Release branches are never cleanup candidates.
             // - Keep task branches from the latest two release generations.
-            // - For older regular task branches, only mark as candidates when
-            //   they have no commits ahead of main.
-            // - For older AI branches, only mark as candidates when they have
-            //   no commits ahead of their matching parent task branch.
+            // - Older regular task branches are candidates only with no commits ahead of main.
+            // - Older AI branches are candidates only when they have no commits ahead of parent.
             // - Unknown naming, missing parents, open PRs, and API errors => keep.
-            // - This workflow is intentionally report-only: it never deletes refs.
+            // - Report-only: this workflow never deletes refs.
 
             const branches = await github.paginate(
               github.rest.repos.listBranches,
@@ -43,7 +41,7 @@ jobs:
             const names = new Set(branches.map(branch => branch.name));
             const releases = [...names]
               .map(name => {
-                const match = name.match(/^friend-battle-(\\d+)-release$/);
+                const match = name.match(/^friend-battle-(\d+)-release$/);
                 return match ? Number(match[1]) : null;
               })
               .filter(value => value !== null);
@@ -66,7 +64,7 @@ jobs:
               const result = await github.rest.repos.compareCommitsWithBasehead({
                 owner,
                 repo,
-                basehead: `${base}...${head}`,
+                basehead: \`\${base}...\${head}\`,
               });
               return result.data;
             };
@@ -79,12 +77,12 @@ jobs:
                 continue;
               }
 
-              if (/^friend-battle-\\d+-release$/.test(name)) {
+              if (/^friend-battle-\d+-release$/.test(name)) {
                 rows.push({ name, status: "KEEP", reason: "релизные ветки не удаляются никогда" });
                 continue;
               }
 
-              const taskMatch = name.match(/^friend-battle-(\\d+)\\/(.+)$/);
+              const taskMatch = name.match(/^friend-battle-(\d+)\/(.+)$/);
               if (!taskMatch) {
                 rows.push({ name, status: "KEEP", reason: "нестандартное имя — ручная проверка" });
                 continue;
@@ -95,7 +93,7 @@ jobs:
                 rows.push({
                   name,
                   status: "KEEP",
-                  reason: `защищённая зона: релиз ${String(releaseNumber).padStart(2, "0")} (сохраняем два последних поколения)`,
+                  reason: \`защищённая зона: релиз \${String(releaseNumber).padStart(2, "0")} (сохраняем два последних поколения)\`,
                 });
                 continue;
               }
@@ -106,18 +104,18 @@ jobs:
               }
 
               const suffix = taskMatch[2];
-              const aiMatch = suffix.match(/^(.*)-AI(?:-\\d+)?$/);
+              const aiMatch = suffix.match(/^(.*)-AI(?:-\d+)?$/);
 
               try {
                 if (aiMatch) {
-                  const parent = `friend-battle-${String(releaseNumber).padStart(2, "0")}/${aiMatch[1]}`;
+                  const parent = \`friend-battle-\${String(releaseNumber).padStart(2, "0")}/\${aiMatch[1]}\`;
                   if (!names.has(parent)) {
-                    rows.push({ name, status: "KEEP", reason: `не найдена родительская task-ветка: ${parent}` });
+                    rows.push({ name, status: "KEEP", reason: \`не найдена родительская task-ветка: \${parent}\` });
                     continue;
                   }
 
                   if (branchesWithOpenPR.has(parent)) {
-                    rows.push({ name, status: "KEEP", reason: `у родительской ветки открыт pull request: ${parent}` });
+                    rows.push({ name, status: "KEEP", reason: \`у родительской ветки открыт pull request: \${parent}\` });
                     continue;
                   }
 
@@ -126,7 +124,7 @@ jobs:
                     rows.push({
                       name,
                       status: "CANDIDATE",
-                      reason: `AI-изменения уже содержатся в родительской ветке ${parent}`,
+                      reason: \`AI-изменения уже содержатся в родительской ветке \${parent}\`,
                     });
                   } else {
                     rows.push({
@@ -134,7 +132,7 @@ jobs:
                       status: "KEEP",
                       reason: comparison.too_large
                         ? "сравнение слишком большое — нужна ручная проверка"
-                        : `есть ${comparison.ahead_by ?? "неизвестно"} уникальных коммитов относительно родительской ветки`,
+                        : \`есть \${comparison.ahead_by ?? "неизвестно"} уникальных коммитов относительно родительской ветки\`,
                     });
                   }
                 } else {
@@ -151,7 +149,7 @@ jobs:
                       status: "KEEP",
                       reason: comparison.too_large
                         ? "сравнение слишком большое — нужна ручная проверка"
-                        : `есть ${comparison.ahead_by ?? "неизвестно"} уникальных коммитов относительно main`,
+                        : \`есть \${comparison.ahead_by ?? "неизвестно"} уникальных коммитов относительно main\`,
                     });
                   }
                 }
@@ -159,7 +157,7 @@ jobs:
                 rows.push({
                   name,
                   status: "KEEP",
-                  reason: `ошибка проверки GitHub API — оставляем в безопасности: ${error.message}`,
+                  reason: \`ошибка проверки GitHub API — оставляем в безопасности: \${error.message}\`,
                 });
               }
             }
@@ -169,24 +167,24 @@ jobs:
             const lines = [
               "## Branch cleanup audit — dry run",
               "",
-              `- Последний найденный релиз: **${String(latestRelease).padStart(2, "0")}**`,
-              `- Сохраняем task-ветки релизов: **${String(keepFromRelease).padStart(2, "0")}** и новее`,
+              \`- Последний найденный релиз: **\${String(latestRelease).padStart(2, "0")}**\`,
+              \`- Сохраняем task-ветки релизов: **\${String(keepFromRelease).padStart(2, "0")}** и новее\`,
               "- Режим: **только отчёт, без удаления веток**",
-              `- Кандидаты на удаление: **${candidates.length}**`,
-              `- Сохранено: **${kept.length}**`,
+              \`- Кандидаты на удаление: **\${candidates.length}**\`,
+              \`- Сохранено: **\${kept.length}**\`,
               "",
               "### Кандидаты на удаление",
               "",
               ...(candidates.length
-                ? candidates.map(row => `- \`${row.name}\` — ${row.reason}`)
+                ? candidates.map(row => \`- \\\`\${row.name}\\\` — \${row.reason}\`)
                 : ["- Нет"]),
               "",
               "### Сохранённые ветки",
               "",
-              ...kept.map(row => `- \`${row.name}\` — ${row.reason}`),
+              ...kept.map(row => \`- \\\`\${row.name}\\\` — \${row.reason}\`),
               "",
-              "> Ничего не удалено. Даже после включения автоматического удаления сомнительные случаи должны оставаться нетронутыми.",
+              "> Ничего не удалено. Сомнительные случаи остаются нетронутыми.",
             ];
 
-            await core.summary.addRaw(lines.join("\n")).write();
-            core.info(`Audit completed: ${candidates.length} candidates, ${kept.length} kept.`);
+            await core.summary.addRaw(lines.join("\\n")).write();
+            core.info(\`Audit completed: \${candidates.length} candidates, \${kept.length} kept.\`);
