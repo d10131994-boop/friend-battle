@@ -91,7 +91,8 @@ Register the game in `public.common_multiplayer_game_rules` with min/max player 
 ## 7. Pure game logic currently implemented
 
 - `logic/gameEngine.ts` contains the pure 6×6 board model, orthogonal connected-group detection, 3+ merge and chain resolution, score calculation, level-6 repeat scoring, and injectable weighted character generation.
-- `logic/tools.ts` contains pure saw, storage, swap, replace-current-character, inventory-cap and board-cell escape checks. V1 currently has one numbered placeholder character per level, so replace-current-character consumes the tool but keeps the same level identity until level-specific character variants are supplied.
+- `logic/tools.ts` contains pure saw, storage, swap, replace-current-character, inventory-cap and board-cell escape checks.
+- `logic/events.ts` contains shop pricing, per-merge independent money-bag/tool reward rolls, shared 5% obstacle event generation, player-specific free-cell obstacle placement and silent reward-cap handling. V1 currently has one numbered placeholder character per level, so replace-current-character consumes the tool but keeps the same level identity until level-specific character variants are supplied.
 - Deno unit tests for these modules live in `supabase/functions/_shared/democracy_merge_engine_test.ts` and `democracy_merge_tools_test.ts`; the application build does not include Deno test files.
 
 These are reusable rules primitives, not a complete match implementation. They do not yet provide persistence, server authority, rewards, obstacle scheduling, multiplayer state or UI.
