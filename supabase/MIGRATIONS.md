@@ -49,6 +49,8 @@ The historical migrations that introduced rematch remain in the central migratio
 
 The removal migration `20261107090000_remove_multiplayer_rematch` is recorded as applied in Production under version `20261107143017`. It deliberately preserves the historical migration records `20261106163934_multiplayer_rematch_lifecycle` and `20261106164111_multiplayer_rematch_unanimous_guard`; it removes their live schema effects instead of rewriting migration history. The currently inspected Production migration history also includes subsequent NoCountIt lifecycle/storage migrations and `rock_paper_scissors_multiplayer` (`20261107225206`). Always query the live migration history rather than relying on this historical table.
 
+The task branch adds `20261108100000_multiplayer_active_match_departure.sql`. It extends the canonical shared action RPC with a trusted, Democracy Merge-only `leave_active_match` action. This migration is pending and has not been applied to Production. It must be reviewed and tested with the matching Multiplayer Edge Function and Democracy Merge game-owned departure trigger before any Production application.
+
 ## Baseline decision
 
 A fresh live-schema baseline is optional future work, not a prerequisite for the current release. Do not recreate or backfill old migration history. If a baseline is later needed for a specific workflow, capture it from a real Production dump, review managed-schema exclusions and custom Realtime policies, and commit it as a baseline for future environments only.
