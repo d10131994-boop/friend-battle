@@ -73,7 +73,7 @@ export default function DemocracyMergeMatch({
   const [snapshot, setSnapshot] = useState<DemocracyMergeSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(0)
   const [selectedTool, setSelectedTool] = useState<ToolType | null>(null)
   const [swapFirstCell, setSwapFirstCell] = useState<number | null>(null)
   const [shopOpen, setShopOpen] = useState(false)
@@ -118,6 +118,7 @@ export default function DemocracyMergeMatch({
   }, [initData, room.roomId, snapshot?.match?.status, onRoomUpdate])
 
   useEffect(() => {
+    setNow(Date.now())
     const timer = window.setInterval(() => setNow(Date.now()), 250)
     return () => window.clearInterval(timer)
   }, [])
