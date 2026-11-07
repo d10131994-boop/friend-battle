@@ -66,6 +66,7 @@ jobs:
           deno test supabase/functions/brain-battle/questions_test.ts
           deno test supabase/functions/_shared/democracy_merge_engine_test.ts
           deno test supabase/functions/_shared/democracy_merge_tools_test.ts
+          deno test supabase/functions/_shared/democracy_merge_events_test.ts
 
   sql-syntax:
     name: Parse PostgreSQL SQL patches
