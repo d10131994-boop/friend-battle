@@ -284,7 +284,9 @@ BEGIN
   );
   v_match_id := (v_start->>'matchId')::uuid;
   UPDATE public.games_democracy_merge_matches
-  SET deadline_at = now() - interval '1 second'
+  SET started_at = now() - interval '31 minutes',
+      game_started_at = now() - interval '30 minutes',
+      deadline_at = now() - interval '1 second'
   WHERE id = v_match_id;
   UPDATE public.common_multiplayer_players
   SET last_seen_at = now() - interval '6 minutes'
