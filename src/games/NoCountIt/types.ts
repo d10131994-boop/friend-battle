@@ -110,6 +110,7 @@ export interface NoCountItPublicRound {
 export interface NoCountItPublicMatch {
   matchId: string
   startedAt: string
+  completedAt: string | null
   status: NoCountItMatchStatus
   currentRound: number
   round: NoCountItPublicRound | null
