@@ -115,7 +115,7 @@ export default function RockPaperScissorsMatch({
     try {
       await invokeGame({
         action: 'submit_choice',
-        roomId: room.roomId,
+        roomId,
         matchId: match.matchId,
         roundNumber: match.currentRound,
         choice,
@@ -143,7 +143,7 @@ export default function RockPaperScissorsMatch({
       if (!matchId) throw new Error('Не найден идентификатор завершённого матча.')
       const response = await invokeGame<{ room: MultiplayerRoom }>({
         action: 'return_to_room',
-        roomId: room.roomId,
+        roomId,
         matchId,
       })
       onRoomUpdate(response.room)
