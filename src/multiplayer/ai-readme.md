@@ -28,10 +28,10 @@ The module entrypoint is `src/multiplayer/index.ts`; it re-exports:
 
 Important types:
 - `MultiplayerAuth`: `{ initData: string }`. The value is Telegram Web App initData and is forwarded unchanged to the server.
-- `MultiplayerRoom`: `roomId`, nullable `gameId`, `inviteCode`, `status`, `players`, nullable `maxPlayers`, lifecycle timestamps, `rematchStatus`, `rematchDeadlineAt`, and `rematchVotes`.
+- `MultiplayerRoom`: `roomId`, nullable `gameId`, `inviteCode`, `status`, `players`, nullable `maxPlayers`, and lifecycle timestamps.
 - `MultiplayerPlayer`: `userId`, `displayName`, `isReady`, `isHost`, `joinedAt`, `lastSeenAt`, `wins`, `matchesPlayed`.
 - `MultiplayerRoomStatus`: `waiting | starting | playing | finished | cancelled`.
-- `MultiplayerService`: `createRoom`, `selectGame`, `joinRoom`, `getRoom`, `setReady`, `voteRematch`, `leaveRoom`, `closeRoom`, `heartbeat`, `getRoomToken`.
+- `MultiplayerService`: `createRoom`, `selectGame`, `joinRoom`, `getRoom`, `setReady`, `leaveRoom`, `closeRoom`, `heartbeat`, `getRoomToken`.
 
 The adapter is created with `createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })`. Its action names can be overridden through the optional `actions` map. Service factories wrap adapter failures in `MultiplayerError` with a user-facing message and retain the original error in `cause`.
 
@@ -110,7 +110,7 @@ The database adapter validates the Edge Function response before exposing it as 
 The canonical shared room lifecycle implementation is `supabase/sql/universal_lobby_reaction_rush.sql`. It defines `public.multiplayer_execute_action` and the shared room snapshot, including:
 - creating a room before a game is selected and later selecting an enabled game;
 - room capacity of 2–4 and game-specific min/max player rules;
-- host/readiness checks for an initial match and unanimous-vote validation for an approved rematch;
+- host/readiness checks for every new match, including a new match in a previously finished room;
 - returning remaining players to the waiting room when someone leaves during play; game-specific match cleanup is delegated to each game's own database hook;
 - room membership checks for member actions and server-only game lifecycle actions.
 
@@ -159,34 +159,18 @@ The menu automatically marks the host ready when a newly created room or a finis
 
 The current Telegram Mini App share flow uses a single invite URL through `https://t.me/share/url`. Telegram's share sheet does not return a list of chosen recipients to the Mini App, so the client cannot show a truthful live count of selected contacts. The room snapshot and server-side capacity remain the source for actual participant counts. The shared invite deep-link prefix is `fb_`; the application continues to accept legacy `rr_` and `bb_` prefixes for existing links.
 
-## 11. Extensible game-session lifecycle contract
+## 11. Match results and room return lifecycle
 
-The shared lifecycle-mode contract has three modes:
+A game-specific match can be complete while the shared room is still `playing`. This is intentional: all players first receive the results screen.
 
-- `default`: Multiplayer Core owns the common room start/finish transitions and opens the standard unanimous rematch vote after a completed match. The game module still owns its match state and trusted game-specific start hook.
-- `custom`: Multiplayer Core continues to own room membership, participant identity, authorization, host/room transitions and security boundaries. The game module owns its custom post-match/rematch flow through explicit trusted hooks. This is an extension point; neither current game uses it yet.
-- `disabled`: Multiplayer Core still coordinates the room's playing/finished state, but does not open a rematch vote. Room membership, participant authorization and room security remain Multiplayer responsibilities.
+- The game module owns the terminal match state, final results, winner/tie and the server-recorded `completedAt` timestamp.
+- The results screen offers a “Return to room” action. Any current room member may use it.
+- The game Edge Function validates Telegram identity and room membership, verifies that its own match is `completed` (or `technical_aborted` for NoCountIt), then invokes the trusted Multiplayer `finish_game` transition using the exact shared `startedAt`.
+- If nobody returns manually, each game client performs the same return action 60 seconds after `completedAt`. The server is authoritative; a client timer alone never changes room state.
+- The first successful return changes the shared room from `playing` to `finished` and broadcasts `room_finished`. All connected clients leave the results screen and return to the common room menu.
+- Repeated return requests for the same completed session are safe: `finish_game` is idempotent for that exact `startedAt`.
+- Starting another match is always the normal readiness flow: every current player must be ready and have a recent heartbeat. There is no automatic restart or readiness bypass.
 
-Ownership boundary:
-- Multiplayer may operate only on common room, player, game-rule, room-stat and shared lifecycle data.
-- Multiplayer must not read or mutate a game's match/answer/score tables directly.
-- Game modules own their match tables, scoring, winner calculation and game-specific cleanup. They integrate through an explicit trusted server contract rather than direct cross-module table access.
-- All transitions must remain server-authoritative, membership-checked, retry-safe where promised and serialized with a documented lock order.
+Room closure remains separate and unchanged. An explicit leave during a match resets the room to `waiting` and clears its selected game; the game-owned cleanup hook handles interrupted game state. If the last player explicitly leaves, the room becomes `cancelled`. Host closure and the scheduled idle-room cleanup also retain their existing cancellation behavior.
 
-Standard session lifecycle modes are stored in `common_multiplayer_game_rules.lifecycle_mode`:
-- `default`: Multiplayer opens a 60-second unanimous rematch vote after a game server finishes a match.
-- `custom`: Multiplayer does not create the default vote window; the game module is responsible for its own custom post-match lifecycle.
-- `disabled`: no rematch lifecycle is opened.
-
-Current Reaction Rush and Brain Battle rules use `default` (the column default). The public room snapshot includes `rematchStatus`, `rematchDeadlineAt`, and the votes for the current completed session.
-
-Default rematch behavior implemented in the AI branch:
-- A room enters `rematchStatus: open` for 60 seconds after `finish_game`.
-- Every current room member must vote `yes`. A single `no` sets `declined`; an unanswered vote becomes `expired` on the next authoritative room refresh after the deadline.
-- Room membership and game selection are locked while voting is open or accepted, so the vote electorate cannot silently change. Existing members may reconnect; a member may still leave. If the remaining members have all voted yes after a leave and still meet the game's minimum player count, the vote becomes accepted; otherwise it is declined.
-- Unanimous approval sets `accepted`. The host client automatically asks the selected game module to start the next match; the database accepts that start only for the exact accepted room state. The selected game is retained.
-- Votes are scoped to the exact prior `started_at` session and cleared when the next match starts.
-- Brain Battle selects 10 questions from a 20-question server bank while excluding the immediately previous match's question IDs, so a rematch gets a different question set. Reaction Rush creates a fresh match row through its own game-owned RPC.
-- `custom` is an extension point for game-owned hooks; neither current game uses it.
-
-**Deployment status:** the schema, SQL functions, Edge Function actions, client adapter, both game UIs, and integration test source are implemented on this AI branch. The timestamped migration is `supabase/migrations/20261106152000_multiplayer_rematch_lifecycle.sql`. It has not been applied to Production and must be promoted/applied together with the updated game SQL/Edge Function/frontend code. The SQL integration script is `supabase/tests/multiplayer_rematch.sql`; CI parses it but does not execute it.
+The shared Multiplayer schema and public API contain no rematch status, vote rows, vote action or lifecycle mode. Do not reintroduce these fields or add a generic rematch framework. The historical migration files that introduced rematch remain in migration history; the new removal migration drops the deployed schema objects and columns.
