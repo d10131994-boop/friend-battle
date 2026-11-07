@@ -72,7 +72,6 @@ export default function RockPaperScissorsMatch({
   }, [refreshMatch])
 
   useEffect(() => {
-    setNow(Date.now())
     const timer = window.setInterval(() => setNow(Date.now()), 100)
     return () => window.clearInterval(timer)
   }, [])
