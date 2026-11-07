@@ -141,6 +141,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
                 className={`rps-choice-button ${shownPlayerChoice === 'rock' ? 'selected' : ''}`}
                 aria-label="Камень"
                 aria-pressed={shownPlayerChoice === 'rock'}
+                disabled={remaining <= 0}
                 onClick={() => choose('rock')}
               ><HandIllustration choice="rock" className="rps-hand-icon" /></button>
               <div className="rps-choice-row">
@@ -149,6 +150,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
                   className={`rps-choice-button ${shownPlayerChoice === 'scissors' ? 'selected' : ''}`}
                   aria-label="Ножницы"
                   aria-pressed={shownPlayerChoice === 'scissors'}
+                  disabled={remaining <= 0}
                   onClick={() => choose('scissors')}
                 ><HandIllustration choice="scissors" className="rps-hand-icon" /></button>
                 <button
@@ -156,6 +158,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
                   className={`rps-choice-button ${shownPlayerChoice === 'paper' ? 'selected' : ''}`}
                   aria-label="Бумага"
                   aria-pressed={shownPlayerChoice === 'paper'}
+                  disabled={remaining <= 0}
                   onClick={() => choose('paper')}
                 ><HandIllustration choice="paper" className="rps-hand-icon" /></button>
               </div>
