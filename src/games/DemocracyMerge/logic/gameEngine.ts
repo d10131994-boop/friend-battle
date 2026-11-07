@@ -59,6 +59,7 @@ export function assertBoard(board: Board): void {
   }
   for (const cell of board) {
     if (cell === null) continue
+    if (typeof cell !== 'object') throw new TypeError('Board contains an invalid cell.')
     if (cell.kind === 'character' && Number.isInteger(cell.level) && cell.level >= 1 && cell.level <= 6) continue
     if (cell.kind === 'obstacle' && ['barricade', 'police', 'rock'].includes(cell.obstacleType)) continue
     throw new TypeError('Board contains an invalid cell.')
