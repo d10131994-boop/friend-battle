@@ -1,7 +1,7 @@
 import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
 import type { Board, CharacterLevel, ObstacleType } from './logic/gameEngine'
-import type { ToolInventory, StoredCharacter } from './logic/tools'
+import type { ToolInventory, StoredCharacter, ToolType } from './logic/tools'
 
 export type DemocracyMergePlayerStatus = 'active' | 'completed' | 'surrendered' | 'left'
 
