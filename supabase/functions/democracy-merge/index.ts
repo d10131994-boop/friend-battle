@@ -1,7 +1,27 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { generateCharacterSequence } from "../../../src/games/DemocracyMerge/logic/gameEngine.ts";
-import { generateObstacleSequence } from "../../../src/games/DemocracyMerge/logic/events.ts";
+import {
+  generateCharacterSequence,
+  isBoardFull,
+  placeCharacter,
+} from "../../../src/games/DemocracyMerge/logic/gameEngine.ts";
+import {
+  applyToolReward,
+  buyTool,
+  generateObstacleSequence,
+  placeObstacleAtRandomFreeCell,
+  rollMergeRewards,
+} from "../../../src/games/DemocracyMerge/logic/events.ts";
+import {
+  canFreeCellWithTools,
+  replaceCurrentCharacter,
+  returnStoredCharacter,
+  storeCharacter,
+  swapCharacters,
+  useSaw,
+  type ToolInventory,
+  type ToolType,
+} from "../../../src/games/DemocracyMerge/logic/tools.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -89,7 +109,7 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) return fail("Invalid request body", 400);
-    const actions = ["start_match", "get_match", "leave_match", "return_to_room"];
+    const actions = ["start_match", "get_match", "place_character", "use_tool", "buy_tool", "surrender", "leave_match", "return_to_room"];
     if (typeof body.action !== "string" || !actions.includes(body.action)) {
       return fail("Unknown Democracy Merge action", 400);
     }
@@ -139,6 +159,156 @@ Deno.serve(async (req: Request) => {
           deadlineAt: data.deadlineAt,
         },
       });
+    }
+
+    if (["place_character", "use_tool", "buy_tool", "surrender"].includes(body.action)) {
+      if (typeof body.actionId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.actionId)) {
+        return fail("A valid actionId is required", 400);
+      }
+      const { data: snapshot, error: snapshotError } = await db.rpc("democracy_merge_match_snapshot", {
+        p_room_id: roomId,
+        p_user_id: userId,
+      });
+      if (snapshotError) return fail("Не удалось получить состояние матча", 409);
+      const match = snapshot?.match;
+      const me = match?.me;
+      if (match?.status !== "playing" || me?.status !== "active") {
+        return fail("Матч или ваша партия уже завершены", 409);
+      }
+
+      const board = me.board;
+      let nextBoard = board;
+      let inventory = me.inventory as ToolInventory;
+      let storage = me.storage;
+      let coins = Number(me.coins);
+      let score = Number(me.score);
+      let maxLevel = Number(me.maxLevel);
+      let turnNumber = Number(me.turnNumber);
+      let mergeCount = Number(me.mergeCount);
+      let chainReactions = Number(me.chainReactions);
+      let toolsUsed = Number(me.toolsUsed);
+      let level6MergeCount = Number(me.level6MergeCount);
+      let status: "active" | "completed" | "surrendered" = "active";
+      let result: Record<string, unknown> | null = null;
+      const rewards: Array<Record<string, unknown>> = [];
+
+      if (body.action === "place_character") {
+        if (!Number.isInteger(body.cellIndex) || !match.currentCharacter) {
+          return fail("Выберите свободную клетку для текущего персонажа", 400);
+        }
+        const placement = placeCharacter(board, body.cellIndex, match.currentCharacter, level6MergeCount);
+        nextBoard = placement.board;
+        score += placement.scoreDelta;
+        mergeCount += placement.merges.length;
+        if (placement.merges.length > 1) chainReactions += 1;
+        level6MergeCount = placement.level6MergeCount;
+        turnNumber += 1;
+
+        for (const reward of rollMergeRewards(placement.merges.length, secureRandomUnit)) {
+          if (reward.kind === "money_bag") {
+            coins += reward.coins;
+            rewards.push(reward);
+          } else {
+            const awarded = applyToolReward(inventory, reward.tool);
+            inventory = awarded.inventory;
+            if (awarded.awarded) rewards.push(reward);
+          }
+        }
+
+        if (match.obstacleEvent) {
+          nextBoard = placeObstacleAtRandomFreeCell(nextBoard, match.obstacleEvent, secureRandomUnit).board;
+        }
+        const levels = nextBoard.flatMap((cell: { kind: string; level?: number } | null) =>
+          cell?.kind === "character" && typeof cell.level === "number" ? [cell.level] : []);
+        maxLevel = Math.max(maxLevel, ...levels, 1);
+        if (isBoardFull(nextBoard) && !canFreeCellWithTools(nextBoard, inventory, storage, coins)) {
+          status = "completed";
+        }
+      } else if (body.action === "buy_tool") {
+        if (!["saw", "storage", "swap", "replace"].includes(body.tool)) return fail("Неизвестный инструмент", 400);
+        const purchase = buyTool(inventory, body.tool as ToolType, coins);
+        inventory = purchase.inventory;
+        coins = purchase.coins;
+      } else if (body.action === "use_tool") {
+        if (!["saw", "storage", "swap", "replace"].includes(body.tool)) return fail("Неизвестный инструмент", 400);
+        if (body.tool === "saw") {
+          const used = useSaw(board, body.cellIndex, inventory, coins);
+          nextBoard = used.board;
+          inventory = used.inventory;
+          coins = used.coins;
+          toolsUsed += 1;
+        } else if (body.tool === "storage") {
+          if (body.storageAction === "store") {
+            const stored = storeCharacter(board, body.cellIndex, storage, inventory);
+            nextBoard = stored.board;
+            storage = stored.storage;
+            inventory = stored.inventory;
+          } else if (body.storageAction === "return") {
+            const returned = returnStoredCharacter(board, body.cellIndex, storage, inventory);
+            nextBoard = returned.board;
+            storage = returned.storage;
+            inventory = returned.inventory;
+            toolsUsed += 1;
+          } else {
+            return fail("Укажите действие хранилища", 400);
+          }
+        } else if (body.tool === "swap") {
+          const swapped = swapCharacters(board, body.firstCellIndex, body.secondCellIndex, inventory);
+          nextBoard = swapped.board;
+          inventory = swapped.inventory;
+          toolsUsed += 1;
+        } else {
+          if (!match.currentCharacter) return fail("Нет текущего персонажа для замены", 409);
+          const replaced = replaceCurrentCharacter(match.currentCharacter, inventory);
+          inventory = replaced.inventory;
+          toolsUsed += 1;
+        }
+        if (isBoardFull(nextBoard) && !canFreeCellWithTools(nextBoard, inventory, storage, coins)) {
+          status = "completed";
+        }
+      } else {
+        status = "surrendered";
+      }
+
+      if (status !== "active") {
+        result = {
+          score, maxLevel, mergeCount, chainReactions, toolsUsed, coins,
+          status, completedAt: new Date().toISOString(),
+        };
+      }
+      const state = {
+        status,
+        board: nextBoard,
+        turnNumber,
+        score,
+        maxLevel,
+        mergeCount,
+        chainReactions,
+        toolsUsed,
+        coins,
+        inventory,
+        storage,
+        level6MergeCount,
+        result,
+        rewards,
+      };
+      const { data, error } = await db.rpc("democracy_merge_commit_player_action", {
+        p_room_id: roomId,
+        p_match_id: match.matchId,
+        p_user_id: userId,
+        p_action_id: body.actionId,
+        p_action_type: body.action === "place_character" ? "place_character"
+          : body.action === "buy_tool" ? "buy_tool"
+          : body.action === "use_tool" ? "use_tool" : "surrender",
+        p_expected_revision: me.revision,
+        p_state: state,
+      });
+      if (error) {
+        const statusCode = error.code === "40001" ? 409 : 400;
+        return fail(error.code === "40001" ? "Состояние изменилось. Обновите матч и повторите действие." : "Не удалось сохранить действие", statusCode);
+      }
+      await broadcast(db, roomId, "match_updated");
+      return respond(data);
     }
 
     if (body.action === "leave_match") {
