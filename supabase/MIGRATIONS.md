@@ -43,11 +43,11 @@ The current reviewed sources include:
 - `supabase/sql/reaction_rush_room_reset_cleanup.sql` — Reaction Rush room-reset cleanup;
 - `supabase/sql/multiplayer_realtime_membership_auth.sql` — Realtime room-membership authorization.
 
-The historical migrations that introduced rematch remain in the central migration history and must not be edited or replayed. The task branch adds `supabase/migrations/20261107090000_remove_multiplayer_rematch.sql`, which replaces the current lifecycle functions and drops the rematch table, room columns, game-rule lifecycle mode and unanimous-start guard. This migration is pending until the task is promoted and applied. Do not infer that it has been applied from its presence in the repository.
+The historical migrations that introduced rematch remain in the central migration history and must not be edited or replayed. The removal migration `20261107090000_remove_multiplayer_rematch.sql` has been applied to Production. The central Production migration history records it as version `20261107143017` (`20261107090000_remove_multiplayer_rematch`). The historical migrations that introduced rematch remain in migration history; the removal migration drops their deployed schema effects. Do not reapply either historical migration or the removal migration.
 
 ## Pending lifecycle removal
 
-`20261107090000_remove_multiplayer_rematch` is a new forward migration in the current task branch. It deliberately preserves the historical migration records `20261106163934_multiplayer_rematch_lifecycle` and `20261106164111_multiplayer_rematch_unanimous_guard`; it removes their live schema effects instead of rewriting migration history. Apply it only after the matching SQL, Edge Function and frontend changes are promoted together. Verify the resulting functions, grants, RLS and migration history after application.
+The removal migration `20261107090000_remove_multiplayer_rematch` is recorded as applied in Production under version `20261107143017`. It deliberately preserves the historical migration records `20261106163934_multiplayer_rematch_lifecycle` and `20261106164111_multiplayer_rematch_unanimous_guard`; it removes their live schema effects instead of rewriting migration history. The currently inspected Production migration history also includes subsequent NoCountIt lifecycle/storage migrations and `rock_paper_scissors_multiplayer` (`20261107225206`). Always query the live migration history rather than relying on this historical table.
 
 ## Baseline decision
 
