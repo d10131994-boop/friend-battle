@@ -31,11 +31,11 @@ Deno.test('storage is consumed only when the stored character is returned', () =
   const board = createEmptyBoard()
   board[0] = { kind: 'character', level: 4 }
   const inventory = { ...emptyToolInventory(), storage: 1 }
-  const stored = storeCharacter(board, 0, null)
-  if (stored.board[0] !== null || stored.storage?.level !== 4 || inventory.storage !== 1) {
+  const stored = storeCharacter(board, 0, null, inventory)
+  if (stored.board[0] !== null || stored.storage?.level !== 4 || stored.inventory.storage !== 1) {
     throw new Error('Storing must free the cell without consuming storage.')
   }
-  const returned = returnStoredCharacter(stored.board, 5, stored.storage, inventory)
+  const returned = returnStoredCharacter(stored.board, 5, stored.storage, stored.inventory)
   if (returned.board[5]?.kind !== 'character' || returned.board[5].level !== 4 ||
       returned.storage !== null || returned.inventory.storage !== 0) {
     throw new Error('Returning must restore the character and consume storage.')
