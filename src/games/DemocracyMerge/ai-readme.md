@@ -88,7 +88,15 @@ Any SQL or Supabase infrastructure change requires explicit user approval before
 
 Register the game in `public.common_multiplayer_game_rules` with min/max player limits 2 and 4 and enabled status through the approved database workflow. Do not claim the game is available in the live catalog until the registration is actually deployed.
 
-## 7. Verification requirements
+## 7. Pure game logic currently implemented
+
+- `logic/gameEngine.ts` contains the pure 6×6 board model, orthogonal connected-group detection, 3+ merge and chain resolution, score calculation, level-6 repeat scoring, and injectable weighted character generation.
+- `logic/tools.ts` contains pure saw, storage, swap, replace-current-character, inventory-cap and board-cell escape checks. V1 currently has one numbered placeholder character per level, so replace-current-character consumes the tool but keeps the same level identity until level-specific character variants are supplied.
+- Deno unit tests for these modules live in `supabase/functions/_shared/democracy_merge_engine_test.ts` and `democracy_merge_tools_test.ts`; the application build does not include Deno test files.
+
+These are reusable rules primitives, not a complete match implementation. They do not yet provide persistence, server authority, rewards, obstacle scheduling, multiplayer state or UI.
+
+## 8. Verification requirements
 
 Test independently:
 - pure game engine rules, merge groups, cascades, scoring and max-level behavior;
