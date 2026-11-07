@@ -1,6 +1,6 @@
 import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
-import type { Board, CharacterLevel } from './logic/gameEngine'
+import type { Board, CharacterLevel, ObstacleType } from './logic/gameEngine'
 import type { ToolInventory, StoredCharacter } from './logic/tools'
 
 export type DemocracyMergePlayerStatus = 'active' | 'completed' | 'surrendered' | 'left'
@@ -49,6 +49,7 @@ export type DemocracyMergeMatch = {
   completedAt: string | null
   currentCharacter: CharacterLevel | null
   nextCharacter: CharacterLevel | null
+  obstacleEvent: ObstacleType | null
   players: DemocracyMergePublicPlayer[]
   me: DemocracyMergePersonalPlayer
   finalResults: DemocracyMergeFinalResult[] | null
@@ -57,6 +58,7 @@ export type DemocracyMergeMatch = {
 export type DemocracyMergeSnapshot = {
   room: MultiplayerRoom
   match: DemocracyMergeMatch | null
+  rewards?: Array<{ kind: 'money_bag'; coins: number } | { kind: 'tool'; tool: 'saw' | 'storage' | 'swap' | 'replace' }>
 }
 
 export type DemocracyMergeStartResponse = {
