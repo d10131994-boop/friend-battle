@@ -40,7 +40,7 @@ jobs:
             const names = new Set(branches.map(branch => branch.name));
             const releases = [...names]
               .map(name => {
-                const match = name.match(/^friend-battle-(\\d+)-release$/);
+                const match = name.match(/^friend-battle-(\d+)-release$/);
                 return match ? Number(match[1]) : null;
               })
               .filter(value => value !== null);
@@ -76,12 +76,12 @@ jobs:
                 continue;
               }
 
-              if (/^friend-battle-\\d+-release$/.test(name)) {
+              if (/^friend-battle-\d+-release$/.test(name)) {
                 rows.push({ name, status: "KEEP", reason: "релизные ветки не удаляются никогда" });
                 continue;
               }
 
-              const taskMatch = name.match(/^friend-battle-(\\d+)\\/(.+)$/);
+              const taskMatch = name.match(/^friend-battle-(\d+)\/(.+)$/);
               if (!taskMatch) {
                 rows.push({ name, status: "KEEP", reason: "нестандартное имя — ручная проверка" });
                 continue;
@@ -103,7 +103,7 @@ jobs:
               }
 
               const suffix = taskMatch[2];
-              const aiMatch = suffix.match(/^(.*)-AI(?:-\\d+)?$/);
+              const aiMatch = suffix.match(/^(.*)-AI(?:-\d+)?$/);
 
               try {
                 if (aiMatch) {
@@ -175,15 +175,15 @@ jobs:
               "### Кандидаты на удаление",
               "",
               ...(candidates.length
-                ? candidates.map(row => "- \`" + row.name + "\` — " + row.reason)
+                ? candidates.map(row => "- " + row.name + " — " + row.reason)
                 : ["- Нет"]),
               "",
               "### Сохранённые ветки",
               "",
-              ...kept.map(row => "- \`" + row.name + "\` — " + row.reason),
+              ...kept.map(row => "- " + row.name + " — " + row.reason),
               "",
               "> Ничего не удалено. Сомнительные случаи остаются нетронутыми.",
             ];
 
-            await core.summary.addRaw(lines.join("\\n")).write();
+            await core.summary.addRaw(lines.join("\n")).write();
             core.info("Audit completed: " + candidates.length + " candidates, " + kept.length + " kept.");
