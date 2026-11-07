@@ -54,6 +54,7 @@ export interface RockPaperScissorsMatch {
 }
 
 export interface RockPaperScissorsSnapshot {
+  serverNow: string
   room: import('../../multiplayer').MultiplayerRoom
   match: RockPaperScissorsMatch | null
   advanced?: boolean
