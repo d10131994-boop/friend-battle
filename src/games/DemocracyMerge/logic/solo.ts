@@ -73,6 +73,9 @@ export type SoloHistoryRecord = {
   score: number
   maxLevel: CharacterLevel
   mergeCount: number
+  chainReactions: number
+  toolsUsed: number
+  coins: number
   status: Exclude<SoloStatus, 'active'>
 }
 
@@ -311,6 +314,9 @@ export function recordSoloResult(
     score: state.result.score,
     maxLevel: state.result.maxLevel,
     mergeCount: state.result.mergeCount,
+    chainReactions: state.result.chainReactions,
+    toolsUsed: state.result.toolsUsed,
+    coins: state.result.coins,
     status: state.result.status,
   }
   return {
