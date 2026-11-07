@@ -6,7 +6,7 @@ Read `src/ai-readme.md`, `src/games/ai-readme.md`, `src/multiplayer/ai-readme.md
 
 NoCountIt owns its game-specific match lifecycle, round states, scene generation, answer validation, error calculation, winner/tie calculation, results and game-specific persistence.
 
-Multiplayer Core owns rooms, membership, host, common readiness, room heartbeat, room-scoped Realtime session and the standard rematch vote. Do not duplicate these responsibilities.
+Multiplayer Core owns rooms, membership, host, common readiness, room heartbeat, room-scoped Realtime session and the shared room lifecycle. Do not duplicate these responsibilities.
 
 Browser database transport must use `src/database`. Do not create another Supabase client or access common Multiplayer tables directly from game components.
 
@@ -50,7 +50,7 @@ Every mutation must be atomic and safe under retries/concurrent requests. Preser
 
 Use the trusted Multiplayer `start_game` and `finish_game` operations from the game server only. Pass the exact `startedAt` returned by `start_game` to `finish_game`. The game client must not call these operations directly.
 
-Normal match completion uses the shared `default` lifecycle and its 60-second unanimous rematch vote. A technical abort after zero players become ready also finishes the shared game lifecycle without closing the room. Do not invent a separate rematch system.
+A completed or technical-abort match keeps the shared room in `playing` while results are shown. Any member may return to the room; otherwise the client invokes the trusted `return_to_room` action 60 seconds after the match's server-recorded `completedAt`. That action verifies the terminal NoCountIt match and then marks the shared room `finished`. The room remains open and reusable.
 
 ## 6. Planned persistence and storage
 
@@ -78,6 +78,6 @@ Use `database.invokeFunction('no-count-it', ...)` for game actions. Use the exis
 
 ## 8. Verification
 
-Test generator invariants independently and with deterministic seeds. Test server transitions and races for preparation deadlines, late readiness, zero-ready technical abort, early all-answered completion, timeout/no-answer, immutable answers, excluded-player average error, reveal privacy, stale match requests, real player departure, final tie/winner, reconnect, room return and rematch.
+Test generator invariants independently and with deterministic seeds. Test server transitions and races for preparation deadlines, late readiness, zero-ready technical abort, early all-answered completion, timeout/no-answer, immutable answers, excluded-player average error, reveal privacy, stale match requests, real player departure, final tie/winner, reconnect, room return and results timeout.
 
 Report build/typecheck, lint, SQL validation, deployment and real multi-client testing separately. A successful client build does not prove backend or multiplayer integration.

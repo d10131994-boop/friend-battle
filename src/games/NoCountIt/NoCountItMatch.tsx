@@ -161,6 +161,34 @@ export default function NoCountItMatch({
   const isFinished = match?.status === 'completed' || match?.status === 'technical_aborted' || match?.status === 'cancelled'
   const isReveal = currentRound?.status === 'revealing' || currentRound?.status === 'completed'
 
+  const finishAndReturn = useCallback(async () => {
+    if (room.status !== 'playing') {
+      onReturnToRoom()
+      return
+    }
+    setLoading(true)
+    setMessage('')
+    try {
+      const response = await invokeGame<{ room: MultiplayerRoom }>({ action: 'return_to_room', roomId: room.roomId })
+      onRoomUpdate(response.room)
+      onReturnToRoom()
+    } catch (error) {
+      setMessage(errorMessage(error))
+    } finally {
+      setLoading(false)
+    }
+  }, [invokeGame, room.status, room.roomId, onRoomUpdate, onReturnToRoom])
+
+  useEffect(() => {
+    if (!match || (match.status !== 'completed' && match.status !== 'technical_aborted') || room.status !== 'playing' || !match.completedAt) return
+    const completedAt = Date.parse(match.completedAt)
+    if (!Number.isFinite(completedAt)) return
+    const delay = Math.max(0, completedAt + 60_000 - Date.now())
+    const timer = window.setTimeout(() => { void finishAndReturn() }, delay)
+    return () => window.clearTimeout(timer)
+  }, [match?.matchId, match?.status, match?.completedAt, room.status, finishAndReturn])
+
+
   return (
     <main className="app">
       <header className="topbar">
@@ -260,7 +288,9 @@ export default function NoCountItMatch({
               ))}
               <p>{match.winnerUserId ? 'Побеждает игрок с наименьшей суммой ошибок!' : 'Ничья!'}</p>
             </>}
-          <button className="play-button" onClick={onReturnToRoom}>ВЕРНУТЬСЯ В КОМНАТУ</button>
+          <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
+                    <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
+          <button className="play-button" onClick={() => void finishAndReturn()} disabled={loading}>ВЕРНУТЬСЯ В КОМНАТУ</button>
         </section>
       )}
       {message && <section className="game-card" role="alert"><p>{message}</p></section>}

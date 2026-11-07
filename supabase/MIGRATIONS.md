@@ -38,14 +38,16 @@ The current reviewed sources include:
 - `supabase/sql/reaction_rush_room_lifecycle.sql` — Reaction Rush-owned cleanup hook for room reset/cancellation;
 - `supabase/sql/multiplayer_room_maintenance.sql` — idle-room maintenance helpers;
 - `supabase/sql/brain_battle_multiplayer.sql` — Brain Battle schema and server-side functions;
-- `supabase/sql/multiplayer_rematch_lifecycle.sql` — shared lifecycle modes, unanimous rematch voting and rematch-aware game start hooks;
 - `supabase/sql/add_reaction_rush_scores_room_id_index.sql` — standalone index patch;
-- `supabase/sql/multiplayer_rematch_unanimous_guard.sql` — legacy readiness guard for unanimous rematch;
 - `supabase/sql/brain_battle_room_first_lock_order.sql` — Brain Battle room-first lock ordering;
 - `supabase/sql/reaction_rush_room_reset_cleanup.sql` — Reaction Rush room-reset cleanup;
 - `supabase/sql/multiplayer_realtime_membership_auth.sql` — Realtime room-membership authorization.
 
-Do not reapply an already-deployed patch or restore the retired conflicting lifecycle SQL file. A source file's presence in the repository does not, by itself, prove that it is pending in Production.
+The historical migrations that introduced rematch remain in the central migration history and must not be edited or replayed. The task branch adds `supabase/migrations/20261107090000_remove_multiplayer_rematch.sql`, which replaces the current lifecycle functions and drops the rematch table, room columns, game-rule lifecycle mode and unanimous-start guard. This migration is pending until the task is promoted and applied. Do not infer that it has been applied from its presence in the repository.
+
+## Pending lifecycle removal
+
+`20261107090000_remove_multiplayer_rematch` is a new forward migration in the current task branch. It deliberately preserves the historical migration records `20261106163934_multiplayer_rematch_lifecycle` and `20261106164111_multiplayer_rematch_unanimous_guard`; it removes their live schema effects instead of rewriting migration history. Apply it only after the matching SQL, Edge Function and frontend changes are promoted together. Verify the resulting functions, grants, RLS and migration history after application.
 
 ## Baseline decision
 
