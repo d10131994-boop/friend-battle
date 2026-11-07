@@ -260,7 +260,8 @@ export default function NoCountItMatch({
               ))}
               <p>{match.winnerUserId ? 'Побеждает игрок с наименьшей суммой ошибок!' : 'Ничья!'}</p>
             </>}
-          <button className="play-button" onClick={onReturnToRoom}>ВЕРНУТЬСЯ В КОМНАТУ</button>
+          <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
+                    <button className="play-button" onClick={onReturnToRoom}>ВЕРНУТЬСЯ В КОМНАТУ</button>
         </section>
       )}
       {message && <section className="game-card" role="alert"><p>{message}</p></section>}
