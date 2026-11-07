@@ -27,6 +27,7 @@ export default function RockPaperScissorsMatch({
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [now, setNow] = useState(Date.now())
+  const [serverOffset, setServerOffset] = useState(0)
   const startAttemptRef = useRef(false)
   const returnAttemptRef = useRef(false)
   const userId = telegramUser?.id ? String(telegramUser.id) : ''
@@ -39,10 +40,16 @@ export default function RockPaperScissorsMatch({
   }, [auth.initData])
 
   const refreshMatch = useCallback(async () => {
+    const requestStartedAt = Date.now()
     const snapshot = await invokeGame<RockPaperScissorsSnapshot>({
       action: 'get_match',
       roomId: room.roomId,
     })
+    const responseReceivedAt = Date.now()
+    const serverNow = Date.parse(snapshot.serverNow)
+    if (Number.isFinite(serverNow)) {
+      setServerOffset(serverNow - (requestStartedAt + responseReceivedAt) / 2)
+    }
     onRoomUpdate(snapshot.room)
     setMatch(snapshot.match)
     return snapshot.match
@@ -157,7 +164,7 @@ export default function RockPaperScissorsMatch({
   const myChoice = myRoundPlayer?.choice ?? 'rock'
   const opponentChoice = round?.players.find((player) => player.userId !== userId)?.choice
   const remaining = match?.phase === 'choosing'
-    ? Math.max(0, Math.ceil((Date.parse(match.phaseDeadline) - now) / 1_000))
+    ? Math.max(0, Math.ceil((Date.parse(match.phaseDeadline) - (now + serverOffset)) / 1_000))
     : 0
   const isCompleted = match?.status === 'completed'
   const isWinner = Boolean(match?.winnerUserId && match.winnerUserId === userId)
