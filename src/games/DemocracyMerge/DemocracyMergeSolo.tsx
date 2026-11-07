@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { telegramUser } from '../../services/telegram'
 import {
   buySoloTool,
@@ -90,6 +90,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const [surrenderConfirm, setSurrenderConfirm] = useState(false)
   const [leaveConfirm, setLeaveConfirm] = useState(false)
   const [newRecordToast, setNewRecordToast] = useState(false)
+  const [recordBroken, setRecordBroken] = useState(false)
   const [rewardToast, setRewardToast] = useState<string[]>([])
   const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState(false)
   const notificationTimeoutRef = useRef<number | null>(null)
@@ -152,20 +153,21 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     if (!game || game.status !== 'active' || !game.deadlineAt || now === 0) return
     if (now < Date.parse(game.deadlineAt)) return
     const timer = window.setTimeout(() => {
-      setGame((current) => {
-        if (!current || current.status !== 'active') return current
-        const finalized = finalizeSoloDeadline(current, Date.now())
-        setCheckpoint(finalized)
-        setProfile((previous) => {
-          const next = appendResult(previous, finalized)
-          persist(finalized, next)
-          return next
-        })
-        return finalized
-      })
+      if (game.status !== 'active') return
+      const finalized = finalizeSoloDeadline(game, Date.now())
+      const nextProfile = appendResult(profile, finalized)
+      setGame(finalized)
+      setCheckpoint(finalized)
+      setProfile(nextProfile)
+      persist(finalized, nextProfile)
+      if (finalized.result && finalized.result.score > profile.bestScore) {
+        setRecordBroken(true)
+        setNewRecordToast(true)
+        window.setTimeout(() => setNewRecordToast(false), 3000)
+      }
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [game?.status, game?.deadlineAt, now, persist])
+  }, [game?.status, game?.deadlineAt, now, profile, persist])
 
   useEffect(() => () => {
     if (notificationTimeoutRef.current !== null) window.clearTimeout(notificationTimeoutRef.current)
@@ -175,6 +177,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     const created = createSoloGameState(Date.now())
     setCheckpoint(created)
     setGame(created)
+    setRecordBroken(false)
     setResumePrompt(false)
     setSelectedTool(null)
     setSwapFirstCell(null)
@@ -201,6 +204,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const saveResult = useCallback((next: SoloGameState) => {
     const isNewRecord = Boolean(next.result && next.result.score > profile.bestScore)
     const nextProfile = appendResult(profile, next)
+    setRecordBroken(isNewRecord)
     setCheckpoint(next)
     setGame(next)
     setProfile(nextProfile)
@@ -336,7 +340,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const next = game ? nextSoloCharacter(game) : null
   const remaining = game ? Date.parse(game.deadlineAt) - now : 0
   const canAct = Boolean(game?.status === 'active' && now < Date.parse(game.deadlineAt) && !loading)
-  const isNewRecord = Boolean(game?.result && game.result.score >= profile.bestScore && game.result.score > 0)
+  const isNewRecord = recordBroken
 
   if (loading) {
     return <main className="app dm-match-shell"><div className="dm-waiting">Загружаем одиночную игру…</div></main>
@@ -369,6 +373,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
           <h1>ОДИНОЧНАЯ ИГРА</h1>
           <div className="dm-solo-stats">
             <div><small>ВСЕГО ПАРТИЙ</small><strong>{profile.totalGames}</strong></div>
+            <div><small>ОЧКИ ВСЕГО</small><strong>{profile.totalPoints}</strong></div>
             <div><small>ЛУЧШИЙ РЕЗУЛЬТАТ</small><strong>{profile.bestScore}</strong></div>
             <div><small>МАКС. УРОВЕНЬ</small><strong>{profile.maxLevel}</strong></div>
           </div>
