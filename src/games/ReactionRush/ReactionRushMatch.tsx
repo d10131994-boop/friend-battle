@@ -128,14 +128,14 @@ export default function ReactionRushMatch({
       matchFinished: boolean
       finalResults?: ReactionRushResult[]
       winnerUserId?: string | null
-      completedAt: string
+      completedAt?: string | null
       room?: MultiplayerRoom
     }>({
       action: 'finish_round', roomId: room.roomId, matchId: match.matchId, roundNumber: match.roundNumber,
     }).then((response) => {
       setRoundResults(response.roundResults ?? [])
       if (response.matchFinished) {
-        setMatch({ ...match, status: 'completed', completedAt: response.completedAt, finalResults: response.finalResults ?? [], winnerUserId: response.winnerUserId ?? null })
+        setMatch({ ...match, status: 'completed', completedAt: response.completedAt ?? null, finalResults: response.finalResults ?? [], winnerUserId: response.winnerUserId ?? null })
         if (response.room) onRoomUpdate(response.room)
       } else if (response.roundNumber && response.roundStartedAt) {
         setMatch({ ...match, roundNumber: response.roundNumber, roundStartedAt: response.roundStartedAt, myScore: 0 })
