@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { telegramUser } from '../../services/telegram'
 import type { MultiplayerRoom } from '../../multiplayer'
 import {
@@ -11,7 +11,6 @@ import {
   surrenderDemocracyMergeMatch,
   useDemocracyMergeTool,
   type DemocracyMergeActionResponse,
-  type DemocracyMergeMatch,
   type DemocracyMergeSnapshot,
 } from './api'
 import type { ToolType } from './logic/tools'
@@ -24,6 +23,7 @@ type Props = {
   onRoomUpdate: (room: MultiplayerRoom) => void
   onReturnToRoom: () => void
   onLeaveMatch: () => void
+  onMainMenu: () => void
   onStartRequestHandled: () => void
 }
 
@@ -68,7 +68,7 @@ function createActionId(): string {
 }
 
 export default function DemocracyMergeMatch({
-  initData, room, startRequested, onRoomUpdate, onReturnToRoom, onLeaveMatch, onStartRequestHandled,
+  initData, room, startRequested, onRoomUpdate, onReturnToRoom, onLeaveMatch, onMainMenu, onStartRequestHandled,
 }: Props) {
   const [snapshot, setSnapshot] = useState<DemocracyMergeSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
@@ -82,6 +82,7 @@ export default function DemocracyMergeMatch({
   const [oneMinuteNotice, setOneMinuteNotice] = useState(false)
   const startAttemptRef = useRef(false)
   const oneMinuteNoticeRef = useRef<string | null>(null)
+  const oneMinuteTimeoutRef = useRef<number | null>(null)
   const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
 
   const match = snapshot?.match ?? null
@@ -150,10 +151,13 @@ export default function DemocracyMergeMatch({
     if (remaining > 0 && remaining <= 60_000 && oneMinuteNoticeRef.current !== match.matchId) {
       oneMinuteNoticeRef.current = match.matchId
       setOneMinuteNotice(true)
-      const timeout = window.setTimeout(() => setOneMinuteNotice(false), 3000)
-      return () => window.clearTimeout(timeout)
+      oneMinuteTimeoutRef.current = window.setTimeout(() => setOneMinuteNotice(false), 3000)
     }
   }, [match?.deadlineAt, match?.matchId, now])
+
+  useEffect(() => () => {
+    if (oneMinuteTimeoutRef.current !== null) window.clearTimeout(oneMinuteTimeoutRef.current)
+  }, [])
 
   const isCountdown = Boolean(match?.gameStartedAt && Date.parse(match.gameStartedAt) > now)
   const countdown = match?.gameStartedAt
@@ -289,7 +293,6 @@ export default function DemocracyMergeMatch({
   }
 
   const ownRank = match.finalResults?.find((player) => player.userId === telegramId)?.rank ?? null
-  const isFinished = me.status !== 'active' || match.status !== 'playing'
   const board = me.board
 
   return (
@@ -336,7 +339,7 @@ export default function DemocracyMergeMatch({
             <p>Место: <strong>{ownRank ?? 'Без места'}</strong></p>
           </div>
           {room.status === 'cancelled'
-            ? <button className="dm-primary-button" onClick={onReturnToRoom}>В ГЛАВНОЕ МЕНЮ</button>
+            ? <button className="dm-primary-button" onClick={onMainMenu}>В ГЛАВНОЕ МЕНЮ</button>
             : <button className="dm-primary-button" onClick={() => void returnToRoom()} disabled={loading}>ВЕРНУТЬСЯ В КОМНАТУ</button>}
         </section>
       ) : (
