@@ -595,7 +595,8 @@ BEGIN
      OR pg_catalog.jsonb_typeof(p_state) IS DISTINCT FROM 'object' THEN
     RAISE EXCEPTION 'Invalid player action payload' USING ERRCODE = '22023';
   END IF;
-  IF p_action_type NOT IN ('place_character', 'use_tool', 'buy_tool', 'surrender') THEN
+  IF p_action_type IS NULL
+     OR p_action_type NOT IN ('place_character', 'use_tool', 'buy_tool', 'surrender') THEN
     RAISE EXCEPTION 'Unsupported Democracy Merge action' USING ERRCODE = '22023';
   END IF;
 
@@ -660,7 +661,10 @@ BEGIN
   v_coins := (p_state->>'coins')::integer;
   v_level6_merge_count := (p_state->>'level6MergeCount')::integer;
 
-  IF v_status NOT IN ('active', 'completed', 'surrendered')
+  IF v_status IS NULL OR v_status NOT IN ('active', 'completed', 'surrendered')
+     OR v_turn_number IS NULL OR v_score IS NULL OR v_max_level IS NULL
+     OR v_merge_count IS NULL OR v_chain_reactions IS NULL OR v_tools_used IS NULL
+     OR v_coins IS NULL OR v_level6_merge_count IS NULL
      OR pg_catalog.jsonb_typeof(p_state->'board') IS DISTINCT FROM 'array'
      OR pg_catalog.jsonb_array_length(p_state->'board') <> 36
      OR pg_catalog.jsonb_typeof(p_state->'inventory') IS DISTINCT FROM 'object'
@@ -716,7 +720,9 @@ BEGIN
   END IF;
   IF p_action_type = 'surrender' AND v_status <> 'surrendered' THEN
     RAISE EXCEPTION 'Surrender action must finish the player as surrendered' USING ERRCODE = '22023';
-  ELSIF p_action_type <> 'surrender' AND v_status = 'surrendered' THEN
+  ELSIF p_action_type = 'buy_tool' AND v_status <> 'active' THEN
+    RAISE EXCEPTION 'A shop purchase cannot finish the player' USING ERRCODE = '22023';
+  ELSIF p_action_type IN ('place_character', 'use_tool') AND v_status = 'surrendered' THEN
     RAISE EXCEPTION 'Only surrender can set surrendered status' USING ERRCODE = '22023';
   END IF;
   IF v_status IN ('completed', 'surrendered')
