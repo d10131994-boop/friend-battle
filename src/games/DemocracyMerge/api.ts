@@ -126,7 +126,7 @@ export function placeDemocracyMergeCharacter(
   return invoke(initData, { action: 'place_character', roomId, cellIndex, actionId })
 }
 
-export function useDemocracyMergeTool(
+export function executeDemocracyMergeTool(
   initData: string | undefined,
   roomId: string,
   tool: ToolType,
