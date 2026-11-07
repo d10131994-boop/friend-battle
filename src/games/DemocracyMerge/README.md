@@ -13,6 +13,6 @@ The character images currently use temporary numbered placeholders (levels 1–6
 
 ## Development status
 
-The V1 specification is agreed. The game implementation is in progress; this README describes the target game, not a claim that the features are already implemented or deployed.
+The V1 specification is agreed. The pure board/merge engine and initial tool-rule helpers are implemented with Deno unit tests. Match persistence, trusted multiplayer backend, solo save/restore, game UI and live catalog registration are still in progress; this README describes the target game, not a claim that the full game is implemented or deployed.
 
 There is no rematch feature. After a match, players can view its history or return to the main menu. A later match is started through the ordinary room flow.
