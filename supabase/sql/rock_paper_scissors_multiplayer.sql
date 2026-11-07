@@ -361,6 +361,7 @@ BEGIN
   IF NOT FOUND THEN
     RETURN pg_catalog.jsonb_build_object(
       'room', public.multiplayer_room_snapshot(p_room_id),
+      'serverNow', v_now,
       'match', NULL,
       'advanced', false
     );
@@ -549,6 +550,7 @@ BEGIN
 
   RETURN pg_catalog.jsonb_build_object(
     'room', public.multiplayer_room_snapshot(p_room_id),
+    'serverNow', v_now,
     'advanced', v_advanced,
     'match', pg_catalog.jsonb_build_object(
       'matchId', v_match.id,
