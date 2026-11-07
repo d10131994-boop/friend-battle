@@ -8,6 +8,7 @@ import { telegramUser } from '../services/telegram'
 import BrainBattleMatch from '../games/BrainBattle/BrainBattleMatch'
 import ReactionRushMatch from '../games/ReactionRush/ReactionRushMatch'
 import NoCountItMatch from '../games/NoCountIt/NoCountItMatch'
+import RockPaperScissorsMatch from '../games/rockPaperScissors/RockPaperScissorsMatch'
 
 const multiplayer = createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })
 
@@ -50,6 +51,14 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
       setMessage('Эта комната закрыта.')
     }
   }, [])
+
+  const acceptRockPaperScissorsRoom = useCallback((nextRoom: MultiplayerRoom) => {
+    acceptRoom(nextRoom)
+    if (nextRoom.status === 'waiting' && !nextRoom.gameId) {
+      setGameScreen(false)
+      setStartRequested(false)
+    }
+  }, [acceptRoom])
 
   useEffect(() => {
     if (!room?.roomId || !auth.initData) return
@@ -148,7 +157,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     void joinRoom(inviteCode)
   }, [inviteCode, room, joinRoom])
 
-  async function selectGame(gameId: 'reaction-rush' | 'brain-battle' | 'no-count-it') {
+  async function selectGame(gameId: 'reaction-rush' | 'brain-battle' | 'no-count-it' | 'rock-paper-scissors') {
     if (!room) return
     setLoading(true)
     setMessage('')
@@ -232,7 +241,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     room.status !== 'playing' &&
     room.status !== 'cancelled' &&
     room.players.length >= 2 &&
-    room.players.length <= 4 &&
+    room.players.length <= Math.min(room.maxPlayers ?? 4, room.gameId === 'rock-paper-scissors' ? 2 : 4) &&
     allReady,
   )
 
@@ -256,6 +265,19 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
         room={room}
         startRequested={startRequested}
         onRoomUpdate={acceptRoom}
+        onReturnToRoom={returnToRoom}
+        onStartRequestHandled={() => setStartRequested(false)}
+      />
+    )
+  }
+
+  if (gameScreen && room?.gameId === 'rock-paper-scissors') {
+    return (
+      <RockPaperScissorsMatch
+        initData={initData}
+        room={room}
+        startRequested={startRequested}
+        onRoomUpdate={acceptRockPaperScissorsRoom}
         onReturnToRoom={returnToRoom}
         onStartRequestHandled={() => setStartRequested(false)}
       />
@@ -336,7 +358,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
                   className="invite-input"
                   value={room.gameId ?? ''}
                   onChange={(event) => {
-                    if (event.target.value === 'reaction-rush' || event.target.value === 'brain-battle' || event.target.value === 'no-count-it') {
+                    if (event.target.value === 'reaction-rush' || event.target.value === 'brain-battle' || event.target.value === 'no-count-it' || event.target.value === 'rock-paper-scissors') {
                       void selectGame(event.target.value)
                     }
                   }}
@@ -346,13 +368,15 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
                   <option value="reaction-rush">Reaction Rush</option>
                   <option value="brain-battle">Brain Battle</option>
                   <option value="no-count-it">NoCountIt</option>
+                  <option value="rock-paper-scissors">Камень, ножницы, бумага</option>
                 </select>
               ) : (
-                <p>Выбрана игра: {room.gameId === 'reaction-rush' ? 'Reaction Rush' : room.gameId === 'brain-battle' ? 'Brain Battle' : room.gameId === 'no-count-it' ? 'NoCountIt' : 'Пока не выбрана'}</p>
+                <p>Выбрана игра: {room.gameId === 'reaction-rush' ? 'Reaction Rush' : room.gameId === 'brain-battle' ? 'Brain Battle' : room.gameId === 'no-count-it' ? 'NoCountIt' : room.gameId === 'rock-paper-scissors' ? 'Камень, ножницы, бумага' : 'Пока не выбрана'}</p>
               )}
               {room.gameId === 'reaction-rush' && <p>Три раунда по 10 секунд. От 2 до 4 игроков.</p>}
               {room.gameId === 'brain-battle' && <p>10 вопросов, 15 секунд на ответ. От 2 до 4 игроков.</p>}
               {room.gameId === 'no-count-it' && <p>Три раунда на оценку количества конфет. От 2 до 4 игроков.</p>}
+              {room.gameId === 'rock-paper-scissors' && <p>Классическая игра до трёх побед. Ровно 2 игрока.</p>}
               {room.gameId && (
                 <>
                   {!isHost && (
