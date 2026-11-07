@@ -35,7 +35,7 @@ BEGIN
     'select_game', v_host, 'Test host',
     jsonb_build_object('roomId', v_room_id, 'gameId', 'rock-paper-scissors')
   );
-  IF (v_room->>'maxPlayers')::integer <> 2 THEN
+  IF (v_room->>'maxPlayers')::integer IS DISTINCT FROM 2 THEN
     RAISE EXCEPTION 'Selecting Rock Paper Scissors must set room capacity to two';
   END IF;
 
@@ -64,7 +64,7 @@ BEGIN
   v_match_id := (v_match->'match'->>'matchId')::uuid;
   v_started_at := v_match->'match'->>'startedAt';
   IF v_match->'match'->>'phase' IS DISTINCT FROM 'choosing'
-    OR v_match->'room'->>'status' <> 'playing'
+    OR v_match->'room'->>'status' IS DISTINCT FROM 'playing'
   THEN
     RAISE EXCEPTION 'New match must start in the choosing phase';
   END IF;
@@ -111,7 +111,7 @@ BEGIN
     END IF;
     IF v_round = 1 THEN
       IF (v_match->'match'->'round'->>'isDraw')::boolean IS DISTINCT FROM true
-        OR v_match->'match'->'players'->0->>'score' <> '0'
+        OR v_match->'match'->'players'->0->>'score' IS DISTINCT FROM '0'
       THEN
         RAISE EXCEPTION 'Equal choices must produce a draw without awarding points';
       END IF;
@@ -119,7 +119,7 @@ BEGIN
       IF v_match->'match'->'round'->>'winnerUserId' IS DISTINCT FROM v_host THEN
         RAISE EXCEPTION 'Rock must beat scissors';
       END IF;
-      IF v_match->'match'->'round'->'players'->1->>'choice' <> 'scissors' THEN
+      IF v_match->'match'->'round'->'players'->1->>'choice' IS DISTINCT FROM 'scissors' THEN
         RAISE EXCEPTION 'Both choices must be visible during reveal';
       END IF;
     END IF;
@@ -140,14 +140,14 @@ BEGIN
     IF v_round < 4 AND (
       v_match->'match'->>'status' IS DISTINCT FROM 'playing'
       OR (v_match->'match'->>'currentRound')::integer <> v_round + 1
-      OR v_match->'match'->>'phase' <> 'choosing'
+      OR v_match->'match'->>'phase' IS DISTINCT FROM 'choosing'
     ) THEN
       RAISE EXCEPTION 'Match did not advance to the next round';
     END IF;
   END LOOP;
 
   IF v_match->'match'->>'status' IS DISTINCT FROM 'completed'
-    OR v_match->'match'->>'winnerUserId' <> v_host
+    OR v_match->'match'->>'winnerUserId' IS DISTINCT FROM v_host
   THEN
     RAISE EXCEPTION 'The first player should win after three winning rounds';
   END IF;
@@ -202,7 +202,7 @@ BEGIN
   SET phase_deadline = pg_catalog.clock_timestamp() - interval '1 second'
   WHERE id = v_match_id AND phase = 'choosing';
   v_match := public.rock_paper_scissors_match_snapshot(v_room_id, v_host_leave);
-  IF v_match->'match'->'round'->'players'->0->>'choice' <> 'rock'
+  IF v_match->'match'->'round'->'players'->0->>'choice' IS DISTINCT FROM 'rock'
     OR v_match->'match'->'round'->>'winnerUserId' IS DISTINCT FROM v_host_leave
   THEN
     RAISE EXCEPTION 'A missing choice must default to rock';
