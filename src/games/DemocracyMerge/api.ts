@@ -109,3 +109,46 @@ export function returnDemocracyMergeToRoom(
 ): Promise<DemocracyMergeRoomResponse> {
   return invoke(initData, { action: 'return_to_room', roomId })
 }
+
+export type DemocracyMergeActionResponse = DemocracyMergeSnapshot & {
+  rewards?: Array<
+    | { kind: 'money_bag'; coins: number }
+    | { kind: 'tool'; tool: ToolType }
+  >
+}
+
+export function placeDemocracyMergeCharacter(
+  initData: string | undefined,
+  roomId: string,
+  cellIndex: number,
+  actionId: string,
+): Promise<DemocracyMergeActionResponse> {
+  return invoke(initData, { action: 'place_character', roomId, cellIndex, actionId })
+}
+
+export function useDemocracyMergeTool(
+  initData: string | undefined,
+  roomId: string,
+  tool: ToolType,
+  actionId: string,
+  options: { cellIndex?: number; firstCellIndex?: number; secondCellIndex?: number; storageAction?: 'store' | 'return' } = {},
+): Promise<DemocracyMergeActionResponse> {
+  return invoke(initData, { action: 'use_tool', roomId, tool, actionId, ...options })
+}
+
+export function buyDemocracyMergeTool(
+  initData: string | undefined,
+  roomId: string,
+  tool: ToolType,
+  actionId: string,
+): Promise<DemocracyMergeActionResponse> {
+  return invoke(initData, { action: 'buy_tool', roomId, tool, actionId })
+}
+
+export function surrenderDemocracyMergeMatch(
+  initData: string | undefined,
+  roomId: string,
+  actionId: string,
+): Promise<DemocracyMergeActionResponse> {
+  return invoke(initData, { action: 'surrender', roomId, actionId })
+}
