@@ -77,7 +77,7 @@ Each accepted request increments that player's score by one. The per-round score
 The client sends `roomId`, `matchId` and `roundNumber`. SQL verifies the match is active, the round number is current and at least 10 seconds have elapsed.
 
 - Rounds 1 and 2 produce round results and advance to the next round using a server timestamp.
-- Round 3 computes final totals and winner/tie, updates common room stats and the Reaction Rush leaderboard, marks the game match completed, and calls the shared Multiplayer `finish_game` lifecycle operation.
+- Round 3 computes final totals and winner/tie, updates common room stats and the Reaction Rush leaderboard, and marks the game match completed with `completed_at`. The shared room remains `playing` during the results screen; the game Edge Function calls Multiplayer `finish_game` only after a member requests `return_to_room` or the 60-second results timeout expires.
 
 The Edge Function broadcasts `round_finished` or `match_finished` after a successful SQL call. **Known authorization gap:** the current `finish_round` path does not check that the Telegram-authenticated caller is a member of the room (nor that the caller is host). The SQL RPC validates the match/room identifiers, active state, current round and deadline, but it receives no caller ID and therefore cannot verify membership. A caller with valid Telegram initData who knows the room and match IDs may be able to trigger round completion after the deadline. Do not describe this as membership-authorized; it needs a separately scoped security fix.
 
