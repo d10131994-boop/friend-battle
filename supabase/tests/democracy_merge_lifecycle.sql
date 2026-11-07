@@ -15,6 +15,9 @@ DECLARE
   v_characters jsonb;
   v_obstacles jsonb;
   v_snapshot jsonb;
+  v_state jsonb;
+  v_action_id uuid;
+  v_rejected boolean;
   v_expired integer;
   v_board jsonb;
 BEGIN
@@ -136,6 +139,124 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Other participants must remain in the active room';
   END IF;
+
+  -- Player actions are atomic, revision-checked and idempotent; completion preserves the room for results.
+  v_room := public.multiplayer_execute_action(
+    'create_room', v_host || '_actions', 'Action host', jsonb_build_object('maxPlayers', 2)
+  );
+  v_room_id := (v_room->>'roomId')::uuid;
+  PERFORM public.multiplayer_execute_action(
+    'join_room', v_guest || '_actions', 'Action guest',
+    jsonb_build_object('inviteCode', v_room->>'inviteCode')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'select_game', v_host || '_actions', 'Action host',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_host || '_actions', 'Action host',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_guest || '_actions', 'Action guest',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  v_start := public.democracy_merge_start_match(
+    v_room_id, v_host || '_actions', v_characters, v_obstacles
+  );
+  v_match_id := (v_start->>'matchId')::uuid;
+  v_action_id := gen_random_uuid();
+  v_state := jsonb_build_object(
+    'status', 'active',
+    'board', jsonb_set(v_board, '{0}', '{"kind":"character","level":1}'::jsonb, true),
+    'turnNumber', 1,
+    'score', 0,
+    'maxLevel', 1,
+    'mergeCount', 0,
+    'chainReactions', 0,
+    'toolsUsed', 0,
+    'coins', 200,
+    'inventory', '{"saw":0,"storage":0,"swap":0,"replace":0}'::jsonb,
+    'storage', 'null'::jsonb,
+    'level6MergeCount', 0,
+    'result', 'null'::jsonb
+  );
+  v_snapshot := public.democracy_merge_commit_player_action(
+    v_room_id, v_match_id, v_host || '_actions', v_action_id,
+    'place_character', 0, v_state
+  );
+  IF v_snapshot->'match'->'me'->>'revision' <> '1'
+     OR v_snapshot->'match'->'me'->>'turnNumber' <> '1' THEN
+    RAISE EXCEPTION 'A successful placement must advance one turn and one revision';
+  END IF;
+
+  -- Retrying the exact action returns its stored response without applying it twice.
+  v_snapshot := public.democracy_merge_commit_player_action(
+    v_room_id, v_match_id, v_host || '_actions', v_action_id,
+    'place_character', 0, v_state
+  );
+  IF v_snapshot->'match'->'me'->>'revision' <> '1' THEN
+    RAISE EXCEPTION 'An idempotent retry must not advance the player revision twice';
+  END IF;
+
+  v_rejected := false;
+  BEGIN
+    PERFORM public.democracy_merge_commit_player_action(
+      v_room_id, v_match_id, v_host || '_actions', gen_random_uuid(),
+      'place_character', 0, v_state
+    );
+  EXCEPTION WHEN SQLSTATE '40001' THEN
+    v_rejected := true;
+  END;
+  IF NOT v_rejected THEN RAISE EXCEPTION 'A stale player revision must be rejected'; END IF;
+
+  v_state := jsonb_build_object(
+    'status', 'surrendered',
+    'board', v_board,
+    'turnNumber', 0,
+    'score', 0,
+    'maxLevel', 1,
+    'mergeCount', 0,
+    'chainReactions', 0,
+    'toolsUsed', 0,
+    'coins', 200,
+    'inventory', '{"saw":0,"storage":0,"swap":0,"replace":0}'::jsonb,
+    'storage', 'null'::jsonb,
+    'level6MergeCount', 0,
+    'result', '{"score":0,"maxLevel":1}'::jsonb
+  );
+  PERFORM public.democracy_merge_commit_player_action(
+    v_room_id, v_match_id, v_guest || '_actions', gen_random_uuid(),
+    'surrender', 0, v_state
+  );
+
+  v_state := jsonb_build_object(
+    'status', 'completed',
+    'board', jsonb_set(v_board, '{0}', '{"kind":"character","level":1}'::jsonb, true),
+    'turnNumber', 1,
+    'score', 0,
+    'maxLevel', 1,
+    'mergeCount', 0,
+    'chainReactions', 0,
+    'toolsUsed', 0,
+    'coins', 200,
+    'inventory', '{"saw":0,"storage":0,"swap":0,"replace":0}'::jsonb,
+    'storage', 'null'::jsonb,
+    'level6MergeCount', 0,
+    'result', '{"score":0,"maxLevel":1}'::jsonb
+  );
+  v_snapshot := public.democracy_merge_commit_player_action(
+    v_room_id, v_match_id, v_host || '_actions', gen_random_uuid(),
+    'place_character', 1, v_state
+  );
+  IF v_snapshot->'match'->>'status' <> 'completed'
+     OR jsonb_array_length(v_snapshot->'match'->'finalResults') <> 2 THEN
+    RAISE EXCEPTION 'The match must finish when all players complete or surrender';
+  END IF;
+  IF v_snapshot->'room'->>'status' <> 'playing' THEN
+    RAISE EXCEPTION 'Completed match must keep the shared room available for results';
+  END IF;
+
 END;
 $test$;
 
