@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
 import { telegramUser } from '../../services/telegram'
-import { HandIllustration } from './HandIllustration'
+import { ChoiceIcon, HandIllustration } from './HandIllustration'
 import type { RockPaperScissorsChoice, RockPaperScissorsMatch as MatchState, RockPaperScissorsSnapshot } from './types'
 import './rockPaperScissors.css'
 
@@ -196,7 +196,7 @@ export default function RockPaperScissorsMatch({
                   aria-pressed={myChoice === choice}
                   disabled={loading || remaining <= 0}
                   onClick={() => void choose(choice)}
-                ><HandIllustration choice={choice} className="rps-hand-icon" /></button>
+                ><ChoiceIcon choice={choice} className="rps-choice-icon" /></button>
               ))}
               <div className="rps-choice-row">
                 {(['scissors', 'paper'] as RockPaperScissorsChoice[]).map((choice) => (
