@@ -115,6 +115,20 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    if (action === "leaderboard") {
+      const { data, error } = await supabase
+        .from("games_reaction_rush_leaderboard")
+        .select("display_name, wins, matches_played, best_match_score")
+        .order("wins", { ascending: false })
+        .order("best_match_score", { ascending: false })
+        .limit(50);
+      if (error) return errorResponse(error);
+      return respond({ leaderboard: data ?? [] });
+    }
+
+    const roomId = typeof body.roomId === "string" ? body.roomId.trim() : "";
+    if (!roomId || roomId.length > 80) return fail("A valid roomId is required", 400);
+
     if (action === "return_to_room") {
       const { data: snapshot, error: snapshotError } = await supabase.rpc("reaction_rush_match_snapshot", {
         p_room_id: roomId,
@@ -134,20 +148,6 @@ Deno.serve(async (req: Request) => {
       await broadcast(supabase, roomId, "room_finished");
       return respond({ room: finishedRoom });
     }
-
-    if (action === "leaderboard") {
-      const { data, error } = await supabase
-        .from("games_reaction_rush_leaderboard")
-        .select("display_name, wins, matches_played, best_match_score")
-        .order("wins", { ascending: false })
-        .order("best_match_score", { ascending: false })
-        .limit(50);
-      if (error) return errorResponse(error);
-      return respond({ leaderboard: data ?? [] });
-    }
-
-    const roomId = typeof body.roomId === "string" ? body.roomId.trim() : "";
-    if (!roomId || roomId.length > 80) return fail("A valid roomId is required", 400);
 
     if (action === "tap" || action === "finish_round") {
       const matchId = typeof body.matchId === "string" ? body.matchId : "";
