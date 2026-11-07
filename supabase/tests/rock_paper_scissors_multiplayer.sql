@@ -215,6 +215,9 @@ BEGIN
   IF v_room->>'status' IS DISTINCT FROM 'waiting' OR v_room->>'gameId' IS NOT NULL THEN
     RAISE EXCEPTION 'Leaving during play did not reset the common room';
   END IF;
+  IF (v_room->>'maxPlayers')::integer IS DISTINCT FROM 4 THEN
+    RAISE EXCEPTION 'Clearing the selected game must restore the standard room capacity';
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.games_rock_paper_scissors_matches
     WHERE id = v_match_id AND status = 'cancelled'
