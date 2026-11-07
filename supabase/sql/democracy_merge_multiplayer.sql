@@ -665,18 +665,22 @@ BEGIN
      OR v_turn_number IS NULL OR v_score IS NULL OR v_max_level IS NULL
      OR v_merge_count IS NULL OR v_chain_reactions IS NULL OR v_tools_used IS NULL
      OR v_coins IS NULL OR v_level6_merge_count IS NULL
-     OR pg_catalog.jsonb_typeof(p_state->'board') IS DISTINCT FROM 'array'
-     OR pg_catalog.jsonb_array_length(p_state->'board') <> 36
-     OR pg_catalog.jsonb_typeof(p_state->'inventory') IS DISTINCT FROM 'object'
-     OR (p_state->'storage' IS NULL)
      OR v_turn_number < 0 OR v_score < v_player.score
      OR v_max_level NOT BETWEEN v_player.max_level AND 6
      OR v_merge_count < v_player.merge_count
      OR v_chain_reactions < v_player.chain_reactions
      OR v_tools_used < v_player.tools_used
      OR v_coins < 0
-     OR v_level6_merge_count < v_player.level6_merge_count THEN
+     OR v_level6_merge_count < v_player.level6_merge_count
+     OR p_state->'storage' IS NULL THEN
     RAISE EXCEPTION 'Player state failed validation' USING ERRCODE = '22023';
+  END IF;
+  IF pg_catalog.jsonb_typeof(p_state->'board') IS DISTINCT FROM 'array'
+     OR pg_catalog.jsonb_array_length(p_state->'board') <> 36 THEN
+    RAISE EXCEPTION 'Board must contain exactly 36 cells' USING ERRCODE = '22023';
+  END IF;
+  IF pg_catalog.jsonb_typeof(p_state->'inventory') IS DISTINCT FROM 'object' THEN
+    RAISE EXCEPTION 'Tool inventory must be an object' USING ERRCODE = '22023';
   END IF;
 
   IF COALESCE((p_state->'inventory'->>'saw')::integer, -1) NOT BETWEEN 0 AND 3
