@@ -12,6 +12,7 @@ DECLARE
   v_room jsonb;
   v_room_id uuid;
   v_first_started_at text;
+  v_match_id uuid;
   v_blocked boolean := false;
 BEGIN
   v_room := public.multiplayer_execute_action(
@@ -30,11 +31,16 @@ BEGIN
   PERFORM public.multiplayer_execute_action(
     'set_ready', v_guest, 'Guest', jsonb_build_object('roomId', v_room_id, 'isReady', true)
   );
-  v_room := public.multiplayer_execute_action(
-    'start_game', '__game_server__', 'Game server',
-    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush')
-  );
-  v_first_started_at := v_room->>'startedAt';
+  v_room := public.reaction_rush_start_match(v_room_id, v_host);
+  v_match_id := (v_room->>'matchId')::uuid;
+  v_first_started_at := v_room->'room'->>'startedAt';
+
+  -- Simulate the game-specific terminal result. The shared room must remain
+  -- playing while the players view that result.
+  UPDATE public.games_reaction_rush_matches
+  SET status = 'completed', completed_at = now(),
+      final_results = '[]'::jsonb, winner_user_id = NULL
+  WHERE id = v_match_id;
 
   -- A finished game-specific result does not itself finish the shared room.
   v_room := public.multiplayer_execute_action(
@@ -75,11 +81,8 @@ BEGIN
   PERFORM public.multiplayer_execute_action(
     'set_ready', v_guest, 'Guest', jsonb_build_object('roomId', v_room_id, 'isReady', true)
   );
-  v_room := public.multiplayer_execute_action(
-    'start_game', '__game_server__', 'Game server',
-    jsonb_build_object('roomId', v_room_id, 'gameId', 'reaction-rush')
-  );
-  IF v_room->>'status' <> 'playing' OR v_room->>'startedAt' = v_first_started_at THEN
+  v_room := public.reaction_rush_start_match(v_room_id, v_host);
+  IF v_room->'room'->>'status' <> 'playing' OR v_room->'room'->>'startedAt' = v_first_started_at THEN
     RAISE EXCEPTION 'The same room must support a fresh normal match';
   END IF;
 
@@ -104,6 +107,9 @@ BEGIN
   );
   IF v_room->>'status' <> 'waiting' OR v_room->>'gameId' IS NOT NULL THEN
     RAISE EXCEPTION 'Leaving during play must keep the room reusable and reset its selected game';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.games_reaction_rush_matches WHERE room_id = v_room_id) THEN
+    RAISE EXCEPTION 'Reaction Rush must clean its match rows when the shared room resets';
   END IF;
   v_room := public.multiplayer_execute_action(
     'leave_room', v_host, 'Host', jsonb_build_object('roomId', v_room_id)
