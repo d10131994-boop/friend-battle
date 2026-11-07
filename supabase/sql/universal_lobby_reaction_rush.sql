@@ -428,7 +428,6 @@ DECLARE
   v_results jsonb;
   v_totals jsonb;
   v_winner text;
-  v_started jsonb;
   v_round_started_at timestamptz;
 BEGIN
   IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = '' THEN
@@ -544,13 +543,10 @@ BEGIN
       final_results = v_totals, winner_user_id = v_winner
   WHERE id = p_match_id;
   DELETE FROM public.games_reaction_rush_scores WHERE match_id = p_match_id;
-  v_started := public.multiplayer_execute_action(
-    'finish_game', '__game_server__', 'Game server',
-    pg_catalog.jsonb_build_object('roomId', p_room_id, 'gameId', 'reaction-rush', 'startedAt', v_match.started_at)
-  );
   RETURN pg_catalog.jsonb_build_object(
     'completedRound', 3, 'roundResults', v_results, 'finalResults', v_totals,
-    'winnerUserId', v_winner, 'matchFinished', true, 'room', v_started
+    'winnerUserId', v_winner, 'matchFinished', true,
+    'room', public.multiplayer_room_snapshot(p_room_id)
   );
 END;
 $function$;
@@ -597,6 +593,7 @@ BEGIN
       'roundNumber', v_match.current_round,
       'roundStartedAt', v_match.round_started_at,
       'startedAt', v_match.started_at,
+      'completedAt', v_match.completed_at,
       'status', v_match.status,
       'finalResults', v_match.final_results,
       'winnerUserId', v_match.winner_user_id,
