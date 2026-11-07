@@ -383,6 +383,7 @@ DECLARE
   v_totals jsonb;
   v_winner text;
   v_round_started_at timestamptz;
+  v_completed_at timestamptz;
 BEGIN
   IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = '' THEN
     RAISE EXCEPTION 'Authenticated player is required' USING ERRCODE = '22023';
@@ -493,13 +494,15 @@ BEGIN
     updated_at = now();
 
   UPDATE public.games_reaction_rush_matches
-  SET status = 'completed', completed_at = now(),
+  SET status = 'completed', completed_at = pg_catalog.clock_timestamp(),
       final_results = v_totals, winner_user_id = v_winner
-  WHERE id = p_match_id;
+  WHERE id = p_match_id
+  RETURNING completed_at INTO v_completed_at;
   DELETE FROM public.games_reaction_rush_scores WHERE match_id = p_match_id;
   RETURN pg_catalog.jsonb_build_object(
     'completedRound', 3, 'roundResults', v_results, 'finalResults', v_totals,
     'winnerUserId', v_winner, 'matchFinished', true,
+    'completedAt', v_completed_at,
     'room', public.multiplayer_room_snapshot(p_room_id)
   );
 END;
