@@ -189,7 +189,7 @@ Deno.serve(async(req:Request)=>{
   if(error)return fail("Не удалось получить состояние матча",409);
   const match=snapshot?.match;
   if(match?.round?.status==="revealing"){
-    const {data:round}=await db.from("games_no_count_it_rounds").select("reveal_started_at").eq("match_id",matchId).eq("round_number",match.currentRound).maybeSingle();
+    const {data:round}=await db.from("games_no_count_it_rounds").select("reveal_started_at").eq("match_id",activeMatchId).eq("round_number",match.currentRound).maybeSingle();
     if(round?.reveal_started_at&&Date.now()-Date.parse(round.reveal_started_at)>=4000){
       if(match.currentRound<3){
         const {scene,path}=await uploadScene(db,roomId,match.currentRound+1);
