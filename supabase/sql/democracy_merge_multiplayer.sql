@@ -271,3 +271,228 @@ BEGIN
   );
 END;
 $cron$;
+
+
+
+CREATE OR REPLACE FUNCTION public.democracy_merge_start_match(
+  p_room_id uuid,
+  p_user_id text,
+  p_character_sequence jsonb,
+  p_obstacle_sequence jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
+  v_started jsonb;
+  v_started_at timestamptz;
+  v_match_id uuid;
+  v_sequence_length integer;
+BEGIN
+  IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = '' THEN
+    RAISE EXCEPTION 'Authenticated player is required' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO v_room
+  FROM public.common_multiplayer_rooms
+  WHERE id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_room.game_id IS DISTINCT FROM 'democracy-merge' THEN
+    RAISE EXCEPTION 'Democracy Merge is not selected' USING ERRCODE = '42501';
+  END IF;
+  IF v_room.status NOT IN ('waiting', 'finished') THEN
+    RAISE EXCEPTION 'Room cannot start a Democracy Merge match now' USING ERRCODE = '55000';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players
+    WHERE room_id = p_room_id AND user_id = p_user_id AND is_host
+  ) THEN
+    RAISE EXCEPTION 'Only the room host can start the match' USING ERRCODE = '42501';
+  END IF;
+
+  IF pg_catalog.jsonb_typeof(p_character_sequence) IS DISTINCT FROM 'array'
+     OR pg_catalog.jsonb_typeof(p_obstacle_sequence) IS DISTINCT FROM 'array' THEN
+    RAISE EXCEPTION 'Server sequences must be JSON arrays' USING ERRCODE = '22023';
+  END IF;
+  v_sequence_length := pg_catalog.jsonb_array_length(p_character_sequence);
+  IF v_sequence_length < 36 OR v_sequence_length > 10000
+     OR pg_catalog.jsonb_array_length(p_obstacle_sequence) <> v_sequence_length THEN
+    RAISE EXCEPTION 'Server sequence length is invalid' USING ERRCODE = '22023';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.jsonb_array_elements(p_character_sequence) AS item(value)
+    WHERE pg_catalog.jsonb_typeof(item.value) <> 'number'
+       OR (item.value #>> '{}') !~ '^[1-6]$'
+  ) THEN
+    RAISE EXCEPTION 'Character sequence contains an invalid level' USING ERRCODE = '22023';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.jsonb_array_elements(p_obstacle_sequence) AS item(value)
+    WHERE pg_catalog.jsonb_typeof(item.value) <> 'null'
+      AND (
+        pg_catalog.jsonb_typeof(item.value) <> 'string'
+        OR item.value #>> '{}' NOT IN ('barricade', 'police', 'rock')
+      )
+  ) THEN
+    RAISE EXCEPTION 'Obstacle sequence contains an invalid event' USING ERRCODE = '22023';
+  END IF;
+
+  v_started := public.multiplayer_execute_action(
+    'start_game',
+    '__game_server__',
+    'Game server',
+    pg_catalog.jsonb_build_object('roomId', p_room_id, 'gameId', 'democracy-merge')
+  );
+  v_started_at := (v_started->>'startedAt')::timestamptz;
+
+  INSERT INTO public.games_democracy_merge_matches(
+    room_id, started_at, game_started_at, deadline_at,
+    character_sequence, obstacle_sequence
+  )
+  VALUES (
+    p_room_id,
+    v_started_at,
+    v_started_at + interval '5 seconds',
+    v_started_at + interval '30 minutes 5 seconds',
+    p_character_sequence,
+    p_obstacle_sequence
+  )
+  RETURNING id INTO v_match_id;
+
+  INSERT INTO public.games_democracy_merge_match_players(
+    match_id, room_id, user_id, display_name, board
+  )
+  SELECT
+    v_match_id,
+    p.room_id,
+    p.user_id,
+    p.display_name,
+    (
+      SELECT pg_catalog.jsonb_agg(NULL::jsonb ORDER BY cell_number)
+      FROM pg_catalog.generate_series(1, 36) AS cells(cell_number)
+    )
+  FROM public.common_multiplayer_players p
+  WHERE p.room_id = p_room_id
+  ORDER BY p.joined_at, p.id;
+
+  RETURN pg_catalog.jsonb_build_object(
+    'matchId', v_match_id,
+    'startedAt', v_started_at,
+    'gameStartedAt', v_started_at + interval '5 seconds',
+    'deadlineAt', v_started_at + interval '30 minutes 5 seconds',
+    'room', public.multiplayer_room_snapshot(p_room_id)
+  );
+END;
+$function$;
+
+
+CREATE OR REPLACE FUNCTION public.democracy_merge_match_snapshot(
+  p_room_id uuid,
+  p_user_id text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
+  v_match public.games_democracy_merge_matches%ROWTYPE;
+  v_player public.games_democracy_merge_match_players%ROWTYPE;
+  v_opponents jsonb;
+BEGIN
+  SELECT * INTO v_room
+  FROM public.common_multiplayer_rooms
+  WHERE id = p_room_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players
+    WHERE room_id = p_room_id AND user_id = p_user_id
+  ) THEN
+    RAISE EXCEPTION 'Player is not a current room member' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_match
+  FROM public.games_democracy_merge_matches
+  WHERE room_id = p_room_id
+  ORDER BY created_at DESC
+  LIMIT 1;
+  IF NOT FOUND THEN
+    RETURN pg_catalog.jsonb_build_object(
+      'room', public.multiplayer_room_snapshot(p_room_id),
+      'match', NULL
+    );
+  END IF;
+
+  SELECT * INTO v_player
+  FROM public.games_democracy_merge_match_players
+  WHERE match_id = v_match.id AND user_id = p_user_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Player has no record in this match' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT COALESCE(
+    pg_catalog.jsonb_agg(
+      pg_catalog.jsonb_build_object(
+        'userId', p.user_id,
+        'displayName', p.display_name,
+        'score', p.score,
+        'maxLevel', p.max_level
+      )
+      ORDER BY p.score DESC, p.max_level DESC, p.joined_at, p.user_id
+    ),
+    '[]'::jsonb
+  )
+  INTO v_opponents
+  FROM public.games_democracy_merge_match_players p
+  WHERE p.match_id = v_match.id AND p.user_id <> p_user_id;
+
+  RETURN pg_catalog.jsonb_build_object(
+    'room', public.multiplayer_room_snapshot(p_room_id),
+    'match', pg_catalog.jsonb_build_object(
+      'matchId', v_match.id,
+      'startedAt', v_match.started_at,
+      'gameStartedAt', v_match.game_started_at,
+      'deadlineAt', v_match.deadline_at,
+      'status', v_match.status,
+      'completedAt', v_match.completed_at,
+      'finalResults', CASE WHEN v_match.status IN ('completed', 'cancelled') THEN v_match.final_results ELSE NULL END,
+      'currentCharacter', v_match.character_sequence->v_player.turn_number,
+      'nextCharacter', v_match.character_sequence->(v_player.turn_number + 1),
+      'players', v_opponents,
+      'me', pg_catalog.jsonb_build_object(
+        'userId', v_player.user_id,
+        'displayName', v_player.display_name,
+        'status', v_player.status,
+        'board', v_player.board,
+        'turnNumber', v_player.turn_number,
+        'score', v_player.score,
+        'maxLevel', v_player.max_level,
+        'mergeCount', v_player.merge_count,
+        'chainReactions', v_player.chain_reactions,
+        'toolsUsed', v_player.tools_used,
+        'coins', v_player.coins,
+        'inventory', v_player.inventory,
+        'storage', v_player.storage,
+        'level6MergeCount', v_player.level6_merge_count,
+        'revision', v_player.revision,
+        'result', v_player.result
+      )
+    )
+  );
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.democracy_merge_start_match(uuid, text, jsonb, jsonb)
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.democracy_merge_match_snapshot(uuid, text)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.democracy_merge_start_match(uuid, text, jsonb, jsonb)
+  TO service_role;
+GRANT EXECUTE ON FUNCTION public.democracy_merge_match_snapshot(uuid, text)
+  TO service_role;
