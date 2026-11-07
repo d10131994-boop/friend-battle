@@ -52,6 +52,14 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     }
   }, [])
 
+  const acceptRockPaperScissorsRoom = useCallback((nextRoom: MultiplayerRoom) => {
+    acceptRoom(nextRoom)
+    if (nextRoom.status === 'waiting' && !nextRoom.gameId) {
+      setGameScreen(false)
+      setStartRequested(false)
+    }
+  }, [acceptRoom])
+
   useEffect(() => {
     if (!room?.roomId || !auth.initData) return
     const session = createMultiplayerRoomSession({
@@ -269,7 +277,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
         initData={initData}
         room={room}
         startRequested={startRequested}
-        onRoomUpdate={acceptRoom}
+        onRoomUpdate={acceptRockPaperScissorsRoom}
         onReturnToRoom={returnToRoom}
         onStartRequestHandled={() => setStartRequested(false)}
       />
