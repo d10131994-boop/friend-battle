@@ -275,6 +275,20 @@ BEGIN
   );
   v_started_at := v_room->>'startedAt';
 
+  -- The public generic leave action cannot reset a Democracy Merge match.
+  v_rejected := false;
+  BEGIN
+    PERFORM public.multiplayer_execute_action(
+      'leave_room', v_guest || '_dm_leave', 'DM guest 1',
+      jsonb_build_object('roomId', v_room_id)
+    );
+  EXCEPTION WHEN SQLSTATE '55000' THEN
+    v_rejected := true;
+  END;
+  IF NOT v_rejected THEN
+    RAISE EXCEPTION 'Generic leave_room must not reset an active Democracy Merge match';
+  END IF;
+
   -- A normal client cannot invoke the trusted departure action.
   v_rejected := false;
   BEGIN
