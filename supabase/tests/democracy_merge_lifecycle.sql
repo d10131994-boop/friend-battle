@@ -168,8 +168,8 @@ BEGIN
   v_action_id := gen_random_uuid();
   v_state := jsonb_build_object(
     'status', 'active',
-    'board', jsonb_set(v_board, '{0}', '{"kind":"character","level":1}'::jsonb, true),
-    'turnNumber', 1,
+    'board', jsonb_set(jsonb_set(v_board, '{0}', '{"kind":"character","level":1}'::jsonb, true), '{1}', '{"kind":"character","level":1}'::jsonb, true),
+    'turnNumber', 2,
     'score', 0,
     'maxLevel', 1,
     'mergeCount', 0,
