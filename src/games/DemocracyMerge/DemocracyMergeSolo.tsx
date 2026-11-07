@@ -11,7 +11,7 @@ import {
   placeSoloCharacter,
   recordSoloResult,
   surrenderSoloGame,
-  useSoloTool,
+  applySoloTool,
   type SoloGameState,
   type SoloHistoryRecord,
   type SoloProfile,
@@ -251,7 +251,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   } = {}) => {
     if (!game || game.status !== 'active' || loading || now >= Date.parse(game.deadlineAt)) return
     try {
-      const next = useSoloTool(game, tool, options, Date.now())
+      const next = applySoloTool(game, tool, options, Date.now())
       if (next.result) saveResult(next)
       else setGame(next)
       setSelectedTool(null)
