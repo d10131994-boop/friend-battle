@@ -14,6 +14,7 @@ This directory is reserved for database-level integration tests. Tests here must
 - Only a current room member can read or mutate member-scoped state.
 - Only the host can select a game, close a room or start a match; every new match requires all current players to be ready.
 - Room membership and game lifecycle transitions are serialized with a consistent room-first lock order. Brain Battle answer submission and question advancement lock the shared room before the game-owned match row, matching room-leave cleanup.
+- `leave_active_match` is callable only by a trusted game server, is scoped to Democracy Merge, removes the specified room member, transfers host by earliest `joined_at`, and preserves the current playing session for remaining members. A final departure cancels an empty room. The Democracy Merge delete trigger must record the game-owned `left` state in the same transaction.
 - A stale match/session identifier cannot finish or mutate a newer room session.
 - Leaving during a match follows the shared room lifecycle contract; each game module's own database hook cancels or cleans its active match state without direct game-table access from Multiplayer.
 - A finished/cancelled room cleanup cascades to game-specific rows.
