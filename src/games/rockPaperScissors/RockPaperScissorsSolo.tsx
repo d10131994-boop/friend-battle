@@ -45,10 +45,11 @@ type Props = { onBack: () => void }
 
 export default function RockPaperScissorsSolo({ onBack }: Props) {
   const [game, setGame] = useState<SoloState>(createInitialState)
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(0)
   const playerName = telegramUser?.first_name?.trim() || 'Ты'
 
   useEffect(() => {
+    setNow(Date.now())
     const timer = window.setInterval(() => setNow(Date.now()), 100)
     return () => window.clearInterval(timer)
   }, [])
@@ -114,12 +115,13 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
     }
   }, [game.phase, game.phaseStartedAt])
 
+  const remaining = now === 0 ? 3 : Math.max(0, Math.ceil((game.phaseStartedAt + 3_000 - now) / 1_000))
+
   const choose = (choice: RockPaperScissorsChoice) => {
-    if (game.phase !== 'choosing' || Date.now() >= game.phaseStartedAt + 3_000) return
+    if (game.phase !== 'choosing' || remaining <= 0) return
     setGame((current) => current.phase === 'choosing' ? { ...current, playerChoice: choice } : current)
   }
 
-  const remaining = Math.max(0, Math.ceil((game.phaseStartedAt + 3_000 - now) / 1_000))
   const playerWon = game.playerScore >= 3
   const shownPlayerChoice = game.playerChoice ?? 'rock'
 
