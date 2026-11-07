@@ -9,7 +9,7 @@ import {
   placeSoloCharacter,
   recordSoloResult,
   surrenderSoloGame,
-  useSoloTool,
+  applySoloTool,
 } from '../../../src/games/DemocracyMerge/logic/solo.ts'
 
 Deno.test('solo game starts with agreed board, coins, tools and timer', () => {
@@ -41,11 +41,11 @@ Deno.test('solo tools do not advance the turn and storage is consumed on return'
   const board = [...base.board]
   board[0] = { kind: 'character', level: 3 }
   const prepared = { ...base, board, inventory: { ...base.inventory, storage: 1, saw: 1 } }
-  const stored = useSoloTool(prepared, 'storage', { cellIndex: 0, storageAction: 'store' }, 2000)
+  const stored = applySoloTool(prepared, 'storage', { cellIndex: 0, storageAction: 'store' }, 2000)
   if (stored.turnNumber !== 0 || stored.storage?.level !== 3 || stored.inventory.storage !== 1) {
     throw new Error('Storing must not advance the turn or consume storage.')
   }
-  const returned = useSoloTool(stored, 'storage', { cellIndex: 1, storageAction: 'return' }, 3000)
+  const returned = applySoloTool(stored, 'storage', { cellIndex: 1, storageAction: 'return' }, 3000)
   if (returned.turnNumber !== 0 || returned.storage !== null || returned.inventory.storage !== 0) {
     throw new Error('Returning must not advance the turn and must consume storage.')
   }
