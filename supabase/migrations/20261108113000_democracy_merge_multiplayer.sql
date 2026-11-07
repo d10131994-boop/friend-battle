@@ -464,6 +464,7 @@ BEGIN
       'finalResults', CASE WHEN v_match.status IN ('completed', 'cancelled') THEN v_match.final_results ELSE NULL END,
       'currentCharacter', v_match.character_sequence->v_player.turn_number,
       'nextCharacter', v_match.character_sequence->(v_player.turn_number + 1),
+      'obstacleEvent', v_match.obstacle_sequence->v_player.turn_number,
       'players', v_opponents,
       'me', pg_catalog.jsonb_build_object(
         'userId', v_player.user_id,
@@ -766,7 +767,8 @@ BEGIN
     WHERE id = p_match_id AND status = 'playing';
   END IF;
 
-  v_response := public.democracy_merge_match_snapshot(p_room_id, p_user_id);
+  v_response := public.democracy_merge_match_snapshot(p_room_id, p_user_id)
+    || pg_catalog.jsonb_build_object('rewards', COALESCE(p_state->'rewards', '[]'::jsonb));
   INSERT INTO public.games_democracy_merge_action_receipts(
     match_id, user_id, action_id, action_type, response
   ) VALUES (p_match_id, p_user_id, p_action_id, p_action_type, v_response);
