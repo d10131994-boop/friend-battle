@@ -257,6 +257,57 @@ BEGIN
     RAISE EXCEPTION 'Completed match must keep the shared room available for results';
   END IF;
 
+
+  -- The 30-minute deadline wins over the five-minute disconnect expiry.
+  v_room := public.multiplayer_execute_action(
+    'create_room', v_host || '_deadline', 'Deadline host', jsonb_build_object('maxPlayers', 2)
+  );
+  v_room_id := (v_room->>'roomId')::uuid;
+  PERFORM public.multiplayer_execute_action(
+    'join_room', v_guest || '_deadline', 'Deadline guest',
+    jsonb_build_object('inviteCode', v_room->>'inviteCode')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'select_game', v_host || '_deadline', 'Deadline host',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_host || '_deadline', 'Deadline host',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_guest || '_deadline', 'Deadline guest',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  v_start := public.democracy_merge_start_match(
+    v_room_id, v_host || '_deadline', v_characters, v_obstacles
+  );
+  v_match_id := (v_start->>'matchId')::uuid;
+  UPDATE public.games_democracy_merge_matches
+  SET deadline_at = now() - interval '1 second'
+  WHERE id = v_match_id;
+  UPDATE public.common_multiplayer_players
+  SET last_seen_at = now() - interval '6 minutes'
+  WHERE room_id=v_room_id AND user_id=v_host || '_deadline';
+
+  v_expired := public.democracy_merge_expire_disconnected_players();
+  IF v_expired <> 0 THEN
+    RAISE EXCEPTION 'Disconnect expiry must not override the match deadline';
+  END IF;
+  IF public.democracy_merge_finalize_expired_matches() <> 1 THEN
+    RAISE EXCEPTION 'The expired match must be finalized once';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.games_democracy_merge_match_players
+    WHERE match_id=v_match_id AND status <> 'completed'
+  ) THEN
+    RAISE EXCEPTION 'At the 30-minute deadline all non-left players must be completed';
+  END IF;
+  IF (SELECT status FROM public.games_democracy_merge_matches WHERE id=v_match_id) <> 'completed'
+     OR (SELECT status FROM public.common_multiplayer_rooms WHERE id=v_room_id) <> 'playing' THEN
+    RAISE EXCEPTION 'Deadline finalization must preserve the results room';
+  END IF;
+
 END;
 $test$;
 
