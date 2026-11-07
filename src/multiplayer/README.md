@@ -118,14 +118,15 @@ The game module owns game rules and result presentation. Once the game-specific 
 - Joining by invite code is allowed while the room is `waiting` or
   `finished` and has capacity. Existing members can reconnect in either
   state even when the room is at capacity.
-- A player who explicitly calls `leave_room` is removed immediately. If the room is in `playing`, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. In current Production, the shared RPC still deletes the interrupted Reaction Rush match, while Brain Battle cancels its match through a game-owned trigger. The pending AI-branch SQL refactor moves Reaction Rush cleanup into its own trigger so Multiplayer no longer accesses game-specific match tables.
+- A player who explicitly calls `leave_room` is removed immediately. If the room is in `playing`, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. Reaction Rush and Brain Battle own interrupted-match cleanup through their game-specific room lifecycle triggers. Multiplayer changes only the shared room state and does not access game-owned match tables.
 - If the host explicitly leaves and other players remain, the host role is
   transferred to the remaining player with the earliest `joined_at`. A stable
   player ID breaks timestamp ties.
 - If the last player explicitly leaves, the room becomes `cancelled`,
   including when the last game session had finished.
 - The host may call `close_room` to cancel the room, including after a game
-  session has finished. The host cannot call `finish_game`.
+  session has finished. Player clients cannot call the trusted `finish_game`
+  RPC directly; a Return to room request is validated by the game's Edge Function.
 - A network disconnect is not an explicit leave. The player row remains, and
   the host role is not transferred merely because the host lost connectivity.
 - The client sends a heartbeat every 30 seconds while the room is in
