@@ -153,6 +153,38 @@ Existing examples:
 - Reaction Rush solo uses its local hook and browser storage for personal best/round counters.
 These are solo-mode patterns only, not server-authoritative multiplayer patterns.
 
+## 8. Game capability declaration and discovery
+
+This section defines the target contract for game capabilities. It is an architectural rule for new game work and for future updates to the shared menus; it does not claim that every existing game has already been migrated to this contract.
+
+Every game module must explicitly declare whether it supports each application mode:
+
+```ts
+export const gameDefinition = {
+  id: 'example-game',
+  name: 'Example Game',
+  modes: {
+    solo: false,
+    multiplayer: true,
+  },
+} as const
+```
+
+The declaration is owned and exported by the game module. The shared Games registry imports these declarations and provides the application with the available game definitions. Keep the registry limited to discovery and metadata; it must not contain game rules, gameplay state, bot behavior or launch implementation.
+
+Rules:
+
+- Both `modes.solo` and `modes.multiplayer` must be explicit booleans. A newly created game starts with both set to `false`; enable a mode only after that mode has been implemented.
+- A mode is available only when its declaration is exactly `true`. Missing or false values must never cause a game to appear in that mode's selection.
+- The game module owns the actual implementation and launch entry point for every mode it declares. A declaration alone does not implement a mode.
+- The Solo game selection must be built from registered games whose `modes.solo` is `true`. The Multiplayer selection must use `modes.multiplayer` in the same way.
+- Solo means that only one real human player is required. A game may include bots or other computer-controlled opponents and still be a Solo game.
+- Solo gameplay must not create or depend on a Multiplayer room. Use the game's own solo state and logic unless a separately agreed feature genuinely requires shared infrastructure.
+- Multiplayer player limits, including the registered `min_players` and `max_players` rules, apply to Multiplayer room/match participation. They must not be used to decide whether a game supports Solo. A game with `min_players >= 2` may still declare `solo: true`, for example when bots fill the remaining opponents.
+- Do not infer support for one mode from support for the other, from a game's player limits, or from the existence of a screen/component. Each mode is an independent capability.
+
+The declaration is metadata, not a security boundary. Multiplayer authorization, player-count validation and competitive result validation remain responsibilities of the trusted backend and Multiplayer contract.
+
 ## 8. Existing implementation patterns to verify, not blindly copy
 
 The current multiplayer screens for Brain Battle and Reaction Rush:
