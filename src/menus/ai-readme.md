@@ -34,4 +34,4 @@ The Mini App uses Telegram's `t.me/share/url` share sheet. Telegram does not ret
 - Never trust browser-provided Telegram IDs, host flags, room membership or scores.
 - Do not change live Supabase functions, SQL, RLS, or secrets in this module.
 - Do not claim the room lifecycle works end-to-end against the live database without testing the deployed RPC. The checked-in Multiplayer SQL definitions have known conflicts around no-game room creation, `select_game`, capacity enforcement and leaving during a match.
-- A finished match does not destroy the room. Return to the room menu and reuse the same room for a rematch.
+- A finished match does not destroy the room. Players return to the room menu. Any later match must use the ordinary readiness flow; there is no rematch vote or automatic restart.
