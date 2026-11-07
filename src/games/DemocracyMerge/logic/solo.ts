@@ -209,7 +209,7 @@ export function placeSoloCharacter(
   return { state: withBoardTerminalCheck(next, now), rewards }
 }
 
-export function useSoloTool(
+export function applySoloTool(
   source: SoloGameState,
   tool: ToolType,
   options: {
