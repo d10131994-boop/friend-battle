@@ -65,7 +65,7 @@
 .rps-opponent-hand {
   right: -8%;
   top: 7%;
-  transform: rotate(180deg) scaleX(-1);
+  transform: rotate(180deg);
 }
 .rps-choice-pyramid {
   position: absolute;
