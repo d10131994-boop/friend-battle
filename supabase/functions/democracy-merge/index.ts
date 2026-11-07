@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { generateCharacterSequence } from "../../../src/games/DemocracyMerge/logic/gameEngine.ts";
 import { generateObstacleSequence } from "../../../src/games/DemocracyMerge/logic/events.ts";
 
@@ -62,7 +62,7 @@ function secureRandomUnit(): number {
   return values[0] / 0x1_0000_0000;
 }
 
-async function broadcast(db: ReturnType<typeof createClient>, roomId: string, event: string) {
+async function broadcast(db: SupabaseClient, roomId: string, event: string) {
   try {
     const channel = db.channel(`room:${roomId}`, { config: { private: true } });
     const result = await channel.send({
