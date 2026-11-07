@@ -109,7 +109,7 @@ export interface MultiplayerService {
 
 /** Общая ошибка слоя мультиплеера с исходной причиной для логирования. */
 export class MultiplayerError extends Error {
-  readonly cause: unknown
+  override readonly cause: unknown
 
   constructor(message: string, cause?: unknown) {
     super(message)
