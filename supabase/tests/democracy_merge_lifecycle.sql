@@ -11,6 +11,10 @@ DECLARE
   v_room_id uuid;
   v_started_at timestamptz;
   v_match_id uuid;
+  v_start jsonb;
+  v_characters jsonb;
+  v_obstacles jsonb;
+  v_snapshot jsonb;
   v_expired integer;
   v_board jsonb;
 BEGIN
@@ -19,7 +23,9 @@ BEGIN
   ON CONFLICT (game_id) DO UPDATE
   SET min_players=2, max_players=4, is_enabled=true;
 
-  SELECT jsonb_agg(NULL::jsonb) INTO v_board FROM generate_series(1, 36);
+  SELECT jsonb_agg(NULL::jsonb), jsonb_agg(1::integer), jsonb_agg(NULL::jsonb)
+  INTO v_board, v_characters, v_obstacles
+  FROM generate_series(1, 36);
 
   -- Explicit departure preserves an active match until the final active player leaves.
   v_room := public.multiplayer_execute_action(
@@ -39,23 +45,16 @@ BEGIN
   PERFORM public.multiplayer_execute_action(
     'set_ready', v_guest, 'DM guest', jsonb_build_object('roomId', v_room_id, 'isReady', true)
   );
-  v_room := public.multiplayer_execute_action(
-    'start_game', '__game_server__', 'Game server',
-    jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge')
+  v_start := public.democracy_merge_start_match(
+    v_room_id, v_host, v_characters, v_obstacles
   );
-  v_started_at := (v_room->>'startedAt')::timestamptz;
-  INSERT INTO public.games_democracy_merge_matches(
-    room_id, started_at, game_started_at, deadline_at, character_sequence, obstacle_sequence
-  ) VALUES (
-    v_room_id, v_started_at, v_started_at + interval '5 seconds',
-    v_started_at + interval '30 minutes', '[]'::jsonb, '[]'::jsonb
-  ) RETURNING id INTO v_match_id;
-
-  INSERT INTO public.games_democracy_merge_match_players(
-    match_id, room_id, user_id, display_name, board
-  ) VALUES
-    (v_match_id, v_room_id, v_host, 'DM host', v_board),
-    (v_match_id, v_room_id, v_guest, 'DM guest', v_board);
+  v_started_at := (v_start->>'startedAt')::timestamptz;
+  v_match_id := (v_start->>'matchId')::uuid;
+  v_snapshot := public.democracy_merge_match_snapshot(v_room_id, v_host);
+  IF v_snapshot->'match'->'me'->'board' IS NULL
+     OR v_snapshot->'match'->'players'->0 ? 'board' THEN
+    RAISE EXCEPTION 'Match snapshot must expose private board only to its owner';
+  END IF;
 
   v_room := public.multiplayer_execute_action(
     'leave_active_match', '__game_server__', 'Game server',
@@ -112,22 +111,11 @@ BEGIN
     'set_ready', v_guest || '_expiry', 'Expiry guest',
     jsonb_build_object('roomId', v_room_id, 'isReady', true)
   );
-  v_room := public.multiplayer_execute_action(
-    'start_game', '__game_server__', 'Game server',
-    jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge')
+  v_start := public.democracy_merge_start_match(
+    v_room_id, v_host || '_expiry', v_characters, v_obstacles
   );
-  v_started_at := (v_room->>'startedAt')::timestamptz;
-  INSERT INTO public.games_democracy_merge_matches(
-    room_id, started_at, game_started_at, deadline_at, character_sequence, obstacle_sequence
-  ) VALUES (
-    v_room_id, v_started_at, v_started_at + interval '5 seconds',
-    v_started_at + interval '30 minutes', '[]'::jsonb, '[]'::jsonb
-  ) RETURNING id INTO v_match_id;
-  INSERT INTO public.games_democracy_merge_match_players(
-    match_id, room_id, user_id, display_name, board
-  ) VALUES
-    (v_match_id, v_room_id, v_host || '_expiry', 'Expiry host', v_board),
-    (v_match_id, v_room_id, v_guest || '_expiry', 'Expiry guest', v_board);
+  v_started_at := (v_start->>'startedAt')::timestamptz;
+  v_match_id := (v_start->>'matchId')::uuid;
   UPDATE public.common_multiplayer_players
   SET last_seen_at = now() - interval '6 minutes'
   WHERE room_id=v_room_id AND user_id=v_host || '_expiry';
