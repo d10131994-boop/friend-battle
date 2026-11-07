@@ -31,7 +31,6 @@ Public client actions:
 | `join_room` | `inviteCode` | Room snapshot |
 | `get_room` | `roomId` | Room snapshot |
 | `set_ready` | `roomId`, `isReady` | Room snapshot |
-| `vote_rematch` | `roomId`, `vote: yes \| no` | Updated room snapshot with vote state |
 | `leave_room` | `roomId` | Room snapshot after leaving; cancelled state if last member |
 | `close_room` | `roomId` | Room snapshot; host-only |
 | `heartbeat` | `roomId` | Acknowledgement and server time |
@@ -39,7 +38,7 @@ Public client actions:
 
 The server returns normalized room snapshots with `roomId`, `gameId`,
 `inviteCode`, `status`, `players`, `maxPlayers`, `createdAt`,
-`startedAt`, `finishedAt`, `rematchStatus`, `rematchDeadlineAt`, and `rematchVotes`. Each player includes `userId`,
+`startedAt`, and `finishedAt`. Each player includes `userId`,
 `displayName`, `isReady`, `isHost`, `joinedAt`, and `lastSeenAt`.
 
 ### Trusted game-server actions
@@ -107,38 +106,11 @@ stored `game_id`; a game server cannot start or finish another game's room.
 These actions are also protected by the database function's
 `service_role`-only execute permission.
 
-`start_game` succeeds only while the room is `waiting` or `finished`. An initial match requires every current player to be ready and to have sent a heartbeat within the last 90 seconds. A `default` rematch instead requires the exact finished session to have an accepted unanimous vote; the current player count must still satisfy the game's min/max rules. The returned `startedAt` identifies that particular game session. The game server must pass that exact value to `finish_game`; this
-prevents a delayed finish request from an older game from ending a newer game
-in the same room. Repeating `finish_game` for the same already-finished
-session is safe and idempotent.
+`start_game` succeeds only while the room is `waiting` or `finished`. Every current player must be ready and must have sent a heartbeat within the last 90 seconds; the player count must satisfy the selected game's min/max rules. The returned `startedAt` identifies that particular game session. The game server must pass that exact value to `finish_game`; this prevents a delayed finish request from an older game from ending a newer game in the same room. Repeating `finish_game` for the same already-finished session is safe and idempotent.
 
-The game module owns game rules and result presentation. For example, it can
-show the final result for 10 seconds and then call `finish_game` from its
-server-side component. Multiplayer only changes the room lifecycle and
-notifies participants; it does not decide who won or when the result screen
-should disappear. The host has no special permission to finish a game.
+The game module owns game rules and result presentation. Once the game-specific match is completed, the room remains `playing` while players view the results. Any current member can press “Return to room”; the game's trusted Edge Function verifies that the match is terminal and calls `finish_game`. If nobody returns manually, each game client invokes the same action 60 seconds after the server-recorded match completion time. The first successful call marks the shared room `finished` and broadcasts the room update to every participant. Repeated calls for the same session are idempotent.
 
-`finished` means the current game session ended, not that the room was
-destroyed. Players can return to the room menu, change readiness, invite
-players, and start another session in the same room. `cancelled` is the
-terminal room state. Leaving by the last player, host closure, or idle
-cleanup can cancel a room even after a game session has finished.
-
-## Standard rematch lifecycle
-
-The shared game-rule row has a `lifecycle_mode` setting:
-
-- `default`: after the trusted game server finishes a match, the room opens a 60-second rematch vote;
-- `custom`: the Multiplayer Core does not open a standard vote; the game module owns its custom post-match flow;
-- `disabled`: no rematch flow is offered.
-
-For `default`, every current room member must vote yes. One no vote declines the rematch; unanswered votes expire at the deadline. While voting is open or accepted, new members cannot join and the selected game cannot be changed. Existing members can reconnect, and members can leave. If a member leaves, the remaining players must still meet the game's minimum player count; otherwise the rematch is declined. The vote is tied to the exact completed session.
-
-When every remaining member has voted yes, the room snapshot reports `rematchStatus: accepted`. The host client then triggers the selected game's trusted start action. Multiplayer validates the accepted vote and starts the same selected game without another readiness round or game selection. The game module creates its own new match state. Vote rows are removed when the new session starts.
-
-The public room snapshot includes `rematchStatus`, `rematchDeadlineAt`, and `rematchVotes`. Player clients submit a vote through `voteRematch(auth, { roomId, vote: 'yes' | 'no' })`.
-
-Current Brain Battle uses a 20-question server-side bank and selects ten questions for each match while excluding the immediately previous match's question IDs. Current Reaction Rush creates a new game-owned match record.
+`finished` means the current game session ended, not that the room was destroyed. Players return to the room menu, confirm readiness again, and can start another normal match in the same room. A new match never bypasses readiness. `cancelled` is the terminal room state. Leaving by the last player, host closure, or idle cleanup can cancel a room even after a game session has finished.
 
 ## Room lifecycle and reconnect
 
