@@ -496,3 +496,369 @@ GRANT EXECUTE ON FUNCTION public.democracy_merge_start_match(uuid, text, jsonb, 
   TO service_role;
 GRANT EXECUTE ON FUNCTION public.democracy_merge_match_snapshot(uuid, text)
   TO service_role;
+
+
+CREATE TABLE IF NOT EXISTS public.games_democracy_merge_action_receipts (
+  match_id uuid NOT NULL REFERENCES public.games_democracy_merge_matches(id) ON DELETE CASCADE,
+  user_id text NOT NULL,
+  action_id uuid NOT NULL,
+  action_type text NOT NULL,
+  response jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (match_id, user_id, action_id)
+);
+ALTER TABLE public.games_democracy_merge_action_receipts ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.games_democracy_merge_action_receipts FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.games_democracy_merge_action_receipts TO service_role;
+
+
+CREATE OR REPLACE FUNCTION public.democracy_merge_build_final_results(p_match_id uuid)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+  WITH ranked AS (
+    SELECT p.user_id, p.display_name, p.status, p.score, p.max_level,
+           p.merge_count, p.chain_reactions, p.tools_used, p.coins,
+           rank() OVER (ORDER BY p.score DESC, p.max_level DESC) AS place,
+           p.joined_at
+    FROM public.games_democracy_merge_match_players p
+    WHERE p.match_id = p_match_id AND p.status IN ('completed', 'surrendered')
+  ),
+  all_rows AS (
+    SELECT * FROM ranked
+    UNION ALL
+    SELECT p.user_id, p.display_name, p.status, p.score, p.max_level,
+           p.merge_count, p.chain_reactions, p.tools_used, p.coins,
+           NULL::bigint AS place, p.joined_at
+    FROM public.games_democracy_merge_match_players p
+    WHERE p.match_id = p_match_id AND p.status = 'left'
+  )
+  SELECT COALESCE(
+    jsonb_agg(
+      jsonb_build_object(
+        'userId', user_id,
+        'displayName', display_name,
+        'status', status,
+        'score', score,
+        'maxLevel', max_level,
+        'mergeCount', merge_count,
+        'chainReactions', chain_reactions,
+        'toolsUsed', tools_used,
+        'coins', coins,
+        'rank', place
+      )
+      ORDER BY place NULLS LAST, joined_at, user_id
+    ),
+    '[]'::jsonb
+  )
+  FROM all_rows;
+$function$;
+
+
+CREATE OR REPLACE FUNCTION public.democracy_merge_commit_player_action(
+  p_room_id uuid,
+  p_match_id uuid,
+  p_user_id text,
+  p_action_id uuid,
+  p_action_type text,
+  p_expected_revision bigint,
+  p_state jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
+  v_match public.games_democracy_merge_matches%ROWTYPE;
+  v_player public.games_democracy_merge_match_players%ROWTYPE;
+  v_receipt public.games_democracy_merge_action_receipts%ROWTYPE;
+  v_status text;
+  v_turn_number integer;
+  v_score bigint;
+  v_max_level integer;
+  v_merge_count integer;
+  v_chain_reactions integer;
+  v_tools_used integer;
+  v_coins integer;
+  v_level6_merge_count integer;
+  v_active_count integer;
+  v_response jsonb;
+  v_now timestamptz := pg_catalog.clock_timestamp();
+BEGIN
+  IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = ''
+     OR p_action_id IS NULL OR p_expected_revision IS NULL
+     OR pg_catalog.jsonb_typeof(p_state) IS DISTINCT FROM 'object' THEN
+    RAISE EXCEPTION 'Invalid player action payload' USING ERRCODE = '22023';
+  END IF;
+  IF p_action_type NOT IN ('place_character', 'use_tool', 'buy_tool', 'surrender') THEN
+    RAISE EXCEPTION 'Unsupported Democracy Merge action' USING ERRCODE = '22023';
+  END IF;
+
+  -- Lock order: shared room -> game match -> game player -> idempotency receipt.
+  SELECT * INTO v_room
+  FROM public.common_multiplayer_rooms
+  WHERE id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_room.game_id IS DISTINCT FROM 'democracy-merge' THEN
+    RAISE EXCEPTION 'Democracy Merge is not selected' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_match
+  FROM public.games_democracy_merge_matches
+  WHERE id = p_match_id AND room_id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Match not found' USING ERRCODE = 'P0002'; END IF;
+
+  SELECT * INTO v_player
+  FROM public.games_democracy_merge_match_players
+  WHERE match_id = p_match_id AND user_id = p_user_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Player has no record in this match' USING ERRCODE = '42501'; END IF;
+
+  SELECT * INTO v_receipt
+  FROM public.games_democracy_merge_action_receipts
+  WHERE match_id = p_match_id AND user_id = p_user_id AND action_id = p_action_id;
+  IF FOUND THEN
+    IF v_receipt.action_type <> p_action_type THEN
+      RAISE EXCEPTION 'Action id was already used for another action' USING ERRCODE = '22023';
+    END IF;
+    RETURN v_receipt.response;
+  END IF;
+
+  IF v_room.status <> 'playing' OR v_match.status <> 'playing' THEN
+    RAISE EXCEPTION 'Match is no longer active' USING ERRCODE = '55000';
+  END IF;
+  IF v_match.deadline_at <= v_now THEN
+    RAISE EXCEPTION 'Match deadline has passed' USING ERRCODE = '55000';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players
+    WHERE room_id = p_room_id AND user_id = p_user_id
+  ) THEN
+    RAISE EXCEPTION 'Player is no longer a room member' USING ERRCODE = '42501';
+  END IF;
+  IF v_player.status <> 'active' THEN
+    RAISE EXCEPTION 'Player has already completed this match' USING ERRCODE = '55000';
+  END IF;
+  IF v_player.revision <> p_expected_revision THEN
+    RAISE EXCEPTION 'Player state has changed; refresh the match snapshot' USING ERRCODE = '40001';
+  END IF;
+
+  v_status := p_state->>'status';
+  v_turn_number := (p_state->>'turnNumber')::integer;
+  v_score := (p_state->>'score')::bigint;
+  v_max_level := (p_state->>'maxLevel')::integer;
+  v_merge_count := (p_state->>'mergeCount')::integer;
+  v_chain_reactions := (p_state->>'chainReactions')::integer;
+  v_tools_used := (p_state->>'toolsUsed')::integer;
+  v_coins := (p_state->>'coins')::integer;
+  v_level6_merge_count := (p_state->>'level6MergeCount')::integer;
+
+  IF v_status NOT IN ('active', 'completed', 'surrendered')
+     OR pg_catalog.jsonb_typeof(p_state->'board') IS DISTINCT FROM 'array'
+     OR pg_catalog.jsonb_array_length(p_state->'board') <> 36
+     OR pg_catalog.jsonb_typeof(p_state->'inventory') IS DISTINCT FROM 'object'
+     OR (p_state->'storage' IS NULL)
+     OR v_turn_number < 0 OR v_score < v_player.score
+     OR v_max_level NOT BETWEEN v_player.max_level AND 6
+     OR v_merge_count < v_player.merge_count
+     OR v_chain_reactions < v_player.chain_reactions
+     OR v_tools_used < v_player.tools_used
+     OR v_coins < 0
+     OR v_level6_merge_count < v_player.level6_merge_count THEN
+    RAISE EXCEPTION 'Player state failed validation' USING ERRCODE = '22023';
+  END IF;
+
+  IF COALESCE((p_state->'inventory'->>'saw')::integer, -1) NOT BETWEEN 0 AND 3
+     OR COALESCE((p_state->'inventory'->>'storage')::integer, -1) NOT BETWEEN 0 AND 3
+     OR COALESCE((p_state->'inventory'->>'swap')::integer, -1) NOT BETWEEN 0 AND 3
+     OR COALESCE((p_state->'inventory'->>'replace')::integer, -1) NOT BETWEEN 0 AND 3 THEN
+    RAISE EXCEPTION 'Tool inventory failed validation' USING ERRCODE = '22023';
+  END IF;
+
+  IF pg_catalog.jsonb_typeof(p_state->'storage') NOT IN ('null', 'object')
+     OR (
+       pg_catalog.jsonb_typeof(p_state->'storage') = 'object'
+       AND COALESCE((p_state->'storage'->>'level')::integer, 0) NOT BETWEEN 1 AND 6
+     ) THEN
+    RAISE EXCEPTION 'Storage state failed validation' USING ERRCODE = '22023';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.jsonb_array_elements(p_state->'board') AS cell(value)
+    WHERE pg_catalog.jsonb_typeof(cell.value) <> 'null'
+      AND NOT (
+        (
+          cell.value->>'kind' = 'character'
+          AND COALESCE((cell.value->>'level')::integer, 0) BETWEEN 1 AND 6
+        )
+        OR (
+          cell.value->>'kind' = 'obstacle'
+          AND cell.value->>'obstacleType' IN ('barricade', 'police', 'rock')
+        )
+      )
+  ) THEN
+    RAISE EXCEPTION 'Board state failed validation' USING ERRCODE = '22023';
+  END IF;
+
+  IF p_action_type = 'place_character' AND v_turn_number <> v_player.turn_number + 1 THEN
+    RAISE EXCEPTION 'A successful placement must advance exactly one turn' USING ERRCODE = '22023';
+  ELSIF p_action_type IN ('use_tool', 'buy_tool', 'surrender')
+        AND v_turn_number <> v_player.turn_number THEN
+    RAISE EXCEPTION 'This action cannot advance the turn' USING ERRCODE = '22023';
+  END IF;
+  IF p_action_type = 'surrender' AND v_status <> 'surrendered' THEN
+    RAISE EXCEPTION 'Surrender action must finish the player as surrendered' USING ERRCODE = '22023';
+  ELSIF p_action_type <> 'surrender' AND v_status = 'surrendered' THEN
+    RAISE EXCEPTION 'Only surrender can set surrendered status' USING ERRCODE = '22023';
+  END IF;
+  IF v_status IN ('completed', 'surrendered')
+     AND pg_catalog.jsonb_typeof(p_state->'result') IS DISTINCT FROM 'object' THEN
+    RAISE EXCEPTION 'A completed player must have a result record' USING ERRCODE = '22023';
+  END IF;
+  IF v_status = 'active' AND v_player.status <> 'active' THEN
+    RAISE EXCEPTION 'Completed player cannot become active again' USING ERRCODE = '55000';
+  END IF;
+
+  UPDATE public.games_democracy_merge_match_players
+  SET status = v_status,
+      board = p_state->'board',
+      turn_number = v_turn_number,
+      score = v_score,
+      max_level = v_max_level,
+      merge_count = v_merge_count,
+      chain_reactions = v_chain_reactions,
+      tools_used = v_tools_used,
+      coins = v_coins,
+      inventory = p_state->'inventory',
+      storage = p_state->'storage',
+      level6_merge_count = v_level6_merge_count,
+      result = CASE WHEN v_status IN ('completed', 'surrendered') THEN p_state->'result' ELSE NULL END,
+      revision = revision + 1,
+      updated_at = v_now
+  WHERE id = v_player.id;
+
+  SELECT count(*) INTO v_active_count
+  FROM public.games_democracy_merge_match_players
+  WHERE match_id = p_match_id AND status = 'active';
+  IF v_active_count = 0 THEN
+    UPDATE public.games_democracy_merge_matches
+    SET status = 'completed',
+        completed_at = v_now,
+        final_results = public.democracy_merge_build_final_results(p_match_id)
+    WHERE id = p_match_id AND status = 'playing';
+  END IF;
+
+  v_response := public.democracy_merge_match_snapshot(p_room_id, p_user_id);
+  INSERT INTO public.games_democracy_merge_action_receipts(
+    match_id, user_id, action_id, action_type, response
+  ) VALUES (p_match_id, p_user_id, p_action_id, p_action_type, v_response);
+
+  RETURN v_response;
+END;
+$function$;
+
+
+CREATE OR REPLACE FUNCTION public.democracy_merge_finalize_expired_matches()
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_room_id uuid;
+  v_room public.common_multiplayer_rooms%ROWTYPE;
+  v_match public.games_democracy_merge_matches%ROWTYPE;
+  v_now timestamptz;
+  v_finalized integer := 0;
+BEGIN
+  FOR v_room_id IN
+    SELECT DISTINCT m.room_id
+    FROM public.games_democracy_merge_matches m
+    JOIN public.common_multiplayer_rooms r ON r.id = m.room_id
+    WHERE m.status = 'playing'
+      AND m.deadline_at <= pg_catalog.clock_timestamp()
+      AND r.status = 'playing'
+      AND r.game_id = 'democracy-merge'
+    ORDER BY m.room_id
+  LOOP
+    SELECT * INTO v_room
+    FROM public.common_multiplayer_rooms
+    WHERE id = v_room_id
+    FOR UPDATE SKIP LOCKED;
+    IF NOT FOUND OR v_room.status <> 'playing' OR v_room.game_id <> 'democracy-merge' THEN
+      CONTINUE;
+    END IF;
+
+    SELECT * INTO v_match
+    FROM public.games_democracy_merge_matches
+    WHERE room_id = v_room_id AND status = 'playing'
+    ORDER BY created_at DESC
+    LIMIT 1
+    FOR UPDATE;
+    IF NOT FOUND THEN CONTINUE; END IF;
+
+    v_now := pg_catalog.clock_timestamp();
+    IF v_match.deadline_at > v_now THEN CONTINUE; END IF;
+
+    UPDATE public.games_democracy_merge_match_players
+    SET status = 'completed',
+        result = pg_catalog.jsonb_build_object(
+          'score', score,
+          'maxLevel', max_level,
+          'mergeCount', merge_count,
+          'chainReactions', chain_reactions,
+          'toolsUsed', tools_used,
+          'coins', coins,
+          'timedOut', true
+        ),
+        revision = revision + 1,
+        updated_at = v_now
+    WHERE match_id = v_match.id AND status = 'active';
+
+    UPDATE public.games_democracy_merge_matches
+    SET status = 'completed',
+        completed_at = v_now,
+        final_results = public.democracy_merge_build_final_results(v_match.id)
+    WHERE id = v_match.id AND status = 'playing';
+
+    v_finalized := v_finalized + 1;
+  END LOOP;
+
+  RETURN v_finalized;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.democracy_merge_build_final_results(uuid)
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.democracy_merge_commit_player_action(uuid, uuid, text, uuid, text, bigint, jsonb)
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.democracy_merge_finalize_expired_matches()
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.democracy_merge_commit_player_action(uuid, uuid, text, uuid, text, bigint, jsonb)
+  TO service_role;
+GRANT EXECUTE ON FUNCTION public.democracy_merge_finalize_expired_matches()
+  TO service_role;
+
+DO $cron$
+DECLARE
+  v_job_id bigint;
+BEGIN
+  SELECT jobid INTO v_job_id
+  FROM cron.job
+  WHERE jobname = 'democracy-merge-deadline-finalization';
+  IF FOUND THEN PERFORM cron.unschedule(v_job_id); END IF;
+  PERFORM cron.schedule(
+    'democracy-merge-deadline-finalization',
+    '30 seconds',
+    'SELECT public.democracy_merge_finalize_expired_matches();'
+  );
+END;
+$cron$;
