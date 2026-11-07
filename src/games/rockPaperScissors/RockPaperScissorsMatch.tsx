@@ -171,7 +171,7 @@ export default function RockPaperScissorsMatch({
   return (
     <main className="app rps-app">
       <header className="topbar rps-topbar">
-        <div className="logo">ROCK <span>PAPER</span></div>
+        <div className="logo">RPS <span>BATTLE</span></div>
         <div className="rps-mode-label">МУЛЬТИПЛЕЕР</div>
       </header>
 
