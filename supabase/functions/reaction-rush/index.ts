@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) return fail("Invalid request body", 400);
     const action = body.action;
-    if (!["start_match", "tap", "finish_round", "get_match", "leaderboard"].includes(action)) {
+    if (!["start_match", "tap", "finish_round", "get_match", "leaderboard", "return_to_room"].includes(action)) {
       return fail("Unknown Reaction Rush action", 400);
     }
     const initData = typeof body.initData === "string" ? body.initData : "";
@@ -114,6 +114,26 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    if (action === "return_to_room") {
+      const { data: snapshot, error: snapshotError } = await supabase.rpc("reaction_rush_match_snapshot", {
+        p_room_id: roomId,
+        p_user_id: telegramId,
+      });
+      if (snapshotError) return errorResponse(snapshotError);
+      if (!snapshot?.match || snapshot.match.status !== "completed") {
+        return fail("Матч ещё не завершён", 409);
+      }
+      const { data: finishedRoom, error: finishError } = await supabase.rpc("multiplayer_execute_action", {
+        p_action: "finish_game",
+        p_user_id: "__game_server__",
+        p_display_name: "Game server",
+        p_payload: { roomId, gameId: "reaction-rush", startedAt: snapshot.match.startedAt },
+      });
+      if (finishError) return errorResponse(finishError);
+      await broadcast(supabase, roomId, "room_finished");
+      return respond({ room: finishedRoom });
+    }
 
     if (action === "leaderboard") {
       const { data, error } = await supabase
@@ -186,7 +206,7 @@ Deno.serve(async (req: Request) => {
       ? room.players.find((player: { userId?: string }) => player.userId === telegramId)
       : null;
     if (!member) return fail("Вы не участник этой комнаты", 403);
-    if (!member.isHost && room.rematchStatus !== "accepted") return fail("Начать матч может только ведущий комнаты", 403);
+    if (!member.isHost) return fail("Начать матч может только ведущий комнаты", 403);
 
     const { data, error } = await supabase.rpc("reaction_rush_start_match", {
       p_room_id: roomId,
