@@ -26,7 +26,8 @@ export default function RockPaperScissorsMatch({
   const [match, setMatch] = useState<MatchState | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(0)
+  const matchIdRef = useRef<string | null>(null)
   const [serverOffset, setServerOffset] = useState(0)
   const startAttemptRef = useRef(false)
   const returnAttemptRef = useRef(false)
@@ -69,6 +70,7 @@ export default function RockPaperScissorsMatch({
   }, [refreshMatch])
 
   useEffect(() => {
+    setNow(Date.now())
     const timer = window.setInterval(() => setNow(Date.now()), 100)
     return () => window.clearInterval(timer)
   }, [])
@@ -92,6 +94,10 @@ export default function RockPaperScissorsMatch({
     }
   }, [invokeGame, onRoomUpdate, onReturnToRoom, onStartRequestHandled, room.roomId])
 
+  useEffect(() => {
+    matchIdRef.current = match?.matchId ?? null
+  }, [match?.matchId])
+
   const me = room.players.find((player) => player.userId === userId)
   useEffect(() => {
     if (!startRequested || !me?.isHost || room.status === 'playing' || startAttemptRef.current) return
@@ -101,7 +107,7 @@ export default function RockPaperScissorsMatch({
 
   const choose = async (choice: RockPaperScissorsChoice) => {
     if (!match || match.status !== 'playing' || match.phase !== 'choosing' || loading ||
-      Date.now() >= Date.parse(match.phaseDeadline)) return
+      now + serverOffset >= Date.parse(match.phaseDeadline)) return
     setLoading(true)
     setMessage('')
     try {
@@ -131,10 +137,12 @@ export default function RockPaperScissorsMatch({
     setLoading(true)
     setMessage('')
     try {
+      const matchId = matchIdRef.current
+      if (!matchId) throw new Error('Не найден идентификатор завершённого матча.')
       const response = await invokeGame<{ room: MultiplayerRoom }>({
         action: 'return_to_room',
         roomId: room.roomId,
-        matchId: match?.matchId,
+        matchId,
       })
       onRoomUpdate(response.room)
       onReturnToRoom()
@@ -144,18 +152,21 @@ export default function RockPaperScissorsMatch({
     } finally {
       setLoading(false)
     }
-  }, [invokeGame, room.status, room.roomId, match?.matchId, onRoomUpdate, onReturnToRoom])
+  }, [invokeGame, room.status, room.roomId, onRoomUpdate, onReturnToRoom])
 
+  const matchStatus = match?.status
+  const matchCompletedAt = match?.completedAt
+  const currentMatchId = match?.matchId
   useEffect(() => {
-    if (!match || match.status !== 'completed' || room.status !== 'playing' || !match.completedAt) return
-    const completedAt = Date.parse(match.completedAt)
+    if (!currentMatchId || matchStatus !== 'completed' || room.status !== 'playing' || !matchCompletedAt) return
+    const completedAt = Date.parse(matchCompletedAt)
     if (!Number.isFinite(completedAt)) return
     const timer = window.setTimeout(
       () => { void finishAndReturn() },
       Math.max(0, completedAt + 60_000 - Date.now()),
     )
     return () => window.clearTimeout(timer)
-  }, [match?.matchId, match?.status, match?.completedAt, room.status, finishAndReturn])
+  }, [currentMatchId, matchStatus, matchCompletedAt, room.status, finishAndReturn])
 
   const round = match?.round
   const myRoundPlayer = round?.players.find((player) => player.userId === userId)
