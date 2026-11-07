@@ -88,8 +88,12 @@ BEGIN
 
   -- Three consecutive wins end the match; each round has a 3s choice,
   -- 4s reveal and 4s result phase. Force deadlines forward in this isolated test.
-  FOR v_round IN 1..3 LOOP
-    IF v_round > 1 THEN
+  FOR v_round IN 1..4 LOOP
+    IF v_round = 1 THEN
+      PERFORM public.rock_paper_scissors_submit_choice(
+        v_room_id, v_match_id, 1, v_guest, 'rock'
+      );
+    ELSE
       PERFORM public.rock_paper_scissors_submit_choice(
         v_room_id, v_match_id, v_round, v_host, 'rock'
       );
@@ -105,11 +109,19 @@ BEGIN
     IF v_match->'match'->>'phase' <> 'revealing' THEN
       RAISE EXCEPTION 'Expired choice phase did not reveal both choices';
     END IF;
-    IF v_match->'match'->'round'->>'winnerUserId' <> v_host THEN
-      RAISE EXCEPTION 'Rock must beat scissors';
-    END IF;
-    IF v_match->'match'->'round'->'players'->1->>'choice' <> 'scissors' THEN
-      RAISE EXCEPTION 'Both choices must be visible during reveal';
+    IF v_round = 1 THEN
+      IF (v_match->'match'->'round'->>'isDraw')::boolean IS DISTINCT FROM true
+        OR v_match->'match'->'players'->0->>'score' <> '0'
+      THEN
+        RAISE EXCEPTION 'Equal choices must produce a draw without awarding points';
+      END IF;
+    ELSE
+      IF v_match->'match'->'round'->>'winnerUserId' IS DISTINCT FROM v_host THEN
+        RAISE EXCEPTION 'Rock must beat scissors';
+      END IF;
+      IF v_match->'match'->'round'->'players'->1->>'choice' <> 'scissors' THEN
+        RAISE EXCEPTION 'Both choices must be visible during reveal';
+      END IF;
     END IF;
 
     UPDATE public.games_rock_paper_scissors_matches
@@ -125,7 +137,7 @@ BEGIN
     WHERE id = v_match_id AND phase = 'result';
     v_match := public.rock_paper_scissors_match_snapshot(v_room_id, v_host);
 
-    IF v_round < 3 AND (
+    IF v_round < 4 AND (
       v_match->'match'->>'status' <> 'playing'
       OR (v_match->'match'->>'currentRound')::integer <> v_round + 1
       OR v_match->'match'->>'phase' <> 'choosing'
@@ -159,8 +171,8 @@ BEGIN
     RAISE EXCEPTION 'Completed match did not return the shared room to finished';
   END IF;
 
-  -- Explicitly leaving during a match resets the shared room and lets the
-  -- game-owned trigger cancel its active match.
+  -- An absent choice defaults to rock at the server deadline. Leaving during
+  -- the active match then exercises the game-owned cancellation hook.
   v_room := public.multiplayer_execute_action(
     'create_room', v_host_leave, 'Test host', jsonb_build_object('maxPlayers', 2)
   );
@@ -183,6 +195,18 @@ BEGIN
   );
   v_match := public.rock_paper_scissors_start_match(v_room_id, v_host_leave, 'Test host');
   v_match_id := (v_match->'match'->>'matchId')::uuid;
+  PERFORM public.rock_paper_scissors_submit_choice(
+    v_room_id, v_match_id, 1, v_guest_leave, 'scissors'
+  );
+  UPDATE public.games_rock_paper_scissors_matches
+  SET phase_deadline = pg_catalog.clock_timestamp() - interval '1 second'
+  WHERE id = v_match_id AND phase = 'choosing';
+  v_match := public.rock_paper_scissors_match_snapshot(v_room_id, v_host_leave);
+  IF v_match->'match'->'round'->'players'->0->>'choice' <> 'rock'
+    OR v_match->'match'->'round'->>'winnerUserId' IS DISTINCT FROM v_host_leave
+  THEN
+    RAISE EXCEPTION 'A missing choice must default to rock';
+  END IF;
 
   v_room := public.multiplayer_execute_action(
     'leave_room', v_guest_leave, 'Test guest',
