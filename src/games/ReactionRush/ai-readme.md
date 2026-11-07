@@ -110,7 +110,7 @@ Reaction Rush broadcasts private room-topic events:
 
 The shared Multiplayer watcher listens to its configured room event set; the game client also polls its own match snapshot. Broadcast messages are invalidation/notification signals, not canonical game state. Always reconcile with the server snapshot after reconnects, races or uncertain round transitions.
 
-The client uses `finishRequestedRef` keyed by `matchId:roundNumber` to avoid repeatedly submitting the same round-finish request from one mounted screen. The server still validates the current match and round; client-side guards are not a substitute for backend idempotency/concurrency handling.
+The client uses `finishRequestedRef` keyed by `matchId:roundNumber` to avoid repeatedly submitting the same round-finish request from one mounted screen. Once the match is completed, the room remains `playing` during the results screen. Any member can use the `return_to_room` Edge Function action, or the client automatically invokes it 60 seconds after the server's `completedAt` timestamp. The server validates terminal match state and finishes the shared room for all players.
 
 ## 7. Known documentation and SQL discrepancies
 
@@ -135,7 +135,7 @@ The legacy `duels` table/function references in older code/README are not the cu
 
 ## 9. Verification
 
-Test solo mode separately. Multiplayer verification should cover create/join/select, 2–4 players, readiness, host start, accepted/rejected taps, 1000-point round cap, round deadline, concurrent finish requests, round advancement, final totals, winner/tie, leaderboard, common room stats, finish, rematch, leave during match and reconnect.
+Test solo mode separately. Multiplayer verification should cover create/join/select, 2–4 players, readiness, host start, accepted/rejected taps, 1000-point round cap, round deadline, concurrent finish requests, round advancement, final totals, winner/tie, leaderboard, common room stats, finish, results return/timeout, leave during match and reconnect.
 
 A successful build does not prove that the Edge Function, SQL, Realtime policies or live multi-device flow are deployed and working. Report source/build checks, SQL/deployment state and real multi-client tests separately.
 
