@@ -8,16 +8,18 @@ import {
 import type { Board } from '../../../src/games/DemocracyMerge/logic/gameEngine.ts'
 
 Deno.test('only orthogonally adjacent equal characters form a group', () => {
-  const board = createEmptyBoard()
-  board[0] = { kind: 'character', level: 1 }
-  board[1] = { kind: 'character', level: 1 }
-  board[7] = { kind: 'character', level: 1 }
-  board[8] = { kind: 'character', level: 1 }
-  if (connectedCharacterGroup(board, 0).join(',') !== '0,1') {
+  const diagonalBoard = createEmptyBoard()
+  diagonalBoard[0] = { kind: 'character', level: 1 }
+  diagonalBoard[7] = { kind: 'character', level: 1 }
+  if (connectedCharacterGroup(diagonalBoard, 0).join(',') !== '0') {
     throw new Error('Diagonal contact must not connect cells.')
   }
-  board[6] = { kind: 'character', level: 1 }
-  if (connectedCharacterGroup(board, 0).join(',') !== '0,1,6,7,8') {
+
+  const connectedBoard = createEmptyBoard()
+  for (const index of [0, 1, 6, 7, 8]) {
+    connectedBoard[index] = { kind: 'character', level: 1 }
+  }
+  if (connectedCharacterGroup(connectedBoard, 0).join(',') !== '0,1,6,7,8') {
     throw new Error('Orthogonal flood fill returned an incorrect group.')
   }
 })
