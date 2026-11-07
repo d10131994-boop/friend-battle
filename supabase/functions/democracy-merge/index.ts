@@ -160,6 +160,9 @@ Deno.serve(async (req: Request) => {
       });
       if (snapshotError) return fail("Не удалось получить состояние матча", 409);
       if (snapshot?.match?.status !== "completed") return fail("Матч ещё не завершён", 409);
+      if (snapshot?.room?.status === "cancelled") {
+        return respond({ room: snapshot.room, closed: true });
+      }
       const { data, error } = await db.rpc("multiplayer_execute_action", {
         p_action: "finish_game",
         p_user_id: "__game_server__",
