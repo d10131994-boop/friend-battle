@@ -26,13 +26,6 @@ export interface MultiplayerPlayer {
   matchesPlayed: number
 }
 
-export type MultiplayerRematchStatus = 'open' | 'accepted' | 'declined' | 'expired' | null
-
-export interface MultiplayerRematchVote {
-  userId: string
-  vote: 'yes' | 'no'
-}
-
 export interface MultiplayerRoom {
   roomId: string
   gameId: MultiplayerGameId | null
@@ -44,9 +37,6 @@ export interface MultiplayerRoom {
   createdAt: string | null
   startedAt: string | null
   finishedAt: string | null
-  rematchStatus: MultiplayerRematchStatus
-  rematchDeadlineAt: string | null
-  rematchVotes: MultiplayerRematchVote[]
 }
 
 export interface MultiplayerAuth {
@@ -70,11 +60,6 @@ export interface JoinRoomParams {
 export interface GetRoomParams {
   /** Идентификатор комнаты или inviteCode — формат определяет адаптер. */
   roomId: string
-}
-
-export interface VoteRematchParams {
-  roomId: string
-  vote: 'yes' | 'no'
 }
 
 export interface SetPlayerReadyParams {
@@ -115,7 +100,6 @@ export interface MultiplayerService {
   joinRoom(auth: MultiplayerAuth, params: JoinRoomParams): Promise<MultiplayerRoom>
   getRoom(auth: MultiplayerAuth, params: GetRoomParams): Promise<MultiplayerRoom>
   setReady(auth: MultiplayerAuth, params: SetPlayerReadyParams): Promise<MultiplayerRoom>
-  voteRematch(auth: MultiplayerAuth, params: VoteRematchParams): Promise<MultiplayerRoom>
   leaveRoom(auth: MultiplayerAuth, params: LeaveRoomParams): Promise<MultiplayerRoom>
   closeRoom(auth: MultiplayerAuth, params: CloseRoomParams): Promise<MultiplayerRoom>
   heartbeat(auth: MultiplayerAuth, params: HeartbeatRoomParams): Promise<MultiplayerHeartbeatResult>
