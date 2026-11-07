@@ -1,6 +1,6 @@
 # Friend Battle technical audit
 
-Audit snapshot: 2026-11-06. This document describes the integrated release branch and the observed Production state. It distinguishes deployed changes from checks that are still manual or pending.
+Audit snapshot: 2026-11-06. This document describes the integrated release branch and the observed Production state before task GAMES/COMMON issue-011. The rematch removal is being developed separately and is not reflected in this historical Production snapshot.
 
 ## Release state
 
