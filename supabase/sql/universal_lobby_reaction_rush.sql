@@ -157,6 +157,7 @@ DECLARE
   v_game_max_players integer;
   v_last_seen timestamptz;
   v_expected_started_at timestamptz;
+  v_departing_user_id text;
 BEGIN
   IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = '' THEN
     RAISE EXCEPTION 'Authenticated caller is required' USING ERRCODE = '22023';
@@ -210,12 +211,51 @@ BEGIN
   SELECT * INTO v_room FROM public.common_multiplayer_rooms WHERE id = v_room_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
 
-  IF p_action IN ('start_game', 'finish_game') THEN
+  IF p_action IN ('start_game', 'finish_game', 'leave_active_match') THEN
     IF p_user_id <> '__game_server__' THEN
       RAISE EXCEPTION 'Trusted game server is required' USING ERRCODE = '42501';
     END IF;
     IF p_payload->>'gameId' IS DISTINCT FROM v_room.game_id THEN
       RAISE EXCEPTION 'Game server is not authorized for this game' USING ERRCODE = '42501';
+    END IF;
+    IF p_action = 'leave_active_match' THEN
+      IF v_room.game_id IS DISTINCT FROM 'democracy-merge' THEN
+        RAISE EXCEPTION 'Active-match departure is not enabled for this game' USING ERRCODE = '42501';
+      END IF;
+      IF v_room.status <> 'playing' THEN
+        RAISE EXCEPTION 'There is no active match to leave' USING ERRCODE = '55000';
+      END IF;
+      v_departing_user_id := NULLIF(pg_catalog.btrim(p_payload->>'playerUserId'), '');
+      IF v_departing_user_id IS NULL OR v_departing_user_id = '__game_server__' THEN
+        RAISE EXCEPTION 'A valid departing player is required' USING ERRCODE = '22023';
+      END IF;
+      SELECT p.is_host INTO v_is_host
+      FROM public.common_multiplayer_players p
+      WHERE p.room_id = v_room_id AND p.user_id = v_departing_user_id
+      FOR UPDATE;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'Departing player is not a room member' USING ERRCODE = '42501';
+      END IF;
+      DELETE FROM public.common_multiplayer_players
+      WHERE room_id = v_room_id AND user_id = v_departing_user_id;
+      IF v_is_host THEN
+        SELECT p.id INTO v_next_host_id
+        FROM public.common_multiplayer_players p
+        WHERE p.room_id = v_room_id
+        ORDER BY p.joined_at, p.id
+        LIMIT 1;
+        IF FOUND THEN
+          UPDATE public.common_multiplayer_players SET is_host = true WHERE id = v_next_host_id;
+        END IF;
+      END IF;
+      SELECT count(*) INTO v_player_count
+      FROM public.common_multiplayer_players WHERE room_id = v_room_id;
+      IF v_player_count = 0 THEN
+        UPDATE public.common_multiplayer_rooms
+        SET status = 'cancelled', finished_at = COALESCE(finished_at, pg_catalog.clock_timestamp())
+        WHERE id = v_room_id;
+      END IF;
+      RETURN public.multiplayer_room_snapshot(v_room_id);
     END IF;
     IF p_action = 'start_game' THEN
       IF v_room.status NOT IN ('waiting', 'finished') OR v_room.game_id IS NULL THEN
