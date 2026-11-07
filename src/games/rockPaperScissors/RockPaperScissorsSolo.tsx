@@ -49,7 +49,6 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
   const playerName = telegramUser?.first_name?.trim() || 'Ты'
 
   useEffect(() => {
-    setNow(Date.now())
     const timer = window.setInterval(() => setNow(Date.now()), 100)
     return () => window.clearInterval(timer)
   }, [])
