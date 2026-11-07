@@ -9,7 +9,7 @@ import {
   returnDemocracyMergeToRoom,
   startDemocracyMergeMatch,
   surrenderDemocracyMergeMatch,
-  useDemocracyMergeTool,
+  executeDemocracyMergeTool,
   type DemocracyMergeActionResponse,
   type DemocracyMergeSnapshot,
 } from './api'
@@ -206,20 +206,20 @@ export default function DemocracyMergeMatch({
         setMessage('Выберите вторую клетку для перестановки.')
         return
       }
-      await submitAction(() => useDemocracyMergeTool(initData, room.roomId, 'swap', createActionId(), {
+      await submitAction(() => executeDemocracyMergeTool(initData, room.roomId, 'swap', createActionId(), {
         firstCellIndex: swapFirstCell,
         secondCellIndex: index,
       }))
       return
     }
     if (selectedTool === 'storage') {
-      await submitAction(() => useDemocracyMergeTool(initData, room.roomId, 'storage', createActionId(), {
+      await submitAction(() => executeDemocracyMergeTool(initData, room.roomId, 'storage', createActionId(), {
         cellIndex: index,
         storageAction: me.storage ? 'return' : 'store',
       }))
       return
     }
-    await submitAction(() => useDemocracyMergeTool(initData, room.roomId, 'saw', createActionId(), {
+    await submitAction(() => executeDemocracyMergeTool(initData, room.roomId, 'saw', createActionId(), {
       cellIndex: index,
     }))
   }
@@ -231,7 +231,7 @@ export default function DemocracyMergeMatch({
       return
     }
     if (tool === 'replace') {
-      void submitAction(() => useDemocracyMergeTool(initData, room.roomId, 'replace', createActionId()))
+      void submitAction(() => executeDemocracyMergeTool(initData, room.roomId, 'replace', createActionId()))
       return
     }
     setSelectedTool((previous) => previous === tool ? null : tool)
