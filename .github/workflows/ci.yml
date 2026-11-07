@@ -86,9 +86,9 @@ jobs:
           from pathlib import Path
           from pglast import parse_sql
 
-          files = sorted([*Path("supabase/sql").rglob("*.sql"), *Path("supabase/tests").rglob("*.sql")])
+          files = sorted([*Path("supabase/sql").rglob("*.sql"), *Path("supabase/migrations").rglob("*.sql"), *Path("supabase/tests").rglob("*.sql")])
           if not files:
-              raise SystemExit("No SQL files found under supabase/sql or supabase/tests")
+              raise SystemExit("No SQL files found under supabase/sql, supabase/migrations or supabase/tests")
 
           failed = False
           for path in files:
