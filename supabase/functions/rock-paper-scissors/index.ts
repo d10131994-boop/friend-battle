@@ -140,12 +140,16 @@ Deno.serve(async (request: Request) => {
     }
 
     if (body.action === "return_to_room") {
+      const matchId = typeof body.matchId === "string" ? body.matchId : "";
+      if (!/^[0-9a-f-]{36}$/i.test(matchId)) return fail("A valid matchId is required", 400);
       const { data: snapshot, error } = await db.rpc("rock_paper_scissors_match_snapshot", {
         p_room_id: roomId,
         p_user_id: userId,
       });
       if (error) return fail("Не удалось получить состояние матча", 409);
-      if (snapshot?.match?.status !== "completed") return fail("Матч ещё не завершён", 409);
+      if (snapshot?.match?.status !== "completed" || snapshot?.match?.matchId !== matchId) {
+        return fail("Матч уже изменился или ещё не завершён", 409);
+      }
 
       const returnedRoom = snapshot.room?.status === "playing"
         ? await finishSharedGame(db, roomId, snapshot.match.startedAt)
