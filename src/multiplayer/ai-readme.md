@@ -174,3 +174,7 @@ A game-specific match can be complete while the shared room is still `playing`. 
 Room closure remains separate and unchanged. An explicit leave during a match resets the room to `waiting` and clears its selected game; the game-owned cleanup hook handles interrupted game state. If the last player explicitly leaves, the room becomes `cancelled`. Host closure and the scheduled idle-room cleanup also retain their existing cancellation behavior.
 
 The shared Multiplayer schema and public API contain no rematch status, vote rows, vote action or lifecycle mode. Do not reintroduce these fields or add a generic rematch framework. The historical migration files that introduced rematch remain in migration history; the new removal migration drops the deployed schema objects and columns.
+
+## 12. Selected-game room capacity
+
+The Rock Paper Scissors integration adds `multiplayer_set_room_capacity_from_game`, a `BEFORE UPDATE OF game_id` trigger on `common_multiplayer_rooms`. When the host selects an enabled game, the trigger reads that game's `max_players` rule, rejects the selection if the room already contains more players than allowed, and stores that maximum in the room's `max_players`. The existing `join_room` action then enforces the selected game's capacity before match start. This behavior is delivered in `supabase/sql/rock_paper_scissors_multiplayer.sql`; it is not live until that SQL patch is applied. Keep the trigger and game-rule table in sync if selection capacity semantics change.
