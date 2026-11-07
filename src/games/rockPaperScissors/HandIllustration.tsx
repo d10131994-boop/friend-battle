@@ -14,21 +14,11 @@ export function HandIllustration({ choice, className = '', label }: Props) {
       role="img"
       aria-label={label ?? (choice === 'rock' ? 'Камень' : choice === 'scissors' ? 'Ножницы' : 'Бумага')}
     >
-      <defs>
-        <linearGradient id="rps-skin" x1="0" y1="0" x2="0.9" y2="1">
-          <stop offset="0" stopColor="#FFD7B2" />
-          <stop offset="1" stopColor="#EBA477" />
-        </linearGradient>
-        <linearGradient id="rps-skin-shadow" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#F4B98F" />
-          <stop offset="1" stopColor="#D98561" />
-        </linearGradient>
-      </defs>
       <g stroke="#47332F" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round">
         {choice === 'rock' && (
           <>
-            <path fill="url(#rps-skin)" d="M-8 112 L78 112 Q94 108 108 91 L127 69 Q137 58 149 65 L163 74 Q175 69 186 78 L198 90 Q211 91 219 104 L225 119 Q233 140 219 154 Q205 170 180 166 L128 158 L82 151 L-8 151 Z" />
-            <path fill="url(#rps-skin-shadow)" d="M110 101 Q128 87 144 93 Q158 98 168 112 L180 130 Q183 140 173 146 Q162 151 151 140 L127 122 Q116 116 104 124 Z" />
+            <path fill="#F5BC94" d="M-8 112 L78 112 Q94 108 108 91 L127 69 Q137 58 149 65 L163 74 Q175 69 186 78 L198 90 Q211 91 219 104 L225 119 Q233 140 219 154 Q205 170 180 166 L128 158 L82 151 L-8 151 Z" />
+            <path fill="#E99C75" d="M110 101 Q128 87 144 93 Q158 98 168 112 L180 130 Q183 140 173 146 Q162 151 151 140 L127 122 Q116 116 104 124 Z" />
             <path fill="none" d="M145 72 Q158 88 166 105 M178 82 Q189 98 194 113 M199 98 Q211 113 212 128" />
             <path fill="#F7C5A1" strokeWidth="4" d="M151 78 Q158 70 166 78 Q173 86 166 94 Q157 100 150 91 Z M184 91 Q192 84 199 93 Q205 102 197 109 Q188 114 182 104 Z" />
             <path fill="#F7C5A1" strokeWidth="4" d="M205 111 Q214 106 220 115 Q225 124 217 130 Q208 135 202 126 Z" />
