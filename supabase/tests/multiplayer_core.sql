@@ -235,6 +235,101 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Closing the room did not clean its interrupted Reaction Rush match';
   END IF;
+
+  -- Democracy Merge can remove a player without resetting the shared match.
+  INSERT INTO public.common_multiplayer_game_rules(game_id, min_players, max_players, is_enabled)
+  VALUES ('democracy-merge', 2, 4, true)
+  ON CONFLICT (game_id) DO UPDATE SET min_players=2, max_players=4, is_enabled=true;
+
+  v_room := public.multiplayer_execute_action(
+    'create_room', v_host || '_dm_leave', 'DM host', jsonb_build_object('maxPlayers', 3)
+  );
+  v_room_id := (v_room->>'roomId')::uuid;
+  PERFORM public.multiplayer_execute_action(
+    'join_room', v_guest || '_dm_leave', 'DM guest 1',
+    jsonb_build_object('inviteCode', v_room->>'inviteCode')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'join_room', v_host || '_dm_leave_2', 'DM guest 2',
+    jsonb_build_object('inviteCode', v_room->>'inviteCode')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'select_game', v_host || '_dm_leave', 'DM host',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_host || '_dm_leave', 'DM host',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_guest || '_dm_leave', 'DM guest 1',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_host || '_dm_leave_2', 'DM guest 2',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  v_room := public.multiplayer_execute_action(
+    'start_game', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge')
+  );
+  v_first_started_at := v_room->>'startedAt';
+
+  -- A normal client cannot invoke the trusted departure action.
+  v_blocked := false;
+  BEGIN
+    PERFORM public.multiplayer_execute_action(
+      'leave_active_match', v_guest || '_dm_leave', 'DM guest 1',
+      jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge',
+        'playerUserId', v_guest || '_dm_leave')
+    );
+  EXCEPTION WHEN SQLSTATE '42501' THEN
+    v_blocked := true;
+  END;
+  IF NOT v_blocked THEN
+    RAISE EXCEPTION 'Only the trusted game server may request active-match departure';
+  END IF;
+
+  -- The host leaves, the match continues, and the earliest remaining member becomes host.
+  v_room := public.multiplayer_execute_action(
+    'leave_active_match', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge',
+      'playerUserId', v_host || '_dm_leave')
+  );
+  IF v_room->>'status' <> 'playing'
+     OR v_room->>'gameId' <> 'democracy-merge'
+     OR v_room->>'startedAt' <> v_first_started_at
+     OR jsonb_array_length(v_room->'players') <> 2 THEN
+    RAISE EXCEPTION 'Active-match departure must preserve the room and ongoing session';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players
+    WHERE room_id=v_room_id AND user_id=v_guest || '_dm_leave' AND is_host
+  ) THEN
+    RAISE EXCEPTION 'Host must transfer to the earliest remaining member';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players
+    WHERE room_id=v_room_id AND user_id=v_host || '_dm_leave'
+  ) THEN
+    RAISE EXCEPTION 'Departed player must be removed from room membership';
+  END IF;
+
+  -- A final departure cancels the room; existing leave_room remains separate.
+  PERFORM public.multiplayer_execute_action(
+    'leave_active_match', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge',
+      'playerUserId', v_guest || '_dm_leave')
+  );
+  v_room := public.multiplayer_execute_action(
+    'leave_active_match', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge',
+      'playerUserId', v_host || '_dm_leave_2')
+  );
+  IF v_room->>'status' <> 'cancelled' THEN
+    RAISE EXCEPTION 'The room must close after the final member departs';
+  END IF;
+
 END;
 $test$;
 
