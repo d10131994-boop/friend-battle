@@ -62,8 +62,10 @@ export function storeCharacter(
   source: Board,
   index: number,
   storage: StoredCharacter,
-): { board: Board; storage: StoredCharacter } {
+  inventory: ToolInventory,
+): { board: Board; storage: StoredCharacter; inventory: ToolInventory } {
   assertBoard(source)
+  requireTool(inventory, 'storage')
   if (storage !== null) throw new Error('Storage is already occupied.')
   if (!validIndex(index) || source[index]?.kind !== 'character') {
     throw new Error('Only a character can be placed into storage.')
@@ -72,7 +74,7 @@ export function storeCharacter(
   const stored = board[index]
   if (stored?.kind !== 'character') throw new Error('Selected cell is not a character.')
   board[index] = null
-  return { board, storage: { level: stored.level } }
+  return { board, storage: { level: stored.level }, inventory: { ...inventory } }
 }
 
 export function returnStoredCharacter(
