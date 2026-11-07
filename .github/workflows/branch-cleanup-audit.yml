@@ -76,6 +76,11 @@ jobs:
                 continue;
               }
 
+              if (branch.protected) {
+                rows.push({ name, status: "KEEP", reason: "защищённая GitHub ветка" });
+                continue;
+              }
+
               if (/^friend-battle-\d+-release$/.test(name)) {
                 rows.push({ name, status: "KEEP", reason: "релизные ветки не удаляются никогда" });
                 continue;
