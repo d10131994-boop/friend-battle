@@ -32,6 +32,7 @@ Public client actions:
 | `get_room` | `roomId` | Room snapshot |
 | `set_ready` | `roomId`, `isReady` | Room snapshot |
 | `leave_room` | `roomId` | Room snapshot after leaving; cancelled state if last member |
+| `leave_active_match` | Trusted game-server action: `roomId`, `gameId: democracy-merge`, `playerUserId` | Removes one Democracy Merge member without resetting the active room; final empty room is cancelled |
 | `close_room` | `roomId` | Room snapshot; host-only |
 | `heartbeat` | `roomId` | Acknowledgement and server time |
 | `get_room_token` | `roomId` | `roomId`, `accessToken`, `expiresAt` |
@@ -118,7 +119,8 @@ The game module owns game rules and result presentation. Once the game-specific 
 - Joining by invite code is allowed while the room is `waiting` or
   `finished` and has capacity. Existing members can reconnect in either
   state even when the room is at capacity.
-- A player who explicitly calls `leave_room` is removed immediately. If the room is in `playing`, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. Reaction Rush and Brain Battle own interrupted-match cleanup through their game-specific room lifecycle triggers. Multiplayer changes only the shared room state and does not access game-owned match tables.
+- A player who explicitly calls `leave_room` is removed immediately. If the room is in `playing`, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. Reaction Rush and Brain Battle own interrupted-match cleanup through their game-specific room lifecycle triggers.
+- Democracy Merge uses the trusted game-server-only `leave_active_match` action for final departure. It removes the verified player without resetting `playing`, preserves the selected game/session timestamps, transfers host by earliest `joined_at`, and cancels the room if no room members remain. Its game-owned delete trigger records the player as excluded from competition in the same transaction. The ordinary `leave_room` behavior remains unchanged for every game. Multiplayer changes only the shared room state and does not access game-owned match tables.
 - If the host explicitly leaves and other players remain, the host role is
   transferred to the remaining player with the earliest `joined_at`. A stable
   player ID breaks timestamp ties.
