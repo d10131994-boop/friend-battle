@@ -1,6 +1,7 @@
--- Remove the shared rematch-voting lifecycle while preserving normal room reuse.
--- Match results remain visible for up to 60 seconds in the client; the room is
--- marked finished immediately and remains available for the ordinary ready/start flow.
+-- Remove shared rematch voting while preserving the existing result-screen flow.
+-- Game-specific matches remain in the room's playing state during result display.
+-- Any member may return from completed results; after 60 seconds the client does
+-- the same. Only then does the trusted game server mark the room finished.
 
 DROP TRIGGER IF EXISTS multiplayer_rematch_unanimous_start_guard
   ON public.common_multiplayer_rooms;
@@ -332,37 +333,678 @@ BEGIN
             CASE WHEN jsonb_typeof(question.value->'answers') = 'array'
               THEN question.value->'answers' ELSE '[]'::jsonb END
           ) <> 4
-       OR COALESCE((question.value->>'correctAnswer') ~ '^[0-3]$', false) = false
-  ) THEN
-    RAISE EXCEPTION 'Invalid Brain Battle question payload' USING ERRCODE = '22023';
+       OR COALESCE((question.value->>'correctAnswer') ~ '^[0-3]
+
+CREATE OR REPLACE FUNCTION public.brain_battle_advance_if_due(
+  p_room_id uuid,
+  p_match_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_match public.games_brain_battle_matches%ROWTYPE;
+  v_player_count integer;
+  v_answered_count integer;
+  v_next_index integer;
+  v_now timestamptz;
+  v_results jsonb;
+  v_winner text;
+  v_max_score integer;
+  v_top_count integer;
+  v_room_result jsonb;
+BEGIN
+  SELECT * INTO v_match
+  FROM public.games_brain_battle_matches
+  WHERE id = p_match_id AND room_id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Match not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_match.status <> 'playing' THEN
+    RETURN pg_catalog.jsonb_build_object('status', v_match.status, 'matchFinished', v_match.status = 'completed');
   END IF;
 
-  v_started := public.multiplayer_execute_action(
-    'start_game', '__game_server__', 'Game server',
-    pg_catalog.jsonb_build_object('roomId', p_room_id, 'gameId', 'brain-battle')
-  );
-  v_started_at := (v_started->>'startedAt')::timestamptz;
-  v_question_started_at := v_started_at + interval '3 seconds';
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_rooms
+    WHERE id = p_room_id AND status = 'playing' AND started_at = v_match.started_at
+  ) THEN
+    RAISE EXCEPTION 'Match is no longer active' USING ERRCODE = '55000';
+  END IF;
 
-  INSERT INTO public.games_brain_battle_matches(
-    room_id, started_at, current_question_index, question_started_at,
-    question_ends_at, questions
+  SELECT count(*) INTO v_player_count
+  FROM public.common_multiplayer_players WHERE room_id = p_room_id;
+  SELECT count(*) INTO v_answered_count
+  FROM public.games_brain_battle_answers
+  WHERE match_id = p_match_id AND question_index = v_match.current_question_index;
+
+  v_now := pg_catalog.clock_timestamp();
+  IF v_answered_count < v_player_count AND v_now < v_match.question_ends_at THEN
+    RETURN pg_catalog.jsonb_build_object(
+      'status', 'waiting',
+      'currentQuestionIndex', v_match.current_question_index,
+      'questionStartedAt', v_match.question_started_at,
+      'questionEndsAt', v_match.question_ends_at
+    );
+  END IF;
+
+  -- Players who did not answer before the deadline receive a zero-score skip.
+  INSERT INTO public.games_brain_battle_answers(
+    match_id, room_id, user_id, question_index, selected_answer,
+    is_correct, response_time_ms, score, answered_at
   )
-  VALUES (
-    p_room_id, v_started_at, 0, v_question_started_at,
-    v_question_started_at + interval '15 seconds', p_questions
-  )
-  RETURNING id INTO v_match_id;
+  SELECT p_match_id, p_room_id, p.user_id, v_match.current_question_index,
+         NULL, false, 15000, 0, v_match.question_ends_at
+  FROM public.common_multiplayer_players p
+  WHERE p.room_id = p_room_id
+    AND NOT EXISTS (
+      SELECT 1 FROM public.games_brain_battle_answers a
+      WHERE a.match_id = p_match_id
+        AND a.user_id = p.user_id
+        AND a.question_index = v_match.current_question_index
+    )
+  ON CONFLICT (match_id, user_id, question_index) DO NOTHING;
+
+  v_next_index := v_match.current_question_index + 1;
+  IF v_next_index < 10 THEN
+    v_now := pg_catalog.clock_timestamp();
+    UPDATE public.games_brain_battle_matches
+    SET current_question_index = v_next_index,
+        question_started_at = v_now,
+        question_ends_at = v_now + interval '15 seconds'
+    WHERE id = p_match_id;
+    RETURN pg_catalog.jsonb_build_object(
+      'status', 'advanced',
+      'currentQuestionIndex', v_next_index,
+      'questionStartedAt', v_now,
+      'questionEndsAt', v_now + interval '15 seconds',
+      'matchFinished', false
+    );
+  END IF;
+
+  SELECT COALESCE(pg_catalog.jsonb_agg(
+    pg_catalog.jsonb_build_object(
+      'userId', p.user_id,
+      'displayName', p.display_name,
+      'score', COALESCE(s.total_score, 0),
+      'correctAnswers', COALESCE(s.correct_answers, 0),
+      'incorrectAnswers', COALESCE(s.incorrect_answers, 0),
+      'skippedQuestions', COALESCE(s.skipped_questions, 0)
+    ) ORDER BY COALESCE(s.total_score, 0) DESC, p.joined_at, p.id
+  ), '[]'::jsonb)
+  INTO v_results
+  FROM public.common_multiplayer_players p
+  LEFT JOIN (
+    SELECT user_id,
+      sum(score)::integer AS total_score,
+      count(*) FILTER (WHERE is_correct)::integer AS correct_answers,
+      count(*) FILTER (WHERE selected_answer IS NOT NULL AND NOT is_correct)::integer AS incorrect_answers,
+      count(*) FILTER (WHERE selected_answer IS NULL)::integer AS skipped_questions
+    FROM public.games_brain_battle_answers
+    WHERE match_id = p_match_id
+    GROUP BY user_id
+  ) s ON s.user_id = p.user_id
+  WHERE p.room_id = p_room_id;
+
+  SELECT max(total_score), count(*) FILTER (WHERE total_score = max_score)
+  INTO v_max_score, v_top_count
+  FROM (
+    SELECT user_id, sum(score)::integer AS total_score,
+      max(sum(score)::integer) OVER () AS max_score
+    FROM public.games_brain_battle_answers
+    WHERE match_id = p_match_id
+    GROUP BY user_id
+  ) ranked;
+
+  IF v_top_count = 1 THEN
+    SELECT user_id INTO v_winner
+    FROM (
+      SELECT user_id, sum(score)::integer AS total_score
+      FROM public.games_brain_battle_answers
+      WHERE match_id = p_match_id
+      GROUP BY user_id
+    ) scores
+    WHERE total_score = v_max_score
+    LIMIT 1;
+  END IF;
+
+  INSERT INTO public.common_multiplayer_room_stats(room_id, user_id, wins, matches_played)
+  SELECT p_room_id, p.user_id, CASE WHEN p.user_id = v_winner THEN 1 ELSE 0 END, 1
+  FROM public.common_multiplayer_players p
+  WHERE p.room_id = p_room_id
+  ON CONFLICT (room_id, user_id) DO UPDATE SET
+    wins = public.common_multiplayer_room_stats.wins + EXCLUDED.wins,
+    matches_played = public.common_multiplayer_room_stats.matches_played + 1,
+    updated_at = now();
+
+  UPDATE public.games_brain_battle_matches
+  SET status = 'completed', completed_at = v_now,
+      current_question_index = 10, final_results = v_results,
+      winner_user_id = v_winner
+  WHERE id = p_match_id;
+
+  v_room_result := public.multiplayer_room_snapshot(p_room_id);
 
   RETURN pg_catalog.jsonb_build_object(
-    'matchId', v_match_id,
-    'currentQuestionIndex', 0,
-    'questionStartedAt', v_question_started_at,
-    'questionEndsAt', v_question_started_at + interval '15 seconds',
-    'room', v_started
+    'status', 'completed',
+    'currentQuestionIndex', 10,
+    'matchFinished', true,
+    'finalResults', v_results,
+    'winnerUserId', v_winner,
+    'room', v_room_result
   );
 END;
 $function$;
+
+CREATE OR REPLACE FUNCTION public.reaction_rush_finish_round(
+  p_room_id uuid,
+  p_match_id uuid,
+  p_round_number integer,
+  p_user_id text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
+  v_match public.games_reaction_rush_matches%ROWTYPE;
+  v_results jsonb;
+  v_totals jsonb;
+  v_winner text;
+  v_round_started_at timestamptz;
+BEGIN
+  IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = '' THEN
+    RAISE EXCEPTION 'Authenticated player is required' USING ERRCODE = '22023';
+  END IF;
+
+  -- Match Multiplayer mutation lock order: room first, then match.
+  -- This serializes round completion with leave_room and membership changes.
+  SELECT * INTO v_room
+  FROM public.common_multiplayer_rooms
+  WHERE id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_room.game_id IS DISTINCT FROM 'reaction-rush'
+     OR v_room.status <> 'playing' THEN
+    RAISE EXCEPTION 'Reaction Rush match is not active in this room' USING ERRCODE = '55000';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players
+    WHERE room_id = p_room_id AND user_id = p_user_id
+  ) THEN
+    RAISE EXCEPTION 'Player is not a member of this room' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_match
+  FROM public.games_reaction_rush_matches
+  WHERE id = p_match_id AND room_id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Match not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_match.started_at IS DISTINCT FROM v_room.started_at THEN
+    RAISE EXCEPTION 'Match does not belong to the active room session' USING ERRCODE = '55000';
+  END IF;
+  IF v_match.status <> 'playing' THEN RAISE EXCEPTION 'Match is not active' USING ERRCODE = '55000'; END IF;
+  IF p_round_number <> v_match.current_round THEN
+    RAISE EXCEPTION 'Round has already advanced' USING ERRCODE = '55000';
+  END IF;
+  IF pg_catalog.clock_timestamp() < v_match.round_started_at + interval '10 seconds' THEN
+    RAISE EXCEPTION 'Round has not ended yet' USING ERRCODE = '55000';
+  END IF;
+
+  SELECT COALESCE(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+    'userId', p.user_id, 'displayName', p.display_name, 'score', COALESCE(s.score, 0)
+  ) ORDER BY p.joined_at, p.id), '[]'::jsonb)
+  INTO v_results
+  FROM public.common_multiplayer_players p
+  LEFT JOIN public.games_reaction_rush_scores s
+    ON s.match_id = p_match_id AND s.user_id = p.user_id AND s.round_number = p_round_number
+  WHERE p.room_id = p_room_id;
+
+  IF p_round_number < 3 THEN
+    v_round_started_at := pg_catalog.clock_timestamp();
+    UPDATE public.games_reaction_rush_matches
+    SET current_round = current_round + 1, round_started_at = v_round_started_at
+    WHERE id = p_match_id;
+    RETURN pg_catalog.jsonb_build_object(
+      'completedRound', p_round_number, 'roundResults', v_results,
+      'roundNumber', p_round_number + 1, 'roundStartedAt', v_round_started_at,
+      'matchFinished', false
+    );
+  END IF;
+
+  SELECT COALESCE(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+    'userId', p.user_id, 'displayName', p.display_name,
+    'score', COALESCE(s.total_score, 0)
+  ) ORDER BY COALESCE(s.total_score, 0) DESC, p.joined_at, p.id), '[]'::jsonb)
+  INTO v_totals
+  FROM public.common_multiplayer_players p
+  LEFT JOIN (
+    SELECT user_id, sum(score)::integer AS total_score
+    FROM public.games_reaction_rush_scores WHERE match_id = p_match_id GROUP BY user_id
+  ) s ON s.user_id = p.user_id
+  WHERE p.room_id = p_room_id;
+
+  SELECT CASE WHEN count(*) FILTER (WHERE total_score = max_score) = 1
+    THEN max(user_id) FILTER (WHERE total_score = max_score) ELSE NULL END
+  INTO v_winner
+  FROM (
+    SELECT user_id, sum(score)::integer AS total_score,
+      max(sum(score)::integer) OVER () AS max_score
+    FROM public.games_reaction_rush_scores
+    WHERE match_id = p_match_id
+    GROUP BY user_id
+  ) ranked;
+
+  INSERT INTO public.common_multiplayer_room_stats(room_id, user_id, wins, matches_played)
+  SELECT p_room_id, p.user_id, CASE WHEN p.user_id = v_winner THEN 1 ELSE 0 END, 1
+  FROM public.common_multiplayer_players p WHERE p.room_id = p_room_id
+  ON CONFLICT (room_id, user_id) DO UPDATE SET
+    wins = public.common_multiplayer_room_stats.wins + EXCLUDED.wins,
+    matches_played = public.common_multiplayer_room_stats.matches_played + 1,
+    updated_at = now();
+
+  INSERT INTO public.games_reaction_rush_leaderboard(user_id, display_name, wins, matches_played, total_taps, best_match_score)
+  SELECT p.user_id, p.display_name, CASE WHEN p.user_id = v_winner THEN 1 ELSE 0 END, 1,
+    COALESCE(s.total_score, 0), COALESCE(s.total_score, 0)
+  FROM public.common_multiplayer_players p
+  LEFT JOIN (
+    SELECT user_id, sum(score)::integer AS total_score
+    FROM public.games_reaction_rush_scores WHERE match_id = p_match_id GROUP BY user_id
+  ) s ON s.user_id = p.user_id
+  WHERE p.room_id = p_room_id
+  ON CONFLICT (user_id) DO UPDATE SET
+    display_name = EXCLUDED.display_name,
+    wins = public.games_reaction_rush_leaderboard.wins + EXCLUDED.wins,
+    matches_played = public.games_reaction_rush_leaderboard.matches_played + 1,
+    total_taps = public.games_reaction_rush_leaderboard.total_taps + EXCLUDED.total_taps,
+    best_match_score = GREATEST(public.games_reaction_rush_leaderboard.best_match_score, EXCLUDED.best_match_score),
+    updated_at = now();
+
+  UPDATE public.games_reaction_rush_matches
+  SET status = 'completed', completed_at = now(),
+      final_results = v_totals, winner_user_id = v_winner
+  WHERE id = p_match_id;
+  DELETE FROM public.games_reaction_rush_scores WHERE match_id = p_match_id;
+  RETURN pg_catalog.jsonb_build_object(
+    'completedRound', 3, 'roundResults', v_results, 'finalResults', v_totals,
+    'winnerUserId', v_winner, 'matchFinished', true,
+    'room', public.multiplayer_room_snapshot(p_room_id)
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.reaction_rush_match_snapshot(p_room_id uuid, p_user_id text)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
+  v_match public.games_reaction_rush_matches%ROWTYPE;
+  v_score integer;
+BEGIN
+  SELECT * INTO v_room FROM public.common_multiplayer_rooms WHERE id = p_room_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.common_multiplayer_players WHERE room_id = p_room_id AND user_id = p_user_id) THEN
+    RAISE EXCEPTION 'Player is not a member of this room' USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO v_match FROM public.games_reaction_rush_matches
+  WHERE room_id = p_room_id AND status IN ('playing', 'completed')
+  ORDER BY created_at DESC LIMIT 1;
+  IF NOT FOUND THEN
+    RETURN pg_catalog.jsonb_build_object('room', public.multiplayer_room_snapshot(p_room_id), 'match', NULL);
+  END IF;
+  IF v_match.status = 'playing' THEN
+    SELECT score INTO v_score FROM public.games_reaction_rush_scores
+    WHERE match_id = v_match.id AND user_id = p_user_id AND round_number = v_match.current_round;
+  END IF;
+  RETURN pg_catalog.jsonb_build_object(
+    'room', public.multiplayer_room_snapshot(p_room_id),
+    'match', pg_catalog.jsonb_build_object(
+      'matchId', v_match.id,
+      'roundNumber', v_match.current_round,
+      'roundStartedAt', v_match.round_started_at,
+      'startedAt', v_match.started_at,
+      'completedAt', v_match.completed_at,
+      'status', v_match.status,
+      'finalResults', v_match.final_results,
+      'winnerUserId', v_match.winner_user_id,
+      'myScore', COALESCE(v_score, 0)
+    )
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.brain_battle_advance_if_due(
+  p_room_id uuid,
+  p_match_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_match public.games_brain_battle_matches%ROWTYPE;
+  v_player_count integer;
+  v_answered_count integer;
+  v_next_index integer;
+  v_now timestamptz;
+  v_results jsonb;
+  v_winner text;
+  v_max_score integer;
+  v_top_count integer;
+  v_room_result jsonb;
+BEGIN
+  SELECT * INTO v_match
+  FROM public.games_brain_battle_matches
+  WHERE id = p_match_id AND room_id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Match not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_match.status <> 'playing' THEN
+    RETURN pg_catalog.jsonb_build_object('status', v_match.status, 'matchFinished', v_match.status = 'completed');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_rooms
+    WHERE id = p_room_id AND status = 'playing' AND started_at = v_match.started_at
+  ) THEN
+    RAISE EXCEPTION 'Match is no longer active' USING ERRCODE = '55000';
+  END IF;
+
+  SELECT count(*) INTO v_player_count
+  FROM public.common_multiplayer_players WHERE room_id = p_room_id;
+  SELECT count(*) INTO v_answered_count
+  FROM public.games_brain_battle_answers
+  WHERE match_id = p_match_id AND question_index = v_match.current_question_index;
+
+  v_now := pg_catalog.clock_timestamp();
+  IF v_answered_count < v_player_count AND v_now < v_match.question_ends_at THEN
+    RETURN pg_catalog.jsonb_build_object(
+      'status', 'waiting',
+      'currentQuestionIndex', v_match.current_question_index,
+      'questionStartedAt', v_match.question_started_at,
+      'questionEndsAt', v_match.question_ends_at
+    );
+  END IF;
+
+  -- Players who did not answer before the deadline receive a zero-score skip.
+  INSERT INTO public.games_brain_battle_answers(
+    match_id, room_id, user_id, question_index, selected_answer,
+    is_correct, response_time_ms, score, answered_at
+  )
+  SELECT p_match_id, p_room_id, p.user_id, v_match.current_question_index,
+         NULL, false, 15000, 0, v_match.question_ends_at
+  FROM public.common_multiplayer_players p
+  WHERE p.room_id = p_room_id
+    AND NOT EXISTS (
+      SELECT 1 FROM public.games_brain_battle_answers a
+      WHERE a.match_id = p_match_id
+        AND a.user_id = p.user_id
+        AND a.question_index = v_match.current_question_index
+    )
+  ON CONFLICT (match_id, user_id, question_index) DO NOTHING;
+
+  v_next_index := v_match.current_question_index + 1;
+  IF v_next_index < 10 THEN
+    v_now := pg_catalog.clock_timestamp();
+    UPDATE public.games_brain_battle_matches
+    SET current_question_index = v_next_index,
+        question_started_at = v_now,
+        question_ends_at = v_now + interval '15 seconds'
+    WHERE id = p_match_id;
+    RETURN pg_catalog.jsonb_build_object(
+      'status', 'advanced',
+      'currentQuestionIndex', v_next_index,
+      'questionStartedAt', v_now,
+      'questionEndsAt', v_now + interval '15 seconds',
+      'matchFinished', false
+    );
+  END IF;
+
+  SELECT COALESCE(pg_catalog.jsonb_agg(
+    pg_catalog.jsonb_build_object(
+      'userId', p.user_id,
+      'displayName', p.display_name,
+      'score', COALESCE(s.total_score, 0),
+      'correctAnswers', COALESCE(s.correct_answers, 0),
+      'incorrectAnswers', COALESCE(s.incorrect_answers, 0),
+      'skippedQuestions', COALESCE(s.skipped_questions, 0)
+    ) ORDER BY COALESCE(s.total_score, 0) DESC, p.joined_at, p.id
+  ), '[]'::jsonb)
+  INTO v_results
+  FROM public.common_multiplayer_players p
+  LEFT JOIN (
+    SELECT user_id,
+      sum(score)::integer AS total_score,
+      count(*) FILTER (WHERE is_correct)::integer AS correct_answers,
+      count(*) FILTER (WHERE selected_answer IS NOT NULL AND NOT is_correct)::integer AS incorrect_answers,
+      count(*) FILTER (WHERE selected_answer IS NULL)::integer AS skipped_questions
+    FROM public.games_brain_battle_answers
+    WHERE match_id = p_match_id
+    GROUP BY user_id
+  ) s ON s.user_id = p.user_id
+  WHERE p.room_id = p_room_id;
+
+  SELECT max(total_score), count(*) FILTER (WHERE total_score = max_score)
+  INTO v_max_score, v_top_count
+  FROM (
+    SELECT user_id, sum(score)::integer AS total_score,
+      max(sum(score)::integer) OVER () AS max_score
+    FROM public.games_brain_battle_answers
+    WHERE match_id = p_match_id
+    GROUP BY user_id
+  ) ranked;
+
+  IF v_top_count = 1 THEN
+    SELECT user_id INTO v_winner
+    FROM (
+      SELECT user_id, sum(score)::integer AS total_score
+      FROM public.games_brain_battle_answers
+      WHERE match_id = p_match_id
+      GROUP BY user_id
+    ) scores
+    WHERE total_score = v_max_score
+    LIMIT 1;
+  END IF;
+
+  INSERT INTO public.common_multiplayer_room_stats(room_id, user_id, wins, matches_played)
+  SELECT p_room_id, p.user_id, CASE WHEN p.user_id = v_winner THEN 1 ELSE 0 END, 1
+  FROM public.common_multiplayer_players p
+  WHERE p.room_id = p_room_id
+  ON CONFLICT (room_id, user_id) DO UPDATE SET
+    wins = public.common_multiplayer_room_stats.wins + EXCLUDED.wins,
+    matches_played = public.common_multiplayer_room_stats.matches_played + 1,
+    updated_at = now();
+
+  UPDATE public.games_brain_battle_matches
+  SET status = 'completed', completed_at = v_now,
+      current_question_index = 10, final_results = v_results,
+      winner_user_id = v_winner
+  WHERE id = p_match_id;
+
+  v_room_result := public.multiplayer_room_snapshot(p_room_id);
+
+  RETURN pg_catalog.jsonb_build_object(
+    'status', 'completed',
+    'currentQuestionIndex', 10,
+    'matchFinished', true,
+    'finalResults', v_results,
+    'winnerUserId', v_winner,
+    'room', v_room_result
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.brain_battle_match_snapshot(
+  p_room_id uuid,
+  p_user_id text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_room jsonb;
+  v_match public.games_brain_battle_matches%ROWTYPE;
+  v_players jsonb;
+  v_my_answered boolean;
+  v_question jsonb;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players
+    WHERE room_id = p_room_id AND user_id = p_user_id
+  ) THEN RAISE EXCEPTION 'Player is not a member of this room' USING ERRCODE = '42501'; END IF;
+
+  v_room := public.multiplayer_room_snapshot(p_room_id);
+  SELECT * INTO v_match
+  FROM public.games_brain_battle_matches
+  WHERE room_id = p_room_id AND status IN ('playing', 'completed')
+  ORDER BY created_at DESC LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN pg_catalog.jsonb_build_object('room', v_room, 'match', NULL);
+  END IF;
+
+  SELECT COALESCE(pg_catalog.jsonb_agg(
+    pg_catalog.jsonb_build_object(
+      'userId', p.user_id,
+      'displayName', p.display_name,
+      'score', COALESCE(s.total_score, 0),
+      'correctAnswers', COALESCE(s.correct_answers, 0),
+      'incorrectAnswers', COALESCE(s.incorrect_answers, 0),
+      'skippedQuestions', COALESCE(s.skipped_questions, 0),
+      'answeredCurrentQuestion', EXISTS (
+        SELECT 1 FROM public.games_brain_battle_answers current_answer
+        WHERE current_answer.match_id = v_match.id
+          AND current_answer.user_id = p.user_id
+          AND current_answer.question_index = v_match.current_question_index
+      )
+    ) ORDER BY p.joined_at, p.id
+  ), '[]'::jsonb)
+  INTO v_players
+  FROM public.common_multiplayer_players p
+  LEFT JOIN (
+    SELECT user_id,
+      sum(score)::integer AS total_score,
+      count(*) FILTER (WHERE is_correct)::integer AS correct_answers,
+      count(*) FILTER (WHERE selected_answer IS NOT NULL AND NOT is_correct)::integer AS incorrect_answers,
+      count(*) FILTER (WHERE selected_answer IS NULL)::integer AS skipped_questions
+    FROM public.games_brain_battle_answers
+    WHERE match_id = v_match.id
+    GROUP BY user_id
+  ) s ON s.user_id = p.user_id
+  WHERE p.room_id = p_room_id;
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.games_brain_battle_answers
+    WHERE match_id = v_match.id
+      AND user_id = p_user_id
+      AND question_index = v_match.current_question_index
+  ) INTO v_my_answered;
+
+  IF v_match.status = 'playing' THEN
+    v_question := v_match.questions -> v_match.current_question_index;
+    v_question := v_question - 'correctAnswer' - 'explanation';
+  ELSE
+    v_question := NULL;
+  END IF;
+
+  RETURN pg_catalog.jsonb_build_object(
+    'room', v_room,
+    'match', pg_catalog.jsonb_build_object(
+      'matchId', v_match.id,
+      'startedAt', v_match.started_at,
+      'completedAt', v_match.completed_at,
+      'status', v_match.status,
+      'currentQuestionIndex', v_match.current_question_index,
+      'questionStartedAt', v_match.question_started_at,
+      'questionEndsAt', v_match.question_ends_at,
+      'currentQuestion', v_question,
+      'players', v_players,
+      'myAnswerSubmitted', v_my_answered,
+      'finalResults', v_match.final_results,
+      'winnerUserId', v_match.winner_user_id
+    )
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.no_count_it_match_snapshot(p_room_id uuid,p_user_id text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO '' AS $function$
+DECLARE
+ v_room jsonb; v_match public.games_no_count_it_matches%ROWTYPE; v_round public.games_no_count_it_rounds%ROWTYPE;
+ v_players jsonb; v_round_players jsonb; v_all_answered boolean; v_active_count integer; v_answered_count integer;
+ v_average bigint; v_now timestamptz:=pg_catalog.clock_timestamp();
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM public.common_multiplayer_players WHERE room_id=p_room_id AND user_id=p_user_id) THEN
+  RAISE EXCEPTION 'Player is not a member of this room' USING ERRCODE='42501';
+ END IF;
+ PERFORM 1 FROM public.common_multiplayer_rooms WHERE id=p_room_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE='P0002'; END IF;
+ SELECT public.multiplayer_room_snapshot(p_room_id) INTO v_room;
+ SELECT * INTO v_match FROM public.games_no_count_it_matches
+ WHERE room_id=p_room_id AND status IN ('preparing','playing','completed','technical_aborted','cancelled')
+ ORDER BY created_at DESC LIMIT 1 FOR UPDATE;
+ IF NOT FOUND THEN RETURN jsonb_build_object('room',v_room,'match',NULL); END IF;
+ SELECT * INTO v_round FROM public.games_no_count_it_rounds
+ WHERE match_id=v_match.id AND round_number=v_match.current_round FOR UPDATE;
+ IF FOUND AND v_match.status='playing' AND v_round.status='showing' AND v_now>=v_round.show_started_at+interval '5 seconds' THEN
+  UPDATE public.games_no_count_it_rounds SET status='answering' WHERE id=v_round.id;
+  v_round.status:='answering';
+ END IF;
+ IF FOUND AND v_match.status='playing' AND v_round.status IN ('showing','answering') THEN
+  SELECT count(*) FILTER(WHERE status IN ('active','completed')),count(*) FILTER(WHERE status='completed')
+  INTO v_active_count,v_answered_count FROM public.games_no_count_it_round_players
+  WHERE match_id=v_match.id AND round_number=v_match.current_round;
+  v_all_answered:=v_active_count>0 AND v_answered_count=v_active_count;
+  IF v_all_answered OR v_now>=v_round.answer_deadline THEN
+   UPDATE public.games_no_count_it_round_players SET error=v_round.correct_count,status='completed'
+   WHERE match_id=v_match.id AND round_number=v_match.current_round AND status='active';
+   SELECT COALESCE(ceil(avg(error) FILTER(WHERE status='completed')),0)::bigint INTO v_average
+   FROM public.games_no_count_it_round_players WHERE match_id=v_match.id AND round_number=v_match.current_round AND status='completed';
+   UPDATE public.games_no_count_it_round_players SET error=v_average,status='completed'
+   WHERE match_id=v_match.id AND round_number=v_match.current_round AND status='excluded_not_ready';
+   UPDATE public.games_no_count_it_match_players mp SET total_error=mp.total_error+rp.error
+   FROM public.games_no_count_it_round_players rp
+   WHERE rp.match_id=v_match.id AND rp.round_number=v_match.current_round AND rp.user_id=mp.user_id AND mp.match_id=v_match.id;
+   UPDATE public.games_no_count_it_rounds SET status='revealing',reveal_started_at=v_now
+   WHERE id=v_round.id AND status IN ('showing','answering');
+   v_round.status:='revealing';
+  END IF;
+ END IF;
+ SELECT COALESCE(jsonb_agg(jsonb_build_object('userId',mp.user_id,'displayName',mp.display_name,'totalError',mp.total_error,
+  'roundErrors',(SELECT jsonb_agg(rp.error ORDER BY rp.round_number) FROM public.games_no_count_it_round_players rp WHERE rp.match_id=mp.match_id AND rp.user_id=mp.user_id)
+ ) ORDER BY mp.joined_at,mp.user_id),'[]'::jsonb)
+ INTO v_players FROM public.games_no_count_it_match_players mp WHERE mp.match_id=v_match.id;
+ IF v_round.id IS NOT NULL THEN
+  SELECT COALESCE(jsonb_agg(jsonb_build_object('userId',mp.user_id,'displayName',mp.display_name,'status',rp.status,
+   'answer',CASE WHEN v_round.status IN ('revealing','completed') THEN rp.answer ELSE NULL END,
+   'error',CASE WHEN v_round.status IN ('revealing','completed') THEN rp.error ELSE NULL END,
+   'answeredAt',CASE WHEN v_round.status IN ('revealing','completed') THEN rp.answered_at ELSE NULL END
+  ) ORDER BY mp.joined_at,mp.user_id),'[]'::jsonb)
+  INTO v_round_players FROM public.games_no_count_it_round_players rp
+  JOIN public.games_no_count_it_match_players mp ON mp.match_id=rp.match_id AND mp.user_id=rp.user_id
+  WHERE rp.match_id=v_match.id AND rp.round_number=v_match.current_round;
+ END IF;
+ RETURN jsonb_build_object('room',v_room,'match',jsonb_build_object(
+  'matchId',v_match.id,'startedAt',v_match.started_at,'completedAt',v_match.completed_at,'status',v_match.status,'currentRound',v_match.current_round,
+  'players',v_players,'winnerUserId',v_match.winner_user_id,'finalResults',v_match.final_results,
+  'round',CASE WHEN v_round.id IS NULL THEN NULL ELSE jsonb_build_object(
+   'roundNumber',v_round.round_number,'status',v_round.status,'targetColor',v_round.target_color,
+   'preparationDeadline',v_round.preparation_deadline,'showStartedAt',v_round.show_started_at,'answerDeadline',v_round.answer_deadline,
+   'correctCount',CASE WHEN v_round.status IN ('revealing','completed') THEN v_round.correct_count ELSE NULL END,
+   'imagePath',v_round.image_path,'players',COALESCE(v_round_players,'[]'::jsonb)
+  ) END
+ ));
+END;$function$;
 
 DROP TABLE IF EXISTS public.common_multiplayer_rematch_votes;
 
