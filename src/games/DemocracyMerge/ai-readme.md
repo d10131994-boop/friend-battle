@@ -88,7 +88,7 @@ Any SQL or Supabase infrastructure change requires explicit user approval before
 
 Register the game in `public.common_multiplayer_game_rules` with min/max player limits 2 and 4 and enabled status through the approved database workflow. Do not claim the game is available in the live catalog until the registration is actually deployed.
 
-The first multiplayer schema patch is `supabase/sql/democracy_merge_multiplayer.sql` with matching migration `20261108113000_democracy_merge_multiplayer.sql`. It creates private match/player state, a game-owned common-player deletion trigger that records `left`, closes a match when no active participants remain, cancels active game state when a room is cancelled, and schedules server-side five-minute disconnect expiry every 30 seconds. The migration is pending; no Production schema or Cron changes have been made.
+The first multiplayer schema patch is `supabase/sql/democracy_merge_multiplayer.sql` with matching migration `20261108113000_democracy_merge_multiplayer.sql`. It creates private match/player state, trusted start/snapshot RPCs, a game-owned common-player deletion trigger that records `left`, closes a match when no active participants remain, cancels active game state when a room is cancelled, and schedules server-side five-minute disconnect expiry every 30 seconds. `supabase/functions/democracy-merge/index.ts` currently verifies Telegram identity and implements start, snapshot, final leave and normal completed-match return-to-room actions. Placement, tools, surrender, deadline finalization, history and client UI remain to be implemented. The migration is pending; no Production schema or Cron changes have been made.
 
 ## 7. Pure game logic currently implemented
 
