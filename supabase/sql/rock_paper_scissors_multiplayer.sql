@@ -41,6 +41,9 @@ BEGIN
     END IF;
 
     NEW.max_players := v_game_max_players;
+  ELSE
+    -- Rooms without a selected game return to the standard four-player capacity.
+    NEW.max_players := 4;
   END IF;
 
   RETURN NEW;
