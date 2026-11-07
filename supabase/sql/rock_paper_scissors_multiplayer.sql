@@ -22,7 +22,7 @@ DECLARE
   v_game_max_players integer;
   v_player_count integer;
 BEGIN
-  IF NEW.game_id IS DISTINCT FROM OLD.game_id AND NEW.game_id IS NOT NULL THEN
+  IF NEW.game_id IS NOT NULL THEN
     SELECT max_players INTO v_game_max_players
     FROM public.common_multiplayer_game_rules
     WHERE game_id = NEW.game_id AND is_enabled = true;
@@ -177,6 +177,7 @@ DECLARE
   v_started jsonb;
   v_started_at timestamptz;
   v_match_id uuid;
+  v_existing public.games_rock_paper_scissors_matches%ROWTYPE;
   v_now timestamptz;
   v_player_count integer;
 BEGIN
@@ -195,6 +196,16 @@ BEGIN
     WHERE room_id = p_room_id AND user_id = p_user_id AND is_host
   ) THEN
     RAISE EXCEPTION 'Only the room host can start a match' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_existing
+  FROM public.games_rock_paper_scissors_matches
+  WHERE room_id = p_room_id AND status = 'playing'
+  FOR UPDATE;
+  IF FOUND AND v_room.status = 'playing'
+    AND v_room.started_at IS NOT DISTINCT FROM v_existing.started_at
+  THEN
+    RETURN public.rock_paper_scissors_match_snapshot(p_room_id, p_user_id);
   END IF;
 
   SELECT count(*) INTO v_player_count
