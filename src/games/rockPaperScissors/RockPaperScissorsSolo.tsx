@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { telegramUser } from '../../services/telegram'
 import { getOpponentName, getRoundOutcome } from './logic/gameRules'
-import { HandIllustration } from './HandIllustration'
+import { ChoiceIcon, HandIllustration } from './HandIllustration'
 import type { RockPaperScissorsChoice } from './types'
 import './rockPaperScissors.css'
 
@@ -143,7 +143,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
                 aria-pressed={shownPlayerChoice === 'rock'}
                 disabled={remaining <= 0}
                 onClick={() => choose('rock')}
-              ><HandIllustration choice="rock" className="rps-hand-icon" /></button>
+              ><ChoiceIcon choice="rock" className="rps-choice-icon" /></button>
               <div className="rps-choice-row">
                 <button
                   type="button"
@@ -152,7 +152,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
                   aria-pressed={shownPlayerChoice === 'scissors'}
                   disabled={remaining <= 0}
                   onClick={() => choose('scissors')}
-                ><HandIllustration choice="scissors" className="rps-hand-icon" /></button>
+                ><ChoiceIcon choice="scissors" className="rps-choice-icon" /></button>
                 <button
                   type="button"
                   className={`rps-choice-button ${shownPlayerChoice === 'paper' ? 'selected' : ''}`}
@@ -160,7 +160,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
                   aria-pressed={shownPlayerChoice === 'paper'}
                   disabled={remaining <= 0}
                   onClick={() => choose('paper')}
-                ><HandIllustration choice="paper" className="rps-hand-icon" /></button>
+                ><ChoiceIcon choice="paper" className="rps-choice-icon" /></button>
               </div>
             </div>
           </>
