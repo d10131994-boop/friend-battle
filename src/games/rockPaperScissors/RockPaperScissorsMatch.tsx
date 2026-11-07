@@ -238,13 +238,15 @@ export default function RockPaperScissorsMatch({
               {isWinner ? 'С победой!' : 'Не в этот раз'}
             </h1>
             <div className="rps-session-scores">
-              {finalResults.slice(0, 2).map((player, index) => (
-                <div className="rps-session-player" key={player.userId}>
-                  <span className="rps-session-name">{player.displayName}</span>
-                  <strong className="rps-session-score">{player.score}</strong>
-                  {index === 0 && <span className="rps-session-separator">:</span>}
-                </div>
-              ))}
+              <div className="rps-session-player">
+                <span className="rps-session-name">{finalResults[0]?.displayName ?? 'Игрок 1'}</span>
+                <strong className="rps-session-score">{finalResults[0]?.score ?? 0}</strong>
+              </div>
+              <span className="rps-session-separator">:</span>
+              <div className="rps-session-player">
+                <span className="rps-session-name">{finalResults[1]?.displayName ?? 'Игрок 2'}</span>
+                <strong className="rps-session-score">{finalResults[1]?.score ?? 0}</strong>
+              </div>
             </div>
             <button type="button" className="rps-exit-button" onClick={() => void finishAndReturn()} disabled={loading}>
               {loading ? 'ВОЗВРАЩАЕМСЯ…' : 'ВЕРНУТЬСЯ В КОМНАТУ'}
