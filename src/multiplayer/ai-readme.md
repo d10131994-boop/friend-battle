@@ -78,7 +78,7 @@ The agreed product vocabulary may call the waiting state “lobby”, but the cu
 
 The lifecycle SQL starts a match only from `waiting` or `finished`, requires every current player to be ready and to have a heartbeat within the preceding 90 seconds, sets `playing` and a server-generated `startedAt`, then consumes readiness. `finish_game` must pass that exact `startedAt`. This prevents an old delayed finish request from finishing a newer match in the same room. A repeated finish for the same already-finished session is idempotent.
 
-Finishing a match sets the room to `finished`; it does not destroy the room. The game module owns result presentation and decides when to return its UI to the room menu. The same room can be used for another match after players ready again, provided the selected game's lifecycle integration supports it.
+A game-specific match can be complete while the shared room remains `playing` during the results screen. A member's `return_to_room` request (or the 60-second results timeout) is validated by the game's Edge Function, which then calls `finish_game`. That shared transition sets the room to `finished`; it does not destroy it. The same room can be used for another match after all current players confirm readiness.
 
 ## 5. Realtime and room sessions
 
@@ -155,7 +155,7 @@ The application-level room experience is implemented in `src/menus/MultiplayerRo
 
 Game modules receive an already-created `MultiplayerRoom` and own only their match-specific UI/actions/results. Do not reintroduce room creation, invite-code parsing, common readiness, host transfer or generic room navigation inside a game screen.
 
-The menu automatically marks the host ready when a newly created room or a finished room returns to the waiting state, because the agreed UI does not show the host a Ready button while the lifecycle start operation still requires every member to be ready. This is client orchestration only; the server remains authoritative.
+The menu automatically marks the host ready when a newly created room is opened or when a finished room returns from the results screen. The agreed UI does not show the host a Ready button while the lifecycle start operation still requires every member to be ready. This is client orchestration only; the server remains authoritative.
 
 The current Telegram Mini App share flow uses a single invite URL through `https://t.me/share/url`. Telegram's share sheet does not return a list of chosen recipients to the Mini App, so the client cannot show a truthful live count of selected contacts. The room snapshot and server-side capacity remain the source for actual participant counts. The shared invite deep-link prefix is `fb_`; the application continues to accept legacy `rr_` and `bb_` prefixes for existing links.
 
