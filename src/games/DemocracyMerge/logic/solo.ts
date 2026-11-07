@@ -6,7 +6,7 @@ import {
   type Board,
   type CharacterLevel,
   type ObstacleType,
-} from './gameEngine'
+} from './gameEngine.ts'
 import {
   applyToolReward,
   buyTool,
@@ -14,7 +14,7 @@ import {
   placeObstacleAtRandomFreeCell,
   rollMergeRewards,
   type MergeReward,
-} from './events'
+} from './events.ts'
 import {
   canFreeCellWithTools,
   emptyToolInventory,
@@ -26,7 +26,7 @@ import {
   type StoredCharacter,
   type ToolInventory,
   type ToolType,
-} from './tools'
+} from './tools.ts'
 
 export const SOLO_SAVE_VERSION = 1
 export const SOLO_DURATION_MS = 30 * 60 * 1000
@@ -172,11 +172,18 @@ export function placeSoloCharacter(
   let board = placement.board
   let coins = source.coins
   let inventory = source.inventory
-  const rewards = rollMergeRewards(placement.merges.length, random)
+  const rolledRewards = rollMergeRewards(placement.merges.length, random)
+  const rewards: MergeReward[] = []
 
-  for (const reward of rewards) {
-    if (reward.kind === 'money_bag') coins += reward.coins
-    else inventory = applyToolReward(inventory, reward.tool).inventory
+  for (const reward of rolledRewards) {
+    if (reward.kind === 'money_bag') {
+      coins += reward.coins
+      rewards.push(reward)
+    } else {
+      const awarded = applyToolReward(inventory, reward.tool)
+      inventory = awarded.inventory
+      if (awarded.awarded) rewards.push(reward)
+    }
   }
 
   const obstacleType = source.obstacleSequence[source.turnNumber]
@@ -244,8 +251,8 @@ export function useSoloTool(
     inventory = result.inventory
     toolsUsed += 1
   } else {
-    replaceCurrentCharacter(currentSoloCharacter(source) ?? 1, inventory)
-    inventory = { ...inventory, replace: inventory.replace - 1 }
+    const replaced = replaceCurrentCharacter(currentSoloCharacter(source) ?? 1, inventory)
+    inventory = replaced.inventory
     toolsUsed += 1
   }
 
