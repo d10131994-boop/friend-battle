@@ -207,16 +207,24 @@ module.exports = async function runBranchCleanup({ github, context, core, mode }
   const owner = context.repo.owner;
   const repo = context.repo.repo;
 
-  if (mode === "delete") {
+  if (mode === "auto") {
+    if (context.eventName !== "push" || context.ref !== "refs/heads/main") {
+      core.setFailed("Автоматическое удаление разрешено только после push в main.");
+      return;
+    }
+  } else if (mode === "delete") {
     const confirmation = process.env.CONFIRM_DELETE || "";
     if (confirmation !== "DELETE") {
       core.setFailed("Удаление не запущено. Для ручного запуска необходимо ввести точное подтверждение DELETE.");
       return;
     }
     if (context.eventName !== "workflow_dispatch") {
-      core.setFailed("Удаление разрешено только при ручном запуске workflow_dispatch.");
+      core.setFailed("Ручное удаление разрешено только при workflow_dispatch.");
       return;
     }
+  } else if (mode !== "report") {
+    core.setFailed("Неизвестный режим очистки: " + mode);
+    return;
   }
 
   const initialSnapshot = await getSnapshot(github, owner, repo);
@@ -224,10 +232,10 @@ module.exports = async function runBranchCleanup({ github, context, core, mode }
   const initialReport = makeReport(
     initialSnapshot,
     initialRows,
-    mode === "delete" ? "Branch cleanup — pre-delete audit" : "Branch cleanup audit — dry run"
+    mode === "report" ? "Branch cleanup audit — dry run" : "Branch cleanup — pre-delete audit"
   );
 
-  if (mode !== "delete") {
+  if (mode === "report") {
     initialReport.lines.push("", "> Ничего не удалено. Это только отчёт.");
     await core.summary.addRaw(initialReport.lines.join("\n")).write();
     core.info("Audit completed: " + initialReport.candidates.length + " candidates, " + initialReport.kept.length + " kept.");
@@ -290,7 +298,7 @@ module.exports = async function runBranchCleanup({ github, context, core, mode }
   const lines = [
     "## Branch cleanup — deletion result",
     "",
-    "- Режим: **ручное удаление с подтверждением DELETE**",
+    "- Режим: **" + (mode === "auto" ? "автоматическая очистка после обновления main" : "ручное удаление с подтверждением DELETE") + "**",
     "- Кандидатов в исходном аудите: **" + initialReport.candidates.length + "**",
     "- Удалено: **" + deleted.length + "**",
     "- Пропущено: **" + skipped.length + "**",

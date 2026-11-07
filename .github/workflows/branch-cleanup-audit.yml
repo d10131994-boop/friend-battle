@@ -50,7 +50,7 @@ jobs:
     name: Delete verified obsolete branches
     runs-on: ubuntu-latest
     needs: audit
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'delete' }}
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'delete') }}
     permissions:
       contents: write
       pull-requests: read
@@ -65,4 +65,5 @@ jobs:
         with:
           script: |
             const runBranchCleanup = require(process.env.GITHUB_WORKSPACE + "/.github/scripts/branch-cleanup.cjs");
-            await runBranchCleanup({ github, context, core, mode: "delete" });
+            const mode = context.eventName === "push" ? "auto" : "delete";
+            await runBranchCleanup({ github, context, core, mode });
