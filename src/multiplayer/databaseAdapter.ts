@@ -118,7 +118,7 @@ function parseMultiplayerRoom(value: unknown): MultiplayerRoom {
       (typeof value.maxPlayers === 'number' && Number.isInteger(value.maxPlayers))) &&
     isNullableTimestamp(value.createdAt) &&
     isNullableTimestamp(value.startedAt) &&
-    isNullableTimestamp(value.finishedAt) &&
+    isNullableTimestamp(value.finishedAt)
 
   if (!valid) {
     throw new MultiplayerError(
