@@ -134,7 +134,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) return fail("Invalid request body", 400);
     const action = body.action;
-    const gameServerActions = ["start_game", "finish_game"];
+    const gameServerActions = ["start_game", "finish_game", "leave_active_match"];
     const publicActions = [
       "create_room", "join_room", "get_room", "select_game", "set_ready",
       "leave_room", "close_room", "heartbeat", "get_room_token",
@@ -200,6 +200,7 @@ Deno.serve(async (req: Request) => {
       if (isGameServerAction) payload.gameId = body.gameId;
       if (action === "set_ready") payload.isReady = body.isReady;
       if (action === "finish_game") payload.startedAt = body.startedAt;
+      if (action === "leave_active_match") payload.playerUserId = body.playerUserId;
     }
 
     const { data, error } = await supabase.rpc("multiplayer_execute_action", {
@@ -246,6 +247,7 @@ Deno.serve(async (req: Request) => {
       close_room: "room_updated",
       start_game: "room_updated",
       finish_game: "room_finished",
+      leave_active_match: "player_left",
     };
     const event = eventByAction[action];
     if (roomId && event) {
