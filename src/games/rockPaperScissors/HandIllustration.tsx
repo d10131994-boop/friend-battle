@@ -53,3 +53,45 @@ export function HandIllustration({ choice, className = '', label }: Props) {
     </svg>
   )
 }
+
+type ChoiceIconProps = {
+  choice: RockPaperScissorsChoice
+  className?: string
+}
+
+export function ChoiceIcon({ choice, className = '' }: ChoiceIconProps) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 64 64"
+      role="img"
+      aria-label={choice === 'rock' ? 'Камень' : choice === 'scissors' ? 'Ножницы' : 'Бумага'}
+    >
+      {choice === 'rock' && (
+        <path
+          d="M10 44 L8 30 L19 13 L35 8 L51 18 L57 36 L48 53 L24 57 Z"
+          fill="#8795A7"
+          stroke="#43536A"
+          strokeWidth="4"
+          strokeLinejoin="round"
+        />
+      )}
+      {choice === 'scissors' && (
+        <g fill="none" stroke="#3C5578" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="15" cy="47" r="8" fill="#D9E8FA" />
+          <circle cx="31" cy="51" r="8" fill="#D9E8FA" />
+          <path d="M21 42 L51 11 M36 45 L13 15 M27 34 L53 54" />
+          <path d="M51 11 L57 8 L55 16 Z" fill="#E45D66" stroke="#3C5578" strokeWidth="3" />
+          <path d="M13 15 L8 9 L17 10 Z" fill="#E45D66" stroke="#3C5578" strokeWidth="3" />
+        </g>
+      )}
+      {choice === 'paper' && (
+        <g stroke="#3C5578" strokeWidth="3.5" strokeLinejoin="round">
+          <path d="M15 7 H40 L53 20 V57 H15 Z" fill="#FFFFFF" />
+          <path d="M40 7 V20 H53" fill="#D7E8FC" />
+          <path d="M23 31 H44 M23 40 H44 M23 49 H38" fill="none" strokeLinecap="round" />
+        </g>
+      )}
+    </svg>
+  )
+}
