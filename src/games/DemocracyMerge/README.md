@@ -13,6 +13,6 @@ The character images currently use temporary numbered placeholders (levels 1–6
 
 ## Development status
 
-The V1 specification is agreed. The pure board/merge engine, initial tool-rule helpers, shop pricing and obstacle/reward generators are implemented with Deno unit tests. Match persistence, trusted multiplayer backend, solo save/restore, game UI and live catalog registration are still in progress; this README describes the target game, not a claim that the full game is implemented or deployed.
+The V1 specification is agreed. The pure board/merge engine, initial tool-rule helpers, shop pricing and obstacle/reward generators are implemented with Deno unit tests. Match persistence and initial trusted multiplayer start/snapshot/leave backend are in progress; placement/actions, solo save/restore, game UI and live catalog registration are still in progress; this README describes the target game, not a claim that the full game is implemented or deployed.
 
 There is no rematch feature. After a match, players can view its history or return to the main menu. A later match is started through the ordinary room flow.
