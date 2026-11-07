@@ -107,23 +107,21 @@ export function useBrainBattle() {
     if (gameState !== 'playing') return
 
     const timer = window.setInterval(() => {
-      setTimeLeft((previousTime) => Math.max(0, previousTime - 1))
+      if (timeLeft <= 1) {
+        setRemainingTimes((previous) => {
+          const updated = [...previous]
+          updated[currentQuestionIndex] = 0
+          return updated
+        })
+        setTimeLeft(0)
+        setGameState('answering')
+        return
+      }
+      setTimeLeft(timeLeft - 1)
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [gameState, currentQuestionIndex])
-
-  useEffect(() => {
-    if (gameState !== 'playing' || timeLeft !== 0) return
-
-    setRemainingTimes((previous) => {
-      const updated = [...previous]
-      updated[currentQuestionIndex] = 0
-      return updated
-    })
-
-    setGameState('answering')
-  }, [timeLeft, gameState, currentQuestionIndex])
+  }, [gameState, currentQuestionIndex, timeLeft])
 
   return {
     questions,

@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { sqlErrorResponse } from "../_shared/errors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -7,7 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const JWT_KEY_ID = "d27b354d-84aa-4d2a-864e-e953408cb575";
-const TOKEN_LIFETIME_SECONDS = 3600;
+const TOKEN_LIFETIME_SECONDS = 600;
 const GAME_SERVER_USER_ID = "__game_server__";
 
 type TelegramUser = { id: number; first_name?: string; username?: string };
@@ -136,7 +137,7 @@ Deno.serve(async (req: Request) => {
     const gameServerActions = ["start_game", "finish_game"];
     const publicActions = [
       "create_room", "join_room", "get_room", "select_game", "set_ready",
-      "leave_room", "close_room", "heartbeat", "get_room_token",
+      "leave_room", "close_room", "heartbeat", "get_room_token", "vote_rematch",
     ];
     if (typeof action !== "string" || ![...publicActions, ...gameServerActions].includes(action)) {
       return fail("Unknown multiplayer action", 400);
@@ -198,6 +199,7 @@ Deno.serve(async (req: Request) => {
       if (action === "select_game") payload.gameId = body.gameId;
       if (isGameServerAction) payload.gameId = body.gameId;
       if (action === "set_ready") payload.isReady = body.isReady;
+      if (action === "vote_rematch") payload.vote = body.vote;
       if (action === "finish_game") payload.startedAt = body.startedAt;
     }
 
@@ -209,13 +211,14 @@ Deno.serve(async (req: Request) => {
     });
 
     if (error) {
-      console.warn("Multiplayer action rejected:", action, error.code, error.message);
-      if (error.code === "P0002") return fail("Комната не найдена", 404);
-      if (error.code === "42501") return fail("Недостаточно прав для этой операции", 403);
-      if (error.code === "23505") return fail("Игрок уже состоит в комнате", 409);
-      if (error.code === "55000" || error.code === "54000") return fail(error.message, 409);
-      if (error.code === "22023") return fail(error.message, 400);
-      return fail("Не удалось выполнить действие с комнатой", 500);
+      return sqlErrorResponse(error, corsHeaders, {
+        operation: `multiplayer:${action}`,
+        fallbackMessage: "Не удалось выполнить действие с комнатой",
+        messages: {
+          P0002: "Комната не найдена",
+          23505: "Игрок уже состоит в комнате",
+        },
+      });
     }
 
     if (action === "get_room_token") {
@@ -240,6 +243,7 @@ Deno.serve(async (req: Request) => {
       join_room: "player_joined",
       select_game: "room_updated",
       set_ready: "player_updated",
+      vote_rematch: "room_updated",
       leave_room: "player_left",
       close_room: "room_updated",
       start_game: "room_updated",

@@ -1,13 +1,25 @@
-# Reaction Rush multiplayer integration
+# Reaction Rush
 
-Reaction Rush multiplayer is implemented on top of the shared Multiplayer Core.
+Reaction Rush supports solo play and multiplayer play. Its ranking behavior is intentionally game-specific.
 
-- Shared room creation, invites, membership, readiness, heartbeats, and private Realtime snapshots use `src/multiplayer`.
-- Game-specific start, tap, and finish actions use the trusted `reaction-rush` Edge Function.
+## Solo mode
+
+- The player's current score, personal best, and number of completed rounds are kept in browser local storage.
+- Solo results are not uploaded to a cross-game or global leaderboard.
+- No global rating screen or global score endpoint is used.
+
+## Multiplayer mode
+
+- Room creation, invites, membership, readiness, heartbeats, and private Realtime snapshots use the shared Multiplayer Core.
+- Game-specific start, tap, finish, and leaderboard actions use the trusted `reaction-rush` Edge Function.
 - The server validates Telegram initData and counts taps in PostgreSQL. The browser never submits a final score.
-- Each round lasts 10 seconds. The host starts a round after all room members are ready.
-- Readiness is reset by the shared Multiplayer lifecycle when a round starts, so players confirm again before the next round.
-- Game-specific scores are stored in `public.reaction_rush_scores`.
-- The old `duels` table and `duels` Edge Function are legacy. They are retained until the new client is released and verified; they are not used by the new Reaction Rush UI.
+- Each match consists of three 10-second rounds.
+- Match scores and the game-specific ranking are stored in `public.games_reaction_rush_scores` and `public.games_reaction_rush_leaderboard`.
+- The in-game multiplayer leaderboard ranks Reaction Rush players by wins and best match score. It is independent of any other game's data.
 
-Apply `supabase/sql/multiplayer_game_lifecycle.sql` and then `supabase/sql/reaction_rush_multiplayer.sql` to provision the shared lifecycle and game-specific score storage. Deploy `supabase/functions/multiplayer/index.ts` and `supabase/functions/reaction-rush/index.ts` together.
+## Server setup
+
+- Apply the canonical shared SQL in `supabase/sql/universal_lobby_reaction_rush.sql`.
+- Apply `supabase/sql/multiplayer_room_maintenance.sql` for shared room maintenance functions.
+- Apply `supabase/sql/reaction_rush_room_lifecycle.sql` for Reaction Rush-owned cleanup when a room is reset or closed.
+- Deploy `supabase/functions/multiplayer/index.ts` and `supabase/functions/reaction-rush/index.ts` together.

@@ -1,0 +1,6 @@
+export * from './types'
+export { generateCandyJarScene, createSeededRandom } from './scene/sceneGenerator'
+export type { SceneGenerationOptions } from './scene/sceneGenerator'
+export { renderCandyJarSvg } from './scene/svgRenderer'
+export { distributeCandyColors } from './scene/colorDistributor'
+export { placeCandies } from './scene/placementEngine'

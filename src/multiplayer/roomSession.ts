@@ -12,6 +12,24 @@ const HEARTBEAT_INTERVAL_MS = 30 * 1000
 const TOKEN_CHECK_INTERVAL_MS = 30 * 1000
 
 const roomTokenCache = new Map<string, MultiplayerRoomToken>()
+
+function getRoomTokenCacheKey(roomId: string, initData: string): string {
+  const rawUser = new URLSearchParams(initData).get('user')
+  if (!rawUser) throw new TypeError('Telegram user data is required for the Realtime token cache.')
+
+  let userId: unknown
+  try {
+    userId = (JSON.parse(rawUser) as { id?: unknown } | null)?.id
+  } catch {
+    throw new TypeError('Telegram user data is invalid for the Realtime token cache.')
+  }
+  if (!Number.isSafeInteger(userId) || (userId as number) <= 0) {
+    throw new TypeError('A valid Telegram user ID is required for the Realtime token cache.')
+  }
+
+  return roomId + ':' + String(userId)
+}
+
 let activeSession: symbol | null = null
 
 export interface MultiplayerRoomSessionOptions {
@@ -31,7 +49,7 @@ export interface MultiplayerRoomSession {
 
 /**
  * Owns the one active room's Realtime JWT, heartbeat, and room watcher.
- * JWTs are cached in memory by room ID and are never persisted to storage.
+ * JWTs are cached in memory by room and Telegram user ID, and are never persisted to storage.
  */
 export function createMultiplayerRoomSession(
   options: MultiplayerRoomSessionOptions,
@@ -41,29 +59,31 @@ export function createMultiplayerRoomSession(
 
   let started = false
   let stopped = false
+  let stopPromise: Promise<void> | null = null
   let watcher: RoomWatcher | null = null
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null
   let tokenTimer: ReturnType<typeof setInterval> | null = null
   let heartbeatInFlight = false
   let tokenRefreshInFlight = false
   const sessionId = Symbol('multiplayer-room-session')
+  const tokenCacheKey = getRoomTokenCacheKey(options.roomId, options.auth.initData)
 
   const reportError = (error: unknown) => {
     options.onError?.(error instanceof Error ? error : new Error(String(error)))
   }
 
   const getCachedToken = (): MultiplayerRoomToken | null => {
-    const token = roomTokenCache.get(options.roomId)
+    const token = roomTokenCache.get(tokenCacheKey)
     if (!token) return null
     if (Date.parse(token.expiresAt) <= Date.now()) {
-      roomTokenCache.delete(options.roomId)
+      roomTokenCache.delete(tokenCacheKey)
       return null
     }
     return token
   }
 
   const installToken = (token: MultiplayerRoomToken) => {
-    roomTokenCache.set(options.roomId, token)
+    roomTokenCache.set(tokenCacheKey, token)
     realtime.setAuth(token.accessToken)
   }
 
@@ -106,19 +126,32 @@ export function createMultiplayerRoomSession(
     tokenTimer = null
   }
 
-  const stop = async () => {
-    if (stopped) return
+  const stop = (): Promise<void> => {
+    if (stopPromise) return stopPromise
+
     stopped = true
     stopTimers()
     if (typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-    if (watcher) {
-      const currentWatcher = watcher
-      watcher = null
-      await currentWatcher.stop()
-    }
-    if (activeSession === sessionId) activeSession = null
+
+    const currentWatcher = watcher
+    watcher = null
+
+    stopPromise = (async () => {
+      try {
+        if (currentWatcher) await currentWatcher.stop()
+      } catch (error) {
+        reportError(error)
+      } finally {
+        roomTokenCache.delete(tokenCacheKey)
+        // A failed Realtime unsubscribe must not permanently lock the shared
+        // client and prevent the user from opening another room session.
+        if (activeSession === sessionId) activeSession = null
+      }
+    })()
+
+    return stopPromise
   }
 
   const onVisibilityChange = () => {
