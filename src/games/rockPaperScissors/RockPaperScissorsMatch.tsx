@@ -127,6 +127,7 @@ export default function RockPaperScissorsMatch({
       const response = await invokeGame<{ room: MultiplayerRoom }>({
         action: 'return_to_room',
         roomId: room.roomId,
+        matchId: match?.matchId,
       })
       onRoomUpdate(response.room)
       onReturnToRoom()
@@ -136,7 +137,7 @@ export default function RockPaperScissorsMatch({
     } finally {
       setLoading(false)
     }
-  }, [invokeGame, room.status, room.roomId, onRoomUpdate, onReturnToRoom])
+  }, [invokeGame, room.status, room.roomId, match?.matchId, onRoomUpdate, onReturnToRoom])
 
   useEffect(() => {
     if (!match || match.status !== 'completed' || room.status !== 'playing' || !match.completedAt) return
