@@ -32,14 +32,16 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   const [activeGameId, setActiveGameId] = useState<MultiplayerRoom['gameId']>(null)
   const sessionRef = useRef<ReturnType<typeof createMultiplayerRoomSession> | null>(null)
   const autoReadyKeyRef = useRef<string | null>(null)
+  const returnedSessionRef = useRef<string | null>(null)
   const inviteAttemptedRef = useRef(false)
   const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
 
   const acceptRoom = useCallback((nextRoom: MultiplayerRoom) => {
     setRoom(nextRoom)
     if (nextRoom.gameId) setActiveGameId(nextRoom.gameId)
-    if (nextRoom.status === 'playing') setGameScreen(true)
+    if (nextRoom.status === 'playing' && returnedSessionRef.current !== nextRoom.startedAt) setGameScreen(true)
     if (nextRoom.status === 'finished') {
+      returnedSessionRef.current = nextRoom.startedAt
       setGameScreen(false)
       setStartRequested(false)
     }
