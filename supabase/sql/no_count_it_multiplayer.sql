@@ -3,14 +3,13 @@
 -- are not modified.
 
 INSERT INTO public.common_multiplayer_game_rules (
-  game_id, min_players, max_players, is_enabled, lifecycle_mode, updated_at
+  game_id, min_players, max_players, is_enabled, updated_at
 )
-VALUES ('no-count-it', 2, 4, true, 'default', pg_catalog.now())
+VALUES ('no-count-it', 2, 4, true, pg_catalog.now())
 ON CONFLICT (game_id) DO UPDATE SET
   min_players = EXCLUDED.min_players,
   max_players = EXCLUDED.max_players,
   is_enabled = EXCLUDED.is_enabled,
-  lifecycle_mode = EXCLUDED.lifecycle_mode,
   updated_at = EXCLUDED.updated_at;
 
 CREATE TABLE IF NOT EXISTS public.games_no_count_it_matches (

@@ -12,6 +12,7 @@ DECLARE
   v_started jsonb;
   v_room_id uuid;
   v_match_id uuid;
+  v_started_at text;
   v_questions jsonb;
   v_stats record;
 BEGIN
@@ -49,6 +50,7 @@ BEGIN
 
   -- First match: Host wins.
   v_started := public.brain_battle_start_match(v_room_id, v_host, v_questions);
+  v_started_at := v_started->'room'->>'startedAt';
   v_match_id := (v_started->>'matchId')::uuid;
 
   INSERT INTO public.games_brain_battle_answers(
@@ -79,18 +81,31 @@ BEGIN
     RAISE EXCEPTION 'First match statistics were not recorded for the host';
   END IF;
 
-  -- Both remaining members approve the rematch for the exact finished session.
-  PERFORM public.multiplayer_execute_action(
-    'vote_rematch', v_host, 'Host',
-    jsonb_build_object('roomId', v_room_id, 'vote', 'yes')
-  );
-  v_room := public.multiplayer_execute_action(
-    'vote_rematch', v_guest, 'Guest',
-    jsonb_build_object('roomId', v_room_id, 'vote', 'yes')
-  );
-  IF v_room->>'rematchStatus' <> 'accepted' THEN
-    RAISE EXCEPTION 'Brain Battle rematch was not unanimously accepted';
+  IF v_stats.wins <> 1 OR v_stats.matches_played <> 1 THEN
+    RAISE EXCEPTION 'First match statistics were not recorded for the host';
   END IF;
+
+  -- The result screen remains active until a member returns or the 60-second
+  -- result window expires. The room is still playing at this point.
+  v_room := public.multiplayer_execute_action(
+    'get_room', v_host, 'Host', jsonb_build_object('roomId', v_room_id)
+  );
+  IF v_room->>'status' <> 'playing' THEN
+    RAISE EXCEPTION 'Completing game-specific results must not finish the room immediately';
+  END IF;
+  v_room := public.multiplayer_execute_action(
+    'finish_game', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'brain-battle', 'startedAt', v_started_at)
+  );
+  IF v_room->>'status' <> 'finished' THEN
+    RAISE EXCEPTION 'Returning from results must finish the shared room';
+  END IF;
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_host, 'Host', jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_guest, 'Guest', jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
 
   -- Second match: Guest wins. The room statistics must accumulate, not reset.
   SELECT jsonb_agg(
@@ -106,6 +121,7 @@ BEGIN
   FROM generate_series(1, 10) AS series(question_number);
 
   v_started := public.brain_battle_start_match(v_room_id, v_host, v_questions);
+  v_started_at := v_started->'room'->>'startedAt';
   v_match_id := (v_started->>'matchId')::uuid;
 
   INSERT INTO public.games_brain_battle_answers(
@@ -127,6 +143,14 @@ BEGIN
   v_started := public.brain_battle_advance_if_due(v_room_id, v_match_id);
   IF v_started->>'status' <> 'completed' THEN
     RAISE EXCEPTION 'Second Brain Battle match did not complete';
+  END IF;
+
+  v_room := public.multiplayer_execute_action(
+    'finish_game', '__game_server__', 'Game server',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'brain-battle', 'startedAt', v_started_at)
+  );
+  IF v_room->>'status' <> 'finished' THEN
+    RAISE EXCEPTION 'Second results return did not finish the room';
   END IF;
 
   SELECT wins, matches_played INTO v_stats

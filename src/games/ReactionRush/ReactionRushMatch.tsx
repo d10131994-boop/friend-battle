@@ -9,6 +9,7 @@ type ReactionRushMatchState = {
   roundNumber: number
   roundStartedAt: string
   startedAt: string
+  completedAt: string | null
   status: 'playing' | 'completed'
   myScore: number
   finalResults?: ReactionRushResult[] | null
@@ -127,13 +128,14 @@ export default function ReactionRushMatch({
       matchFinished: boolean
       finalResults?: ReactionRushResult[]
       winnerUserId?: string | null
+      completedAt?: string | null
       room?: MultiplayerRoom
     }>({
       action: 'finish_round', roomId: room.roomId, matchId: match.matchId, roundNumber: match.roundNumber,
     }).then((response) => {
       setRoundResults(response.roundResults ?? [])
       if (response.matchFinished) {
-        setMatch({ ...match, status: 'completed', finalResults: response.finalResults ?? [], winnerUserId: response.winnerUserId ?? null })
+        setMatch({ ...match, status: 'completed', completedAt: response.completedAt ?? null, finalResults: response.finalResults ?? [], winnerUserId: response.winnerUserId ?? null })
         if (response.room) onRoomUpdate(response.room)
       } else if (response.roundNumber && response.roundStartedAt) {
         setMatch({ ...match, roundNumber: response.roundNumber, roundStartedAt: response.roundStartedAt, myScore: 0 })
@@ -169,6 +171,33 @@ export default function ReactionRushMatch({
       setMessage(getErrorMessage(error, 'Нажатие не засчитано.'))
     }
   }
+
+  const finishAndReturn = useCallback(async () => {
+    if (room.status !== 'playing') {
+      onReturnToRoom()
+      return
+    }
+    setLoading(true)
+    setMessage('')
+    try {
+      const response = await invokeGame<{ room: MultiplayerRoom }>({ action: 'return_to_room', roomId: room.roomId })
+      onRoomUpdate(response.room)
+      onReturnToRoom()
+    } catch (error) {
+      setMessage(getErrorMessage(error, 'Не удалось вернуться в комнату.'))
+    } finally {
+      setLoading(false)
+    }
+  }, [invokeGame, room.status, room.roomId, onRoomUpdate, onReturnToRoom])
+
+  useEffect(() => {
+    if (!match || match.status !== 'completed' || room.status !== 'playing' || !match.completedAt) return
+    const completedAt = Date.parse(match.completedAt)
+    if (!Number.isFinite(completedAt)) return
+    const delay = Math.max(0, completedAt + 60_000 - Date.now())
+    const timer = window.setTimeout(() => { void finishAndReturn() }, delay)
+    return () => window.clearTimeout(timer)
+  }, [match?.matchId, match?.status, match?.completedAt, room.status, finishAndReturn])
 
   const finalResults = match?.status === 'completed' ? match.finalResults ?? [] : []
 
@@ -211,7 +240,8 @@ export default function ReactionRushMatch({
             <p key={result.userId}>{result.userId === match.winnerUserId ? '🏆 ' : ''}{result.displayName}: <strong>{result.score}</strong></p>
           ))}
           <p>{match.winnerUserId ? 'Победитель получает победу в общем счёте комнаты!' : 'Ничья! В этот раз без победителя.'}</p>
-          <button className="play-button" onClick={onReturnToRoom}>ВЕРНУТЬСЯ В КОМНАТУ</button>
+          <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
+          <button className="play-button" onClick={() => void finishAndReturn()} disabled={loading}>ВЕРНУТЬСЯ В КОМНАТУ</button>
         </section>
       )}
 
