@@ -57,16 +57,17 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
   useEffect(() => {
     if (game.phase === 'choosing') {
       const deadline = game.phaseStartedAt + 3_000
+      const opponentChoice = CHOICES[Math.floor(Math.random() * CHOICES.length)]
       const timer = window.setTimeout(() => {
+        const nextPhaseStartedAt = Date.now()
         setGame((current) => {
           if (current.phase !== 'choosing' || current.phaseStartedAt !== game.phaseStartedAt) return current
           const playerChoice = current.playerChoice ?? 'rock'
-          const opponentChoice = CHOICES[Math.floor(Math.random() * CHOICES.length)]
           const outcome = getRoundOutcome(playerChoice, opponentChoice)
           return {
             ...current,
             phase: 'revealing',
-            phaseStartedAt: Date.now(),
+            phaseStartedAt: nextPhaseStartedAt,
             playerChoice,
             opponentChoice,
             roundResult: outcome,
@@ -80,9 +81,19 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
     }
 
     if (game.phase === 'revealing') {
+      const hasWinner = game.playerScore >= 3 || game.opponentScore >= 3
+      const finalOpponentName = hasWinner
+        ? getOpponentName(game.opponentChoices)
+        : game.opponentName
       const timer = window.setTimeout(() => {
+        const nextPhaseStartedAt = Date.now()
         setGame((current) => current.phase === 'revealing'
-          ? { ...current, phase: 'result', phaseStartedAt: Date.now() }
+          ? {
+              ...current,
+              phase: 'result',
+              phaseStartedAt: nextPhaseStartedAt,
+              opponentName: finalOpponentName,
+            }
           : current)
       }, 4_000)
       return () => window.clearTimeout(timer)
@@ -90,20 +101,20 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
 
     if (game.phase === 'result') {
       const timer = window.setTimeout(() => {
+        const nextPhaseStartedAt = Date.now()
         setGame((current) => {
           if (current.phase !== 'result') return current
           if (current.playerScore >= 3 || current.opponentScore >= 3) {
             return {
               ...current,
               phase: 'completed',
-              phaseStartedAt: Date.now(),
-              opponentName: getOpponentName(current.opponentChoices),
+              phaseStartedAt: nextPhaseStartedAt,
             }
           }
           return {
             ...current,
             phase: 'choosing',
-            phaseStartedAt: Date.now(),
+            phaseStartedAt: nextPhaseStartedAt,
             roundNumber: current.roundNumber + 1,
             playerChoice: null,
             opponentChoice: null,
@@ -113,9 +124,18 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
       }, 4_000)
       return () => window.clearTimeout(timer)
     }
-  }, [game.phase, game.phaseStartedAt])
+  }, [
+    game.phase,
+    game.phaseStartedAt,
+    game.playerScore,
+    game.opponentScore,
+    game.opponentChoices,
+    game.opponentName,
+  ])
 
-  const remaining = now === 0 ? 3 : Math.max(0, Math.ceil((game.phaseStartedAt + 3_000 - now) / 1_000))
+  const remaining = now === 0
+    ? 3
+    : Math.max(0, Math.ceil((game.phaseStartedAt + 3_000 - now) / 1_000))
 
   const choose = (choice: RockPaperScissorsChoice) => {
     if (game.phase !== 'choosing' || remaining <= 0) return
@@ -165,6 +185,9 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
                 ><ChoiceIcon choice="paper" className="rps-choice-icon" /></button>
               </div>
             </div>
+            <div className="rps-phase-message">
+              {game.playerChoice ? `Выбрано: ${CHOICE_LABELS[game.playerChoice]}` : 'Выбери жест'}
+            </div>
           </>
         )}
 
@@ -202,12 +225,6 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
               </div>
             </div>
             <button type="button" className="rps-exit-button" onClick={onBack}>ВЫЙТИ</button>
-          </div>
-        )}
-
-        {game.phase === 'choosing' && (
-          <div className="rps-phase-message">
-            {game.playerChoice ? `Выбрано: ${CHOICE_LABELS[game.playerChoice]}` : 'Выбери жест'}
           </div>
         )}
       </section>
