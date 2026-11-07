@@ -124,11 +124,11 @@ A room and a match are different entities:
 - a room is the reusable multiplayer container;
 - a match is one execution of a game's rules inside that room.
 
-The shared room status `finished` means the current match has finished; it does not mean the room has been destroyed. The game owns its results screen, game-specific winner/tie display and rematch UI. The shared room layer owns common room readiness and room lifecycle.
+The shared room status `finished` means the current match has finished; it does not mean the room has been destroyed. The game owns its results screen and game-specific winner/tie display; the shared room is finished only when a member returns or the results timeout expires. The shared room layer owns common room readiness and room lifecycle.
 
 Do not set a room to `cancelled` merely because a match ended. Do not invent a game-specific room status. Use the Multiplayer lifecycle contract and confirm its current implementation before depending on transitions such as player leave during an active match.
 
-For a rematch, reuse the room and create a new game-specific match/session. Ensure stale requests from the previous match cannot affect the new one. Each player should confirm readiness through the shared Multiplayer service before the trusted backend starts another match, subject to the selected game's registered player-count rules.
+For another match, reuse the finished room and create a new game-specific match/session through the normal readiness flow. Every current player must confirm readiness before the trusted backend starts another match. Ensure stale requests from the previous match cannot affect the new one.
 
 ## 6. Game rules and player limits
 
@@ -176,7 +176,7 @@ Existing client-side `canStart` checks are useful for UI feedback only. The trus
 6. Reuse Multiplayer for rooms, invitations, players, readiness, host, heartbeat and room session.
 7. Use Database for browser-side transport; implement game-specific Edge Function and SQL for authoritative match operations.
 8. Add `ai-readme.md` and human `README.md` for the game. Document only implemented behavior and known limitations.
-9. Test solo and multiplayer separately, then test the full room/match lifecycle: create, join, select, capacity, ready, start, actions, synchronization, deadlines, finish, results, leave, cancellation, rematch, retries and reconnect.
+9. Test solo and multiplayer separately, then test the full room/match lifecycle: create, join, select, capacity, ready, start, actions, synchronization, deadlines, finish, results return/timeout, leave, cancellation, retries and reconnect.
 10. Report source/build checks, SQL/deployment state and real multi-client integration tests separately.
 
 ## 10. Change discipline

@@ -82,10 +82,7 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public.common_multiplayer_players p
     WHERE p.room_id = p_room_id AND p.user_id = p_user_id
-      AND (p.is_host OR EXISTS (
-        SELECT 1 FROM public.common_multiplayer_rooms r
-        WHERE r.id = p_room_id AND r.rematch_status = 'accepted'
-      ))
+      AND p.is_host
   ) THEN
     RAISE EXCEPTION 'Only the room host can start a new match' USING ERRCODE = '42501';
   END IF;
@@ -285,12 +282,7 @@ BEGIN
       winner_user_id = v_winner
   WHERE id = p_match_id;
 
-  v_room_result := public.multiplayer_execute_action(
-    'finish_game', '__game_server__', 'Game server',
-    pg_catalog.jsonb_build_object(
-      'roomId', p_room_id, 'gameId', 'brain-battle', 'startedAt', v_match.started_at
-    )
-  );
+  v_room_result := public.multiplayer_room_snapshot(p_room_id);
 
   RETURN pg_catalog.jsonb_build_object(
     'status', 'completed',
@@ -457,6 +449,7 @@ BEGIN
     'match', pg_catalog.jsonb_build_object(
       'matchId', v_match.id,
       'startedAt', v_match.started_at,
+      'completedAt', v_match.completed_at,
       'status', v_match.status,
       'currentQuestionIndex', v_match.current_question_index,
       'questionStartedAt', v_match.question_started_at,

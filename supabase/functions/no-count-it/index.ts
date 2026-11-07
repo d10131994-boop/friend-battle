@@ -110,8 +110,9 @@ async function uploadScene(db:SupabaseClient,roomId:string,round:number){
  return {scene,path};
 }
 async function finishSharedGame(db:SupabaseClient,roomId:string,startedAt:string){
- const {error}=await db.rpc("multiplayer_execute_action",{p_action:"finish_game",p_user_id:"__game_server__",p_display_name:"Game server",p_payload:{roomId,gameId:"no-count-it",startedAt}});
+ const {data,error}=await db.rpc("multiplayer_execute_action",{p_action:"finish_game",p_user_id:"__game_server__",p_display_name:"Game server",p_payload:{roomId,gameId:"no-count-it",startedAt}});
  if(error)throw error;
+ return data;
 }
 async function broadcast(db:SupabaseClient,roomId:string,event:string){
  try{const channel=db.channel(`room:${roomId}`,{config:{private:true}});
@@ -128,7 +129,7 @@ Deno.serve(async(req:Request)=>{
   if(!url||!key||!token)return fail("Server configuration missing",500);
   const body=await req.json();
   if(!body||typeof body!=="object"||Array.isArray(body))return fail("Invalid request body",400);
-  const actions=["start_match","get_match","round_ready","submit_answer"];
+  const actions=["start_match","get_match","round_ready","submit_answer","return_to_room"];
   if(!actions.includes(body.action))return fail("Unknown NoCountIt action",400);
   const initData=typeof body.initData==="string"?body.initData:"";
   if(!initData||initData.length>10000)return fail("Invalid Telegram data",400);
@@ -138,6 +139,15 @@ Deno.serve(async(req:Request)=>{
   const roomId=typeof body.roomId==="string"?body.roomId.trim():"";
   if(!/^[0-9a-f-]{36}$/i.test(roomId))return fail("A valid roomId is required",400);
   const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+
+  if(body.action==="return_to_room"){
+    const {data:snapshot,error:snapshotError}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
+    if(snapshotError)return fail("Не удалось получить состояние матча",409);
+    if(snapshot?.match?.status!=="completed" && snapshot?.match?.status!=="technical_aborted")return fail("Матч ещё не завершён",409);
+    const finishedRoom=await finishSharedGame(db,roomId,snapshot.match.startedAt);
+    await broadcast(db,roomId,"room_finished");
+    return respond({room:finishedRoom});
+  }
 
   if(body.action==="start_match"){
     const {data:room,error}=await db.rpc("multiplayer_execute_action",{p_action:"get_room",p_user_id:userId,p_display_name:displayName,p_payload:{roomId}});
@@ -159,7 +169,6 @@ Deno.serve(async(req:Request)=>{
   if(body.action==="round_ready"){
     const {data,error}=await db.rpc("no_count_it_round_ready",{p_room_id:roomId,p_match_id:matchId,p_user_id:userId});
     if(error)return fail("Не удалось подтвердить готовность раунда",409);
-    if(data?.status==="technical_aborted")await finishSharedGame(db,roomId,data.startedAt);
     await broadcast(db,roomId,"round_updated");
     return respond(data);
   }
@@ -182,7 +191,6 @@ Deno.serve(async(req:Request)=>{
   const activeMatchId=matchId||currentMatchId;
   const {data:prep,error:prepError}=await db.rpc("no_count_it_finalize_preparation",{p_room_id:roomId,p_match_id:activeMatchId});
   if(!prepError&&prep?.status==="technical_aborted"){
-    await finishSharedGame(db,roomId,prep.startedAt);
     await broadcast(db,roomId,"match_finished");
   }
   const {data:snapshot,error}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
@@ -196,14 +204,13 @@ Deno.serve(async(req:Request)=>{
         const {data:progress,error:progressError}=await db.rpc("no_count_it_prepare_next_round",{p_room_id:roomId,p_match_id:activeMatchId,p_scene:scene,p_image_path:path});
         if(progressError){await db.storage.from("no-count-it-scenes").remove([path]);}
         else await broadcast(db,roomId,"round_updated");
-        if(progress?.status==="completed"){await finishSharedGame(db,roomId,match.startedAt);await broadcast(db,roomId,"match_finished");}
+        if(progress?.status==="completed"){await broadcast(db,roomId,"match_finished");}
       }else{
         const {data:progress,error:progressError}=await db.rpc("no_count_it_prepare_next_round",{p_room_id:roomId,p_match_id:activeMatchId,p_scene:{},p_image_path:""});
-        if(!progressError&&progress?.status==="completed"){await finishSharedGame(db,roomId,match.startedAt);await broadcast(db,roomId,"match_finished");}
+        if(!progressError&&progress?.status==="completed"){await broadcast(db,roomId,"match_finished");}
       }
     }
   }
-  if((match?.status==="completed" || match?.status==="technical_aborted") && room?.status==="playing")await finishSharedGame(db,roomId,match.startedAt);
   const {data:latest,error:latestError}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
   if(latestError)return fail("Не удалось обновить состояние матча",500);
   const current=latest?.match;

@@ -25,7 +25,7 @@ Candies may overlap slightly, but every candy must remain inside the jar, target
 
 ## Multiplayer integration
 
-The shared Multiplayer Core owns rooms, invitations, membership, common readiness, room presence and the 60-second unanimous rematch vote. NoCountIt owns match and round state, answers, errors and results.
+The shared Multiplayer Core owns rooms, invitations, membership, common readiness and room presence. NoCountIt owns match and round state, answers, errors and results. After results are displayed, any member can return everyone to the room; otherwise the client automatically does so after 60 seconds.
 
 The game screen is mounted by `src/menus/MultiplayerRoomMenu.tsx` with an existing room. It must not create or leave rooms, select games, change common readiness or implement a second room UI.
 

@@ -58,7 +58,7 @@ BEGIN
   WHERE rp.match_id=v_match.id AND rp.round_number=v_match.current_round;
  END IF;
  RETURN jsonb_build_object('room',v_room,'match',jsonb_build_object(
-  'matchId',v_match.id,'startedAt',v_match.started_at,'status',v_match.status,'currentRound',v_match.current_round,
+  'matchId',v_match.id,'startedAt',v_match.started_at,'completedAt',v_match.completed_at,'status',v_match.status,'currentRound',v_match.current_round,
   'players',v_players,'winnerUserId',v_match.winner_user_id,'finalResults',v_match.final_results,
   'round',CASE WHEN v_round.id IS NULL THEN NULL ELSE jsonb_build_object(
    'roundNumber',v_round.round_number,'status',v_round.status,'targetColor',v_round.target_color,

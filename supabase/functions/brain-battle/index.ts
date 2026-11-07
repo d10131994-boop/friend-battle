@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) return fail("Invalid request body", 400);
     const action = body.action;
-    if (!["start_match", "submit_answer", "get_match"].includes(action)) return fail("Unknown Brain Battle action", 400);
+    if (!["start_match", "submit_answer", "get_match", "return_to_room"].includes(action)) return fail("Unknown Brain Battle action", 400);
 
     const initData = typeof body.initData === "string" ? body.initData : "";
     if (!initData || initData.length > 10000) return fail("Invalid Telegram data", 400);
@@ -112,6 +112,26 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    if (action === "return_to_room") {
+      const { data: snapshot, error: snapshotError } = await supabase.rpc("brain_battle_match_snapshot", {
+        p_room_id: roomId,
+        p_user_id: userId,
+      });
+      if (snapshotError) return errorResponse(snapshotError);
+      if (!snapshot?.match || snapshot.match.status !== "completed") {
+        return fail("Матч ещё не завершён", 409);
+      }
+      const { data: finishedRoom, error: finishError } = await supabase.rpc("multiplayer_execute_action", {
+        p_action: "finish_game",
+        p_user_id: "__game_server__",
+        p_display_name: "Game server",
+        p_payload: { roomId, gameId: "brain-battle", startedAt: snapshot.match.startedAt },
+      });
+      if (finishError) return errorResponse(finishError);
+      await broadcast(supabase, roomId, "room_finished");
+      return respond({ room: finishedRoom });
+    }
+
     if (action === "start_match") {
       const { data: room, error: roomError } = await supabase.rpc("multiplayer_execute_action", {
         p_action: "get_room",
@@ -125,7 +145,7 @@ Deno.serve(async (req: Request) => {
         ? room.players.find((player: { userId?: string }) => player.userId === userId)
         : null;
       if (!member) return fail("Вы не участник этой комнаты", 403);
-      if (!member.isHost && room.rematchStatus !== "accepted") return fail("Начать матч может только ведущий комнаты", 403);
+      if (!member.isHost) return fail("Начать матч может только ведущий комнаты", 403);
 
       const { data: previousMatch, error: previousMatchError } = await supabase
         .from("games_brain_battle_matches")
