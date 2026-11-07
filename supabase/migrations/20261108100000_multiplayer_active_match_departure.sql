@@ -204,6 +204,9 @@ BEGIN
     WHERE room_id = v_room_id AND user_id = p_user_id;
     RETURN public.multiplayer_room_snapshot(v_room_id);
   ELSIF p_action = 'leave_room' THEN
+    IF v_room.game_id = 'democracy-merge' AND v_room.status = 'playing' THEN
+      RAISE EXCEPTION 'Use the trusted active-match departure action for Democracy Merge' USING ERRCODE = '55000';
+    END IF;
     DELETE FROM public.common_multiplayer_players WHERE room_id = v_room_id AND user_id = p_user_id;
     IF v_room.status = 'playing' THEN
       UPDATE public.common_multiplayer_rooms
