@@ -72,7 +72,7 @@ const startResponse = await fetch(endpoint, {
 if (!startResponse.ok) throw new Error('Could not start the game')
 const startedRoom = await startResponse.json()
 
-// After game-specific result presentation (for example, 10 seconds):
+// After a member requests Return to room, or the 60-second results window expires:
 const finishResponse = await fetch(endpoint, {
   method: 'POST',
   headers: {
