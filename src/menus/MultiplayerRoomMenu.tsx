@@ -8,6 +8,7 @@ import { telegramUser } from '../services/telegram'
 import BrainBattleMatch from '../games/BrainBattle/BrainBattleMatch'
 import ReactionRushMatch from '../games/ReactionRush/ReactionRushMatch'
 import NoCountItMatch from '../games/NoCountIt/NoCountItMatch'
+import DemocracyMergeMatch from '../games/DemocracyMerge/DemocracyMergeMatch'
 
 const multiplayer = createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })
 
@@ -46,8 +47,13 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
       setStartRequested(false)
     }
     if (nextRoom.status === 'cancelled') {
-      setGameScreen(false)
-      setMessage('Эта комната закрыта.')
+      if (nextRoom.gameId === 'democracy-merge' && nextRoom.startedAt) {
+        setGameScreen(true)
+        setMessage('')
+      } else {
+        setGameScreen(false)
+        setMessage('Эта комната закрыта.')
+      }
     }
   }, [])
 
@@ -148,7 +154,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     void joinRoom(inviteCode)
   }, [inviteCode, room, joinRoom])
 
-  async function selectGame(gameId: 'reaction-rush' | 'brain-battle' | 'no-count-it') {
+  async function selectGame(gameId: 'reaction-rush' | 'brain-battle' | 'no-count-it' | 'democracy-merge') {
     if (!room) return
     setLoading(true)
     setMessage('')
@@ -223,6 +229,14 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     setStartRequested(false)
   }
 
+  const leaveDemocracyMerge = useCallback(() => {
+    setRoom(null)
+    setActiveGameId(null)
+    setGameScreen(false)
+    setStartRequested(false)
+    onBack()
+  }, [onBack])
+
   const me = room?.players.find((player) => player.userId === telegramId)
   const isHost = Boolean(me?.isHost)
   const allReady = Boolean(room?.players.length && room.players.every((player) => player.isReady))
@@ -235,6 +249,21 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     room.players.length <= 4 &&
     allReady,
   )
+
+  if (gameScreen && room?.gameId === 'democracy-merge') {
+    return (
+      <DemocracyMergeMatch
+        initData={initData}
+        room={room}
+        startRequested={startRequested}
+        onRoomUpdate={acceptRoom}
+        onReturnToRoom={returnToRoom}
+        onLeaveMatch={leaveDemocracyMerge}
+        onMainMenu={onBack}
+        onStartRequestHandled={() => setStartRequested(false)}
+      />
+    )
+  }
 
   if (gameScreen && room?.gameId === 'brain-battle') {
     return (
@@ -346,13 +375,15 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
                   <option value="reaction-rush">Reaction Rush</option>
                   <option value="brain-battle">Brain Battle</option>
                   <option value="no-count-it">NoCountIt</option>
+                  <option value="democracy-merge">Democracy Merge</option>
                 </select>
               ) : (
-                <p>Выбрана игра: {room.gameId === 'reaction-rush' ? 'Reaction Rush' : room.gameId === 'brain-battle' ? 'Brain Battle' : room.gameId === 'no-count-it' ? 'NoCountIt' : 'Пока не выбрана'}</p>
+                <p>Выбрана игра: {room.gameId === 'reaction-rush' ? 'Reaction Rush' : room.gameId === 'brain-battle' ? 'Brain Battle' : room.gameId === 'no-count-it' ? 'NoCountIt' : room.gameId === 'democracy-merge' ? 'Democracy Merge' : 'Пока не выбрана'}</p>
               )}
               {room.gameId === 'reaction-rush' && <p>Три раунда по 10 секунд. От 2 до 4 игроков.</p>}
               {room.gameId === 'brain-battle' && <p>10 вопросов, 15 секунд на ответ. От 2 до 4 игроков.</p>}
               {room.gameId === 'no-count-it' && <p>Три раунда на оценку количества конфет. От 2 до 4 игроков.</p>}
+              {room.gameId === 'democracy-merge' && <p>Поле 6×6, независимые партии и общий зачёт. От 2 до 4 игроков.</p>}
               {room.gameId && (
                 <>
                   {!isHost && (
