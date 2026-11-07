@@ -130,7 +130,15 @@ Deno.serve(async (req: Request) => {
       });
       if (error) return fail("Не удалось начать матч Democracy Merge", 409);
       await broadcast(db, roomId, "match_started");
-      return respond(data);
+      return respond({
+        room: data.room,
+        match: {
+          matchId: data.matchId,
+          startedAt: data.startedAt,
+          gameStartedAt: data.gameStartedAt,
+          deadlineAt: data.deadlineAt,
+        },
+      });
     }
 
     if (body.action === "leave_match") {
