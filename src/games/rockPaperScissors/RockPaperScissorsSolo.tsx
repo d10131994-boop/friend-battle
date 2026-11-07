@@ -126,7 +126,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
   return (
     <main className="app rps-app">
       <header className="topbar rps-topbar">
-        <div className="logo">ROCK <span>PAPER</span></div>
+        <div className="logo">RPS <span>BATTLE</span></div>
         <div className="rps-mode-label">ОДИНОЧНАЯ ИГРА</div>
       </header>
 
