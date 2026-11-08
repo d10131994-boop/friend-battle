@@ -7,7 +7,7 @@ type Props = {
 
 /**
  * Solo character artwork is kept separate from multiplayer artwork.
- * Until the approved PNGs are uploaded, show the original level number.
+ * Show the original level number as a fallback if a PNG fails to load.
  */
 export default function CharacterPortrait({ level, className = '' }: Props) {
   const [failedPath, setFailedPath] = useState<string | null>(null)
