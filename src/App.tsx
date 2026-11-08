@@ -38,8 +38,11 @@ function App() {
       startSoloGame()
     } else if (gameId === 'brain-battle') {
       setScreen('brain-game')
-    } else {
+    } else if (gameId === 'rock-paper-scissors') {
       setScreen('rock-paper-scissors')
+    } else {
+      const unreachableGame: never = gameId
+      throw new Error(`Solo game route is not implemented: ${unreachableGame}`)
     }
   }
 
