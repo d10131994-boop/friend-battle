@@ -190,7 +190,12 @@ export function placeSoloCharacter(
   }
 
   const obstacleType = source.obstacleSequence[source.turnNumber]
-  if (obstacleType) board = placeObstacleAtRandomFreeCell(board, obstacleType, random).board
+  let obstacleCellIndex: number | null = null
+  if (obstacleType) {
+    const obstacle = placeObstacleAtRandomFreeCell(board, obstacleType, random)
+    board = obstacle.board
+    obstacleCellIndex = obstacle.cellIndex
+  }
 
   const levels = board.flatMap((cell) =>
     cell?.kind === 'character' ? [cell.level] : [])
@@ -206,7 +211,7 @@ export function placeSoloCharacter(
     inventory,
     level6MergeCount: placement.level6MergeCount,
   }
-  return { state: withBoardTerminalCheck(next, now), rewards }
+  return { state: withBoardTerminalCheck(next, now), rewards, merges: placement.merges, placementCellIndex: cellIndex, obstacleCellIndex }
 }
 
 export function applySoloTool(
