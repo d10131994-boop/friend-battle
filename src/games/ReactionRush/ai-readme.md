@@ -135,7 +135,7 @@ The legacy `duels` table/function references in older code/README are not the cu
 
 ## 9. Verification
 
-Test solo mode separately. Multiplayer verification should cover create/join/select, 2–4 players, readiness, host start, accepted/rejected taps, 1000-point round cap, round deadline, concurrent finish requests, round advancement, final totals, winner/tie, leaderboard, common room stats, finish, results return/timeout, leave during match and reconnect.
+Test solo mode separately. Multiplayer verification should cover create/join/select, exactly 2 players (catalog min/max are both 2), readiness, host start, accepted/rejected taps, 1000-point round cap, round deadline, concurrent finish requests, round advancement, final totals, winner/tie, leaderboard, common room stats, finish, results return/timeout, leave during match and reconnect.
 
 A successful build does not prove that the Edge Function, SQL, Realtime policies or live multi-device flow are deployed and working. Report source/build checks, SQL/deployment state and real multi-client tests separately.
 
