@@ -1,13 +1,7 @@
 -- Brain Battle on the universal Multiplayer Core.
 -- Legacy Brain Battle tables are empty and are intentionally retired.
 
-INSERT INTO public.common_multiplayer_game_rules(game_id, min_players, max_players, is_enabled)
-VALUES ('brain-battle', 2, 4, true)
-ON CONFLICT (game_id) DO UPDATE SET
-  min_players = EXCLUDED.min_players,
-  max_players = EXCLUDED.max_players,
-  is_enabled = EXCLUDED.is_enabled,
-  updated_at = now();
+-- Availability and player limits are configured in common_game_availability.sql.
 
 CREATE TABLE public.games_brain_battle_matches (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

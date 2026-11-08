@@ -2,13 +2,7 @@
 -- Apply after the existing Multiplayer Core and universal lobby SQL.
 -- This is a source patch; do not apply it to Production without explicit approval.
 
-INSERT INTO public.common_multiplayer_game_rules(game_id, min_players, max_players, is_enabled)
-VALUES ('rock-paper-scissors', 2, 2, true)
-ON CONFLICT (game_id) DO UPDATE SET
-  min_players = EXCLUDED.min_players,
-  max_players = EXCLUDED.max_players,
-  is_enabled = EXCLUDED.is_enabled,
-  updated_at = pg_catalog.now();
+-- Availability and player limits are configured in common_game_availability.sql.
 
 -- Keep room capacity aligned with the selected game's actual maximum.
 -- This makes join_room enforce a two-player cap before the match starts.
@@ -24,8 +18,10 @@ DECLARE
 BEGIN
   IF NEW.game_id IS NOT NULL THEN
     SELECT max_players INTO v_game_max_players
-    FROM public.common_multiplayer_game_rules
-    WHERE game_id = NEW.game_id AND is_enabled = true;
+    FROM public.common_game_availability
+    WHERE game_id = NEW.game_id
+      AND is_enabled = true
+      AND is_multiplayer_enabled = true;
 
     IF NOT FOUND THEN
       RAISE EXCEPTION 'Selected game is not enabled' USING ERRCODE = '22023';
