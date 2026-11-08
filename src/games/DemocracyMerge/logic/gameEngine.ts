@@ -141,8 +141,17 @@ export function placeCharacter(
 
   const board = cloneBoard(source)
   board[index] = { kind: 'character', level }
+  const resolved = resolveMerges(board, index, previousLevel6MergeCount)
+  return resolved
+}
+
+/** Resolve connected merges after placement or a tool action. */
+export function resolveMerges(source: Board, index: number, previousLevel6MergeCount = 0): PlacementResult {
+  const board = cloneBoard(source)
+  const start = board[index]
+  if (start?.kind !== 'character') throw new Error('Merge anchor must be a character.')
   const merges: MergeEvent[] = []
-  let currentLevel = level
+  let currentLevel = start.level
   let level6MergeCount = previousLevel6MergeCount
 
   while (true) {
@@ -155,6 +164,7 @@ export function placeCharacter(
       level6MergeCount += 1
       if (level6MergeCount > 1) points = 2430
     }
+    points *= group.length - 1
 
     for (const cellIndex of group) {
       if (cellIndex !== index) board[cellIndex] = null
