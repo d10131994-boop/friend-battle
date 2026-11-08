@@ -799,7 +799,10 @@ BEGIN
   END IF;
 
   v_response := public.democracy_merge_match_snapshot(p_room_id, p_user_id)
-    || pg_catalog.jsonb_build_object('rewards', COALESCE(p_state->'rewards', '[]'::jsonb));
+    || pg_catalog.jsonb_build_object(
+      'rewards', COALESCE(p_state->'rewards', '[]'::jsonb),
+      'visualEvents', COALESCE(p_state->'visualEvents', 'null'::jsonb)
+    );
   INSERT INTO public.games_democracy_merge_action_receipts(
     match_id, user_id, action_id, action_type, response
   ) VALUES (p_match_id, p_user_id, p_action_id, p_action_type, v_response);
