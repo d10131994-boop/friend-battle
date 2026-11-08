@@ -29,13 +29,7 @@ CREATE TABLE IF NOT EXISTS public.common_multiplayer_game_rules (
   is_enabled boolean NOT NULL DEFAULT true,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-INSERT INTO public.common_multiplayer_game_rules(game_id, min_players, max_players, is_enabled)
-VALUES ('reaction-rush', 2, 4, true)
-ON CONFLICT (game_id) DO UPDATE SET
-  min_players = EXCLUDED.min_players,
-  max_players = EXCLUDED.max_players,
-  is_enabled = EXCLUDED.is_enabled,
-  updated_at = now();
+-- Game availability and player limits are configured in common_game_availability.sql.
 ALTER TABLE public.common_multiplayer_game_rules ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.common_multiplayer_game_rules FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.common_multiplayer_game_rules TO service_role;
