@@ -19,6 +19,7 @@ import {
 import type { ToolType } from './logic/tools'
 import { assertBoard } from './logic/gameEngine'
 import { TOOL_PRICES } from './logic/events'
+import { useDemocracyMergeSettings } from './settings'
 import './DemocracyMerge.css'
 
 type StoredSoloData = {
@@ -120,6 +121,8 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const [recordBroken, setRecordBroken] = useState(false)
   const [rewardToast, setRewardToast] = useState<string[]>([])
   const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const { settings, updateSettings } = useDemocracyMergeSettings()
   const notificationTimeoutRef = useRef<number | null>(null)
 
   const persist = useCallback((nextCheckpoint: SoloGameState | null, nextProfile: SoloProfile) => {
@@ -384,9 +387,10 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const remaining = game ? Date.parse(game.deadlineAt) - now : 0
   const canAct = Boolean(game?.status === 'active' && now < Date.parse(game.deadlineAt) && !loading)
   const isNewRecord = recordBroken
+  const animationClasses = `${settings.animationsEnabled ? '' : 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
 
   if (loading) {
-    return <main className="app dm-match-shell"><div className="dm-waiting">Загружаем одиночную игру…</div></main>
+    return <main className={`app dm-match-shell ${animationClasses}`}><div className="dm-waiting">Загружаем одиночную игру…</div></main>
   }
 
   if (!game && resumePrompt && checkpoint) {
@@ -468,7 +472,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     <main className="app dm-match-shell">
       <header className="dm-header">
         <button className="dm-secondary-button" onClick={() => setLeaveConfirm(true)}>В ГЛАВНОЕ МЕНЮ</button>
-        <div><div className="dm-eyebrow">ОДИНОЧНАЯ ИГРА</div><h1>DEMOCRACY <span>MERGE</span></h1></div>
+        <div><div className="dm-eyebrow">ОДИНОЧНАЯ ИГРА</div><h1>DEMOCRACY <span>MERGE</span></h1><button className="dm-secondary-button dm-settings-trigger" onClick={() => setSettingsOpen(true)}>НАСТРОЙКИ</button></div>
         <div className={`dm-timer ${remaining <= 300000 ? 'dm-timer-warning' : ''}`}><small>ОСТАЛОСЬ</small><strong>{formatTime(remaining)}</strong></div>
       </header>
 
@@ -543,6 +547,27 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <p>Использовано инструментов: <strong>{game.toolsUsed}</strong></p>
             <p>Лучший результат: <strong>{profile.bestScore}</strong></p>
           </aside>
+        </div>
+      )}
+
+      {settingsOpen && (
+        <div className="dm-modal-backdrop" role="presentation" onClick={() => setSettingsOpen(false)}>
+          <section className="dm-settings-modal" role="dialog" aria-modal="true" aria-label="Настройки Democracy Merge" onClick={(event) => event.stopPropagation()}>
+            <header><h2>НАСТРОЙКИ</h2><button onClick={() => setSettingsOpen(false)}>✕</button></header>
+            <label className="dm-settings-toggle">
+              <input type="checkbox" checked={settings.animationsEnabled} onChange={(event) => updateSettings({ animationsEnabled: event.target.checked })} />
+              <span>Анимации</span>
+            </label>
+            <label className="dm-settings-field">
+              <span>Скорость анимаций</span>
+              <select value={settings.animationSpeed} onChange={(event) => updateSettings({ animationSpeed: event.target.value === 'fast' ? 'fast' : 'normal' })} disabled={!settings.animationsEnabled}>
+                <option value="normal">Обычная</option>
+                <option value="fast">Быстрая</option>
+              </select>
+            </label>
+            <p>Настройки общие для одиночного и многопользовательского режимов.</p>
+            <button className="dm-primary-button" onClick={() => setSettingsOpen(false)}>ГОТОВО</button>
+          </section>
         </div>
       )}
 
