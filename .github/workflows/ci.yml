@@ -113,15 +113,15 @@ jobs:
           start = shared_sql.index("CREATE OR REPLACE FUNCTION public.multiplayer_execute_action")
           end = shared_sql.index("CREATE OR REPLACE FUNCTION public.reaction_rush_start_match", start)
           shared_rpc = shared_sql[start:end]
-          forbidden = ("games_reaction_rush_", "games_brain_battle_", "games_democracy_merge_")
+          forbidden = ("games_",)
           for table_prefix in forbidden:
               if table_prefix in shared_rpc:
                   failed = True
                   print(f"ERROR shared Multiplayer RPC references game-owned table prefix: {table_prefix}")
 
           # The release-04 active-departure migration also replaces the shared
-          # RPC. Keep its function body game-agnostic; game-specific policy is
-          # installed later through the heartbeat guard hook.
+          # RPC. Keep it free of game-owned table references; game-specific
+          # policy is installed later through the heartbeat guard hook.
           shared_migration_path = Path("supabase/migrations/20261108100000_multiplayer_active_match_departure.sql")
           if shared_migration_path.exists():
               shared_migration_sql = shared_migration_path.read_text(encoding="utf-8")
