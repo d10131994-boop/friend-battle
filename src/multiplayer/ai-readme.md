@@ -70,6 +70,7 @@ The agreed product vocabulary may call the waiting state “lobby”, but the cu
 - `leaveRoom(auth, { roomId })`: removes the current member. If the room is playing, the current Reaction Rush match is deleted, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. Democracy Merge instead calls the trusted `leave_active_match` operation; the normal `leave_room` API must not be used for a final departure from its active match. If the host leaves, host role transfers to the remaining member with the earliest `joined_at` (then player ID).
 - `closeRoom(auth, { roomId })`: host-only cancellation in the reviewed lifecycle SQL.
 - `heartbeat(auth, { roomId })`: updates server-side `last_seen_at` and returns the server timestamp.
+- For an active Democracy Merge match, the heartbeat action checks the previous `last_seen_at` before refreshing it. If an active player returns after five minutes and the match deadline has not elapsed, the server invokes `leave_active_match` instead of reviving the player. Completed/surrendered players retain membership and immutable results; when the 30-minute deadline has elapsed, deadline finalization takes precedence over disconnect expiry.
 - `getRoomToken(auth, { roomId })`: issues a room-scoped JWT for private Realtime.
 
 ### Trusted match operations
