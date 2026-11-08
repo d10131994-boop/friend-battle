@@ -102,7 +102,7 @@ The reviewed Multiplayer Edge Function explicitly broadcasts only `room_updated`
 
 ## 6. Error handling
 
-All three game/server Edge Functions use `supabase/functions/_shared/errors.ts` for SQL error mapping. Expected PostgreSQL business errors map to stable HTTP statuses (404, 403, 409 or 400); raw PostgreSQL messages and codes are not returned to clients. Unknown database failures return a generic 500 and are logged with operation and SQLSTATE only. A function may override a safe, user-facing message for a known code without changing its HTTP status.
+The Multiplayer, Reaction Rush, Brain Battle and Democracy Merge Edge Functions use `supabase/functions/_shared/errors.ts` for SQL error mapping. Expected PostgreSQL business errors map to stable HTTP statuses (404, 403, 409 or 400); raw PostgreSQL messages and codes are not returned to clients. Unknown database failures return a generic 500 and are logged with operation and SQLSTATE only. NoCountIt currently retains local fixed-message error handling rather than the shared mapper; it also avoids returning raw SQL details, but maps many distinct database failures to HTTP 409. Treat normalizing NoCountIt's mapping as separate shared-backend maintenance, not as a reason to duplicate the mapper in new games.
 
 The database adapter validates the Edge Function response before exposing it as a `MultiplayerRoom`, heartbeat result or room token. It rejects unknown statuses, malformed timestamps, invalid player fields and malformed token responses. Do not bypass these parsers or cast untrusted function responses directly to domain types.
 
