@@ -228,6 +228,16 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     setResumePrompt(false)
     setSelectedTool(null)
     setSwapFirstCell(null)
+    setShopOpen(false)
+    setHistoryOpen(false)
+    setSurrenderConfirm(false)
+    setLeaveConfirm(false)
+    setBoardZoom(1)
+    setLastPlacedCell(null)
+    setMergeEvents([])
+    setObstacleCell(null)
+    setNewRecordToast(false)
+    setRewardToast([])
     setMessage('')
     persist(created, profile)
   }, [persist, profile])
@@ -603,6 +613,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <div><small>ЛУЧШИЙ РЕЗУЛЬТАТ</small><strong>{profile.bestScore}</strong></div>
             <div><small>МАКС. УРОВЕНЬ</small><strong>{profile.maxLevel}</strong></div>
           </div>
+          <button className="dm-primary-button" onClick={startNewGame}>НАЧАТЬ ЗАНОВО</button>
           <button className="dm-secondary-button" onClick={() => setHistoryOpen(true)}>ИСТОРИЯ ПАРТИЙ</button>
           <button className="dm-secondary-button" onClick={leaveToMenu}>В ГЛАВНОЕ МЕНЮ</button>
         </section>
