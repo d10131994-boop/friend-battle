@@ -113,3 +113,16 @@ Test independently:
 - history, records, aggregates and deletion behavior.
 
 Use only an isolated local/test database for SQL integration scripts. Report source checks, unit tests, build/lint, SQL parsing, isolated database tests, deployment and real multi-device Telegram tests separately. A successful build does not prove live multiplayer behavior.
+
+## 9. V2 changes (override V1 rules where they conflict)
+
+- A swap can trigger merges at either swapped destination; resolve cascades and award score through the same pure engine on client and server.
+- Award the established per-level merge score **for each disappearing character cell** (a merged group of N clears N-1 cells). A chain scores every stage.
+- Solo merges may progress to level 10; multiplayer stays capped at level 6. Solo character generation still spawns only levels 1–6. Solo local save validation accepts levels up to 10.
+- Multiplayer match deadline is five minutes after the five-second countdown. The separate five-minute disconnect grace period is unchanged.
+- Final ranking includes every original match participant, including departed players, using last committed score and then highest level; tied scores and levels share a rank. Leaving does not award an automatic loss or remaining-player win. Results, personal history and aggregates must include departed players.
+- Once at most one active participant remains, the match completes and saves all results; a remaining active player is marked completed with their current score.
+- The multiplayer personal-results screen offers return to the room menu. Solo results return to the application menu because solo has no multiplayer room.
+- The migration `supabase/migrations/20261108160000_democracy_merge_v2.sql` is a **staged, not deployed** change. Do not apply it or deploy updated Edge Functions to Production without explicit approval. Verify schema, SQL tests and behavior in an isolated environment first.
+
+The earlier sections document the original V1 architecture and may describe obsolete V1 values (30-minute multiplayer duration, excluded leavers, six solo levels); this section supersedes those values for V2.

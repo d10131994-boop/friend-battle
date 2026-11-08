@@ -5,6 +5,7 @@ import {
   generateCharacterSequence,
   isBoardFull,
   placeCharacter,
+  resolveMerges,
 } from "../../../src/games/DemocracyMerge/logic/gameEngine.ts";
 import {
   applyToolReward,
@@ -333,6 +334,19 @@ Deno.serve(async (req: Request) => {
           nextBoard = swapped.board;
           inventory = swapped.inventory;
           toolsUsed += 1;
+          const swapMerges = [];
+          for (const anchor of [body.firstCellIndex, body.secondCellIndex]) {
+            if (nextBoard[anchor]?.kind !== "character") continue;
+            const resolved = resolveMerges(nextBoard, anchor, level6MergeCount);
+            nextBoard = resolved.board;
+            score += resolved.scoreDelta;
+            mergeCount += resolved.merges.length;
+            if (resolved.merges.length > 1) chainReactions += 1;
+            level6MergeCount = resolved.level6MergeCount;
+            swapMerges.push(...resolved.merges);
+          }
+          maxLevel = Math.max(maxLevel, ...nextBoard.flatMap((cell: { kind: string; level?: number } | null) => cell?.kind === "character" && typeof cell.level === "number" ? [cell.level] : []), 1);
+          visualEvents = { kind: "tool", tool: "swap", merges: swapMerges };
         } else {
           if (!match.currentCharacter) throw new Error("Нет текущего персонажа для замены");
           const replaced = replaceCurrentCharacter(match.currentCharacter, inventory);
