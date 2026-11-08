@@ -680,6 +680,9 @@ BEGIN
   IF v_room.status <> 'playing' OR v_match.status <> 'playing' THEN
     RAISE EXCEPTION 'Match is no longer active' USING ERRCODE = '55000';
   END IF;
+  IF v_match.game_started_at > v_now THEN
+    RAISE EXCEPTION 'The synchronized countdown has not finished' USING ERRCODE = '55000';
+  END IF;
   IF v_match.deadline_at <= v_now AND v_action_started_at > v_match.deadline_at THEN
     RAISE EXCEPTION 'Match deadline has passed' USING ERRCODE = '55000';
   END IF;
@@ -1254,6 +1257,9 @@ BEGIN
   END IF;
   IF v_last_seen <= v_now - interval '5 minutes' THEN
     RAISE EXCEPTION 'The five-minute reconnect window has expired' USING ERRCODE = '55000';
+  END IF;
+  IF v_match.game_started_at > v_now THEN
+    RAISE EXCEPTION 'The synchronized countdown has not finished' USING ERRCODE = '55000';
   END IF;
   IF v_match.deadline_at <= v_now THEN
     RAISE EXCEPTION 'Match deadline has passed' USING ERRCODE = '55000';
