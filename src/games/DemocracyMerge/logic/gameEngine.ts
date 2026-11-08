@@ -142,6 +142,7 @@ export function placeCharacter(
   if (!Number.isInteger(previousLevel6MergeCount) || previousLevel6MergeCount < 0) {
     throw new RangeError('Level 6 merge count cannot be negative.')
   }
+  if (!Number.isInteger(maxLevel) || maxLevel < 6 || maxLevel > 10) throw new RangeError('Invalid maximum character level.')
   if (source[index] !== null) throw new Error('The selected cell is occupied.')
 
   const board = cloneBoard(source)
@@ -152,9 +153,11 @@ export function placeCharacter(
 
 /** Resolve connected merges after placement or a tool action. */
 export function resolveMerges(source: Board, index: number, previousLevel6MergeCount = 0, maxLevel: CharacterLevel = 6): PlacementResult {
+  if (!Number.isInteger(maxLevel) || maxLevel < 6 || maxLevel > 10) throw new RangeError('Invalid maximum character level.')
   const board = cloneBoard(source)
   const start = board[index]
   if (start?.kind !== 'character') throw new Error('Merge anchor must be a character.')
+  if (start.level > maxLevel) throw new Error('Character exceeds the mode level cap.')
   const merges: MergeEvent[] = []
   let currentLevel = start.level
   let level6MergeCount = previousLevel6MergeCount
