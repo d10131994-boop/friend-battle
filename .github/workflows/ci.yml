@@ -7,8 +7,8 @@ on:
   pull_request:
     branches:
       - main
-      - friend-battle-03-release
-      - 'friend-battle-03/**'
+      - 'friend-battle-*-release'
+      - 'friend-battle-*/**'
   workflow_dispatch:
 
 permissions:
@@ -110,7 +110,7 @@ jobs:
           start = shared_sql.index("CREATE OR REPLACE FUNCTION public.multiplayer_execute_action")
           end = shared_sql.index("CREATE OR REPLACE FUNCTION public.reaction_rush_start_match", start)
           shared_rpc = shared_sql[start:end]
-          forbidden = ("games_reaction_rush_", "games_brain_battle_")
+          forbidden = ("games_reaction_rush_", "games_brain_battle_", "games_democracy_merge_")
           for table_prefix in forbidden:
               if table_prefix in shared_rpc:
                   failed = True
