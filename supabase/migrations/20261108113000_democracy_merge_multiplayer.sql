@@ -644,7 +644,12 @@ BEGIN
   IF v_room.status <> 'playing' OR v_match.status <> 'playing' THEN
     RAISE EXCEPTION 'Match is no longer active' USING ERRCODE = '55000';
   END IF;
-  IF v_match.deadline_at <= v_now THEN
+  IF v_match.deadline_at <= v_now AND NOT (
+    p_action_type = 'place_character'
+    AND NULLIF(p_state->>'actionStartedAt', '') IS NOT NULL
+    AND (p_state->>'actionStartedAt')::timestamptz <= v_match.deadline_at
+    AND (p_state->>'actionStartedAt')::timestamptz <= v_now
+  ) THEN
     RAISE EXCEPTION 'Match deadline has passed' USING ERRCODE = '55000';
   END IF;
   IF NOT EXISTS (
