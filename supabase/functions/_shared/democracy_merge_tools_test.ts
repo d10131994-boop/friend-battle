@@ -5,14 +5,14 @@ import {
   returnStoredCharacter,
   storeCharacter,
   swapCharacters,
-  useSaw,
+  applySaw,
 } from '../../../src/games/DemocracyMerge/logic/tools.ts'
 import { createEmptyBoard } from '../../../src/games/DemocracyMerge/logic/gameEngine.ts'
 
 Deno.test('saw removes a normal cell for free and consumes one saw', () => {
   const board = createEmptyBoard()
   board[0] = { kind: 'character', level: 2 }
-  const result = useSaw(board, 0, { ...emptyToolInventory(), saw: 1 }, 0)
+  const result = applySaw(board, 0, { ...emptyToolInventory(), saw: 1 }, 0)
   if (result.board[0] !== null || result.inventory.saw !== 0 || result.coins !== 0) {
     throw new Error('Saw must remove the character without coins and be consumed.')
   }
@@ -21,7 +21,7 @@ Deno.test('saw removes a normal cell for free and consumes one saw', () => {
 Deno.test('saw removes a rock for 50 coins', () => {
   const board = createEmptyBoard()
   board[0] = { kind: 'obstacle', obstacleType: 'rock' }
-  const result = useSaw(board, 0, { ...emptyToolInventory(), saw: 1 }, 70)
+  const result = applySaw(board, 0, { ...emptyToolInventory(), saw: 1 }, 70)
   if (result.board[0] !== null || result.coins !== 20 || result.inventory.saw !== 0) {
     throw new Error('Rock removal must charge 50 coins and consume the saw.')
   }
