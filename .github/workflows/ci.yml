@@ -3,15 +3,14 @@ name: CI
 on:
   push:
     branches:
-      - main
-      - 'friend-battle-*-release'
-      - 'friend-battle-*/**'
-      - '!**/*-AI'
+      - '**/*-AI'
   pull_request:
     branches:
       - main
-      - 'friend-battle-*-release'
-      - 'friend-battle-*/**'
+      - friend-battle-03-release
+      - 'friend-battle-03/**'
+      - friend-battle-04-release
+      - 'friend-battle-04/**'
   workflow_dispatch:
 
 permissions:
@@ -55,17 +54,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Deno
-        id: setup-deno
-        uses: denoland/setup-deno@v2
-        continue-on-error: true
-        with:
-          deno-version: v2.9.8
-
-      - name: Retry Deno setup after a transient download failure
-        if: steps.setup-deno.outcome == 'failure'
         uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.9.8
+          deno-version: v2.x
 
       - name: Type-check Edge Functions
         run: |
@@ -73,8 +64,10 @@ jobs:
           deno check --node-modules-dir=auto supabase/functions/reaction-rush/index.ts
           deno check --node-modules-dir=auto supabase/functions/brain-battle/index.ts
           deno check --node-modules-dir=auto supabase/functions/no-count-it/index.ts
+          deno check --node-modules-dir=auto supabase/functions/rock-paper-scissors/index.ts
           deno check --node-modules-dir=auto supabase/functions/democracy-merge/index.ts
           deno test supabase/functions/_shared/errors_test.ts
+          deno test supabase/functions/rock-paper-scissors/gameRules_test.ts
           deno test supabase/functions/brain-battle/questions_test.ts
           deno test supabase/functions/_shared/democracy_merge_engine_test.ts
           deno test supabase/functions/_shared/democracy_merge_tools_test.ts
@@ -104,7 +97,7 @@ jobs:
 
           files = sorted([*Path("supabase/sql").rglob("*.sql"), *Path("supabase/migrations").rglob("*.sql"), *Path("supabase/tests").rglob("*.sql")])
           if not files:
-              raise SystemExit("No SQL files found under supabase/sql, supabase/migrations or supabase/tests")
+              raise SystemExit("No SQL files found under supabase/sql or supabase/tests")
 
           failed = False
           for path in files:
@@ -126,19 +119,6 @@ jobs:
               if table_prefix in shared_rpc:
                   failed = True
                   print(f"ERROR shared Multiplayer RPC references game-owned table prefix: {table_prefix}")
-
-          # The release-04 active-departure migration also replaces the shared
-          # RPC. Keep it free of game-owned table references; game-specific
-          # policy is installed later through the heartbeat guard hook.
-          shared_migration_path = Path("supabase/migrations/20261108100000_multiplayer_active_match_departure.sql")
-          if shared_migration_path.exists():
-              shared_migration_sql = shared_migration_path.read_text(encoding="utf-8")
-              migration_start = shared_migration_sql.index("CREATE OR REPLACE FUNCTION public.multiplayer_execute_action")
-              shared_migration_rpc = shared_migration_sql[migration_start:]
-              for table_prefix in forbidden:
-                  if table_prefix in shared_migration_rpc:
-                      failed = True
-                      print(f"ERROR shared Multiplayer migration references game-owned table prefix: {table_prefix}")
 
           if failed:
               raise SystemExit(1)

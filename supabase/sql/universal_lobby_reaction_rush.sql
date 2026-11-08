@@ -29,13 +29,7 @@ CREATE TABLE IF NOT EXISTS public.common_multiplayer_game_rules (
   is_enabled boolean NOT NULL DEFAULT true,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-INSERT INTO public.common_multiplayer_game_rules(game_id, min_players, max_players, is_enabled)
-VALUES ('reaction-rush', 2, 4, true)
-ON CONFLICT (game_id) DO UPDATE SET
-  min_players = EXCLUDED.min_players,
-  max_players = EXCLUDED.max_players,
-  is_enabled = EXCLUDED.is_enabled,
-  updated_at = now();
+-- Game availability and player limits are configured in common_game_availability.sql.
 ALTER TABLE public.common_multiplayer_game_rules ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.common_multiplayer_game_rules FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.common_multiplayer_game_rules TO service_role;
@@ -157,7 +151,6 @@ DECLARE
   v_game_max_players integer;
   v_last_seen timestamptz;
   v_expected_started_at timestamptz;
-  v_departing_user_id text;
 BEGIN
   IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = '' THEN
     RAISE EXCEPTION 'Authenticated caller is required' USING ERRCODE = '22023';
@@ -211,59 +204,22 @@ BEGIN
   SELECT * INTO v_room FROM public.common_multiplayer_rooms WHERE id = v_room_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
 
-  IF p_action IN ('start_game', 'finish_game', 'leave_active_match') THEN
+  IF p_action IN ('start_game', 'finish_game') THEN
     IF p_user_id <> '__game_server__' THEN
       RAISE EXCEPTION 'Trusted game server is required' USING ERRCODE = '42501';
     END IF;
     IF p_payload->>'gameId' IS DISTINCT FROM v_room.game_id THEN
       RAISE EXCEPTION 'Game server is not authorized for this game' USING ERRCODE = '42501';
     END IF;
-    IF p_action = 'leave_active_match' THEN
-      IF v_room.game_id IS DISTINCT FROM 'democracy-merge' THEN
-        RAISE EXCEPTION 'Active-match departure is not enabled for this game' USING ERRCODE = '42501';
-      END IF;
-      IF v_room.status <> 'playing' THEN
-        RAISE EXCEPTION 'There is no active match to leave' USING ERRCODE = '55000';
-      END IF;
-      v_departing_user_id := NULLIF(pg_catalog.btrim(p_payload->>'playerUserId'), '');
-      IF v_departing_user_id IS NULL OR v_departing_user_id = '__game_server__' THEN
-        RAISE EXCEPTION 'A valid departing player is required' USING ERRCODE = '22023';
-      END IF;
-      SELECT p.is_host INTO v_is_host
-      FROM public.common_multiplayer_players p
-      WHERE p.room_id = v_room_id AND p.user_id = v_departing_user_id
-      FOR UPDATE;
-      IF NOT FOUND THEN
-        RAISE EXCEPTION 'Departing player is not a room member' USING ERRCODE = '42501';
-      END IF;
-      DELETE FROM public.common_multiplayer_players
-      WHERE room_id = v_room_id AND user_id = v_departing_user_id;
-      IF v_is_host THEN
-        SELECT p.id INTO v_next_host_id
-        FROM public.common_multiplayer_players p
-        WHERE p.room_id = v_room_id
-        ORDER BY p.joined_at, p.id
-        LIMIT 1;
-        IF FOUND THEN
-          UPDATE public.common_multiplayer_players SET is_host = true WHERE id = v_next_host_id;
-        END IF;
-      END IF;
-      SELECT count(*) INTO v_player_count
-      FROM public.common_multiplayer_players WHERE room_id = v_room_id;
-      IF v_player_count = 0 THEN
-        UPDATE public.common_multiplayer_rooms
-        SET status = 'cancelled', finished_at = COALESCE(finished_at, pg_catalog.clock_timestamp())
-        WHERE id = v_room_id;
-      END IF;
-      RETURN public.multiplayer_room_snapshot(v_room_id);
-    END IF;
     IF p_action = 'start_game' THEN
       IF v_room.status NOT IN ('waiting', 'finished') OR v_room.game_id IS NULL THEN
         RAISE EXCEPTION 'Room cannot start a game in its current state' USING ERRCODE = '55000';
       END IF;
       SELECT min_players, max_players INTO v_min_players, v_game_max_players
-      FROM public.common_multiplayer_game_rules
-      WHERE game_id = v_room.game_id AND is_enabled = true;
+      FROM public.common_game_availability
+      WHERE game_id = v_room.game_id
+        AND is_enabled = true
+        AND is_multiplayer_enabled = true;
       IF NOT FOUND THEN
         RAISE EXCEPTION 'Selected game is not enabled for multiplayer' USING ERRCODE = '55000';
       END IF;
@@ -315,8 +271,10 @@ BEGIN
     END IF;
     v_game_id := pg_catalog.btrim(p_payload->>'gameId');
     IF v_game_id IS NULL OR NOT EXISTS (
-      SELECT 1 FROM public.common_multiplayer_game_rules
-      WHERE game_id = v_game_id AND is_enabled = true
+      SELECT 1 FROM public.common_game_availability
+      WHERE game_id = v_game_id
+        AND is_enabled = true
+        AND is_multiplayer_enabled = true
     ) THEN
       RAISE EXCEPTION 'Unsupported game selection' USING ERRCODE = '22023';
     END IF;
@@ -334,9 +292,6 @@ BEGIN
     WHERE room_id = v_room_id AND user_id = p_user_id;
     RETURN public.multiplayer_room_snapshot(v_room_id);
   ELSIF p_action = 'leave_room' THEN
-    IF v_room.game_id = 'democracy-merge' AND v_room.status = 'playing' THEN
-      RAISE EXCEPTION 'Use the trusted active-match departure action for Democracy Merge' USING ERRCODE = '55000';
-    END IF;
     DELETE FROM public.common_multiplayer_players WHERE room_id = v_room_id AND user_id = p_user_id;
     IF v_room.status = 'playing' THEN
       UPDATE public.common_multiplayer_rooms
@@ -356,32 +311,15 @@ BEGIN
     RETURN public.multiplayer_room_snapshot(v_room_id);
   ELSIF p_action = 'close_room' THEN
     IF NOT v_is_host THEN RAISE EXCEPTION 'Only the host can close the room' USING ERRCODE = '42501'; END IF;
-    IF v_room.game_id = 'democracy-merge' AND v_room.status = 'playing' THEN
-      RAISE EXCEPTION 'An active Democracy Merge match must end through player completion or final departure' USING ERRCODE = '55000';
-    END IF;
     UPDATE public.common_multiplayer_rooms SET status = 'cancelled' WHERE id = v_room_id;
     RETURN public.multiplayer_room_snapshot(v_room_id);
   ELSIF p_action = 'heartbeat' THEN
     IF v_room.status NOT IN ('waiting', 'starting', 'playing', 'finished') THEN
       RAISE EXCEPTION 'Room is not active' USING ERRCODE = '55000';
     END IF;
-
-    SELECT COALESCE(last_seen_at, joined_at) INTO v_last_seen
-    FROM public.common_multiplayer_players
-    WHERE room_id = v_room_id AND user_id = p_user_id
-    FOR UPDATE;
-
-    IF public.multiplayer_game_heartbeat_guard(v_room_id, p_user_id, v_last_seen) THEN
-      RETURN pg_catalog.jsonb_build_object(
-        'roomId', v_room_id,
-        'lastSeenAt', v_last_seen,
-        'expired', true
-      );
-    END IF;
-
     UPDATE public.common_multiplayer_players SET last_seen_at = pg_catalog.clock_timestamp()
     WHERE room_id = v_room_id AND user_id = p_user_id RETURNING last_seen_at INTO v_last_seen;
-    RETURN pg_catalog.jsonb_build_object('roomId', v_room_id, 'lastSeenAt', v_last_seen, 'expired', false);
+    RETURN pg_catalog.jsonb_build_object('roomId', v_room_id, 'lastSeenAt', v_last_seen);
   ELSIF p_action = 'get_room_token' THEN
     IF v_room.status NOT IN ('waiting', 'starting', 'playing', 'finished') THEN
       RAISE EXCEPTION 'Room is not active' USING ERRCODE = '55000';

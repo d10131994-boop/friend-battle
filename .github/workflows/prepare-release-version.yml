@@ -1,0 +1,77 @@
+name: Prepare release version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Explicit SemVer version (optional; inferred from friend-battle-NN-release when omitted)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prepare-release-version-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-version:
+    name: Update package version on release branch
+    if: contains(github.ref_name, 'release')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Resolve and validate version
+        id: version
+        env:
+          SOURCE_BRANCH: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          version="$INPUT_VERSION"
+          if [[ -z "$version" ]]; then
+            if [[ "$SOURCE_BRANCH" =~ ^friend-battle-([0-9]+)-release$ ]]; then
+              version="0.${BASH_REMATCH[1]}.0"
+            else
+              echo "::error::This branch contains 'release' but does not match friend-battle-NN-release. Supply an explicit SemVer version."
+              exit 1
+            fi
+          fi
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version must be valid SemVer (for example, 0.5.0)."
+            exit 1
+          fi
+
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+          echo "Preparing version $version for $SOURCE_BRANCH"
+
+      - name: Update package.json and package-lock.json
+        run: npm version "${{ steps.version.outputs.value }}" --no-git-tag-version --allow-same-version
+
+      - name: Commit and push version update
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "Package version is already $VERSION; no commit is needed."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore(release): set version $VERSION"
+          git push origin "HEAD:$BRANCH"

@@ -71,7 +71,7 @@ export function generateObstacleSequence(
   return Array.from({ length: turnCount }, () => rollObstacleEvent(random))
 }
 
-/** Event type is shared by the match; its free-cell location is player-specific. */
+/** The event type is shared by the match; its free-cell location is player-specific. */
 export function placeObstacleAtRandomFreeCell(
   source: Board,
   obstacleType: ObstacleType,

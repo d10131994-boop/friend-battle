@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import { realtime } from '../database'
 import type {
   MultiplayerAuth,

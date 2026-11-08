@@ -32,7 +32,6 @@ Public client actions:
 | `get_room` | `roomId` | Room snapshot |
 | `set_ready` | `roomId`, `isReady` | Room snapshot |
 | `leave_room` | `roomId` | Room snapshot after leaving; cancelled state if last member |
-| `leave_active_match` | Trusted game-server action: `roomId`, `gameId: democracy-merge`, `playerUserId` | Removes one Democracy Merge member without resetting the active room; final empty room is cancelled |
 | `close_room` | `roomId` | Room snapshot; host-only |
 | `heartbeat` | `roomId` | Acknowledgement and server time |
 | `get_room_token` | `roomId` | `roomId`, `accessToken`, `expiresAt` |
@@ -109,6 +108,8 @@ These actions are also protected by the database function's
 
 `start_game` succeeds only while the room is `waiting` or `finished`. Every current player must be ready and must have sent a heartbeat within the last 90 seconds; the player count must satisfy the selected game's min/max rules. The returned `startedAt` identifies that particular game session. The game server must pass that exact value to `finish_game`; this prevents a delayed finish request from an older game from ending a newer game in the same room. Repeating `finish_game` for the same already-finished session is safe and idempotent.
 
+The Rock Paper Scissors SQL patch adds a room-capacity trigger. When a host selects an enabled game, the trigger sets `common_multiplayer_rooms.max_players` to the selected game's `common_multiplayer_game_rules.max_players` and rejects the selection if the current room already exceeds that limit. Clearing the game during the normal room-reset lifecycle restores the standard four-player capacity. This lets the existing `join_room` action enforce game-specific capacity (Rock Paper Scissors is exactly two players) without adding game-specific checks to the shared client API. The trigger is part of `supabase/sql/rock_paper_scissors_multiplayer.sql` and must be deployed together with the new game-rule row.
+
 The game module owns game rules and result presentation. Once the game-specific match is completed, the room remains `playing` while players view the results. Any current member can press “Return to room”; the game's trusted Edge Function verifies that the match is terminal and calls `finish_game`. If nobody returns manually, each game client invokes the same action 60 seconds after the server-recorded match completion time. The first successful call marks the shared room `finished` and broadcasts the room update to every participant. Repeated calls for the same session are idempotent.
 
 `finished` means the current game session ended, not that the room was destroyed. Players return to the room menu, confirm readiness again, and can start another normal match in the same room. A new match never bypasses readiness. `cancelled` is the terminal room state. Leaving by the last player, host closure, or idle cleanup can cancel a room even after a game session has finished.
@@ -119,8 +120,7 @@ The game module owns game rules and result presentation. Once the game-specific 
 - Joining by invite code is allowed while the room is `waiting` or
   `finished` and has capacity. Existing members can reconnect in either
   state even when the room is at capacity.
-- A player who explicitly calls `leave_room` is removed immediately. If the room is in `playing`, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. Reaction Rush and Brain Battle own interrupted-match cleanup through their game-specific room lifecycle triggers.
-- Democracy Merge uses the trusted game-server-only `leave_active_match` action for final departure. It removes the verified player without resetting `playing`, preserves the selected game/session timestamps, transfers host by earliest `joined_at`, and cancels the room if no room members remain. Its game-owned delete trigger records the player as excluded from competition in the same transaction. The ordinary `leave_room` behavior remains unchanged for every game. Multiplayer changes only the shared room state and does not access game-owned match tables.
+- A player who explicitly calls `leave_room` is removed immediately. If the room is in `playing`, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. Reaction Rush and Brain Battle own interrupted-match cleanup through their game-specific room lifecycle triggers. Multiplayer changes only the shared room state and does not access game-owned match tables.
 - If the host explicitly leaves and other players remain, the host role is
   transferred to the remaining player with the earliest `joined_at`. A stable
   player ID breaks timestamp ties.

@@ -67,10 +67,9 @@ The agreed product vocabulary may call the waiting state “lobby”, but the cu
 - `joinRoom(auth, { inviteCode })`: invite code is normalized client-side (whitespace removed, uppercase) and sent to the server. The SQL lowercases the code for lookup. Joining is intended for `waiting` or `finished` rooms; existing members can reconnect even if the room is full.
 - `getRoom(auth, { roomId })`: returns the canonical room snapshot to an existing member.
 - `setReady(auth, { roomId, isReady })`: updates the current member's readiness. The reviewed lifecycle SQL permits this in `waiting` or `finished`.
-- `leaveRoom(auth, { roomId })`: removes the current member. For the legacy game-agnostic lifecycle, leaving during a match resets the shared room to `waiting`, clears the selected game and match timestamps, and marks remaining players not-ready; game-owned triggers clean up their own match state. Democracy Merge is deliberately excluded from this reset behavior and uses the trusted `leave_active_match` operation so other players continue. If the host leaves, host role transfers to the remaining member with the earliest `joined_at` (then player ID).
+- `leaveRoom(auth, { roomId })`: removes the current member. If the room is playing, the current Reaction Rush match is deleted, the room returns to `waiting`, the selected game and match timestamps are cleared, and remaining players become not-ready. If the host leaves, host role transfers to the remaining member with the earliest `joined_at` (then player ID).
 - `closeRoom(auth, { roomId })`: host-only cancellation in the reviewed lifecycle SQL.
 - `heartbeat(auth, { roomId })`: updates server-side `last_seen_at` and returns the server timestamp.
-- The shared heartbeat action calls `multiplayer_game_heartbeat_guard(roomId, userId, lastSeenAt)` before refreshing presence. The shared migration installs a no-op hook; a game-owned migration may replace it after its tables exist. Democracy Merge replaces it with a guard that invokes trusted `leave_active_match` when an active player returns after five minutes and the match deadline has not elapsed. Completed/surrendered players retain membership and immutable results; when the 30-minute deadline has elapsed, deadline finalization takes precedence over disconnect expiry. Democracy Merge also uses a server-side pending-action reservation: the disconnect Cron waits for a valid action reserved before the five-minute cutoff, and the reservation expires automatically if the Edge request fails.
 - `getRoomToken(auth, { roomId })`: issues a room-scoped JWT for private Realtime.
 
 ### Trusted match operations
@@ -102,7 +101,7 @@ The reviewed Multiplayer Edge Function explicitly broadcasts only `room_updated`
 
 ## 6. Error handling
 
-The Multiplayer, Reaction Rush, Brain Battle and Democracy Merge Edge Functions use `supabase/functions/_shared/errors.ts` for SQL error mapping. Expected PostgreSQL business errors map to stable HTTP statuses (404, 403, 409 or 400); raw PostgreSQL messages and codes are not returned to clients. Unknown database failures return a generic 500 and are logged with operation and SQLSTATE only. NoCountIt currently retains local fixed-message error handling rather than the shared mapper; it also avoids returning raw SQL details, but maps many distinct database failures to HTTP 409. Treat normalizing NoCountIt's mapping as separate shared-backend maintenance, not as a reason to duplicate the mapper in new games.
+All three game/server Edge Functions use `supabase/functions/_shared/errors.ts` for SQL error mapping. Expected PostgreSQL business errors map to stable HTTP statuses (404, 403, 409 or 400); raw PostgreSQL messages and codes are not returned to clients. Unknown database failures return a generic 500 and are logged with operation and SQLSTATE only. A function may override a safe, user-facing message for a known code without changing its HTTP status.
 
 The database adapter validates the Edge Function response before exposing it as a `MultiplayerRoom`, heartbeat result or room token. It rejects unknown statuses, malformed timestamps, invalid player fields and malformed token responses. Do not bypass these parsers or cast untrusted function responses directly to domain types.
 
@@ -115,7 +114,7 @@ The canonical shared room lifecycle implementation is `supabase/sql/universal_lo
 - returning remaining players to the waiting room when someone leaves during play; game-specific match cleanup is delegated to each game's own database hook;
 - room membership checks for member actions and server-only game lifecycle actions.
 
-Before the current task branch, Production used the previous canonical `public.multiplayer_execute_action` definition. This branch delegates Reaction Rush cleanup to its game-owned trigger and adds the trusted active-match departure plus game-specific heartbeat guard hook. The shared migration `20261108100000_multiplayer_active_match_departure.sql` and Democracy Merge migration `20261108113000_democracy_merge_multiplayer.sql` are pending; Production still uses the previous definition. Apply the migrations in order and verify the deployed RPC before deploying the updated Edge Functions. Never apply an alternate definition of this RPC over the canonical source.
+Before the current AI-branch refactor, the deployed Production definition of `public.multiplayer_execute_action` matched the canonical source. This branch now removes direct Reaction Rush match-table cleanup from that shared RPC and delegates it to `supabase/sql/reaction_rush_room_lifecycle.sql`. The updated RPC and the new game-owned trigger must be promoted and applied together; Production still runs the previous definition until then. Do not apply an alternate definition of this RPC over it.
 
 `supabase/sql/reaction_rush_room_lifecycle.sql` owns Reaction Rush match cleanup when a room is reset from `playing` to `waiting` or transitions to `cancelled`. The shared Multiplayer action RPC changes only common room/player state; it must not directly access Reaction Rush match tables. Brain Battle uses its own `brain_battle_cancel_active_match_on_room_reset` trigger in `supabase/sql/brain_battle_multiplayer.sql`.
 
@@ -175,3 +174,37 @@ A game-specific match can be complete while the shared room is still `playing`. 
 Room closure remains separate and unchanged. An explicit leave during a match resets the room to `waiting` and clears its selected game; the game-owned cleanup hook handles interrupted game state. If the last player explicitly leaves, the room becomes `cancelled`. Host closure and the scheduled idle-room cleanup also retain their existing cancellation behavior.
 
 The shared Multiplayer schema and public API contain no rematch status, vote rows, vote action or lifecycle mode. Do not reintroduce these fields or add a generic rematch framework. The historical migration files that introduced rematch remain in migration history; the new removal migration drops the deployed schema objects and columns.
+
+## 12. Selected-game room capacity
+
+The Rock Paper Scissors integration adds `multiplayer_set_room_capacity_from_game`, a `BEFORE UPDATE OF game_id` trigger on `common_multiplayer_rooms`. When the host selects an enabled game, the trigger reads that game's `max_players` rule, rejects the selection if the room already contains more players than allowed, and stores that maximum in the room's `max_players`. When the game is cleared as part of the normal leave/reset lifecycle, the trigger restores the standard four-player room capacity. The existing `join_room` action then enforces the selected game's capacity before match start. This behavior is delivered in `supabase/sql/rock_paper_scissors_multiplayer.sql`; it is not live until that SQL patch is applied. Keep the trigger and game-rule table in sync if selection capacity semantics change.
+
+
+## Game availability and authoritative player limits
+
+The shared game catalog is `public.common_game_availability`. It is the
+source of truth for global enablement, Solo/Multiplayer availability, player
+limits and menu ordering.
+
+For every multiplayer game, the canonical
+`public.multiplayer_execute_action` RPC must validate game selection and
+match start against a catalog row with both `is_enabled = true` and
+`is_multiplayer_enabled = true`. The `start_game` action uses the row's
+`min_players` and `max_players`. The room-capacity trigger
+`public.multiplayer_set_room_capacity_from_game()` also reads the same row
+and sets `common_multiplayer_rooms.max_players` to its `max_players`
+value, so the existing join-room capacity check remains authoritative.
+
+Do not use the legacy `public.common_multiplayer_game_rules` table to
+register new games. It may remain in the database temporarily for backward
+compatibility, but it is no longer the source of truth for menus, game
+selection, room capacity or match start.
+
+The catalog is public read-only metadata. Browser menus read it through
+`src/database`; the trusted SQL RPC and trigger independently enforce
+multiplayer availability and player limits. Never rely on the menu's
+`canStart` check as a security boundary.
+
+When a new game is added, its row must be created in
+`common_game_availability` before multiplayer selection can succeed. The
+game ID must exactly match the ID used by the room and trusted game server.

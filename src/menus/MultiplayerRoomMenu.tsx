@@ -8,7 +8,10 @@ import { telegramUser } from '../services/telegram'
 import BrainBattleMatch from '../games/BrainBattle/BrainBattleMatch'
 import ReactionRushMatch from '../games/ReactionRush/ReactionRushMatch'
 import NoCountItMatch from '../games/NoCountIt/NoCountItMatch'
+import RockPaperScissorsMatch from '../games/rockPaperScissors/RockPaperScissorsMatch'
 import DemocracyMergeMatch from '../games/DemocracyMerge/DemocracyMergeMatch'
+import { getGamePresentation, loadGameAvailability } from './gameAvailability'
+import type { GameAvailability, MultiplayerGameId } from './gameAvailability'
 
 const multiplayer = createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })
 
@@ -28,6 +31,9 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [realtimeStatus, setRealtimeStatus] = useState('Подключаемся...')
+  const [availableGames, setAvailableGames] = useState<GameAvailability[]>([])
+  const [gamesLoading, setGamesLoading] = useState(true)
+  const [gamesError, setGamesError] = useState('')
   const [startRequested, setStartRequested] = useState(false)
   const [gameScreen, setGameScreen] = useState(false)
   const [activeGameId, setActiveGameId] = useState<MultiplayerRoom['gameId']>(null)
@@ -36,6 +42,35 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   const returnedSessionRef = useRef<string | null>(null)
   const inviteAttemptedRef = useRef(false)
   const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
+
+  const refreshAvailableGames = useCallback(async () => {
+    setGamesLoading(true)
+    setGamesError('')
+    try {
+      setAvailableGames(await loadGameAvailability('multiplayer'))
+    } catch (error) {
+      setGamesError(errorMessage(error, 'Не удалось загрузить список игр.'))
+    } finally {
+      setGamesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    loadGameAvailability('multiplayer')
+      .then((games) => {
+        if (active) setAvailableGames(games)
+      })
+      .catch((error: unknown) => {
+        if (active) setGamesError(errorMessage(error, 'Не удалось загрузить список игр.'))
+      })
+      .finally(() => {
+        if (active) setGamesLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const acceptRoom = useCallback((nextRoom: MultiplayerRoom) => {
     setRoom(nextRoom)
@@ -56,6 +91,14 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
       }
     }
   }, [])
+
+  const acceptRockPaperScissorsRoom = useCallback((nextRoom: MultiplayerRoom) => {
+    acceptRoom(nextRoom)
+    if (nextRoom.status === 'waiting' && !nextRoom.gameId) {
+      setGameScreen(false)
+      setStartRequested(false)
+    }
+  }, [acceptRoom])
 
   useEffect(() => {
     if (!room?.roomId || !auth.initData) return
@@ -154,7 +197,7 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     void joinRoom(inviteCode)
   }, [inviteCode, room, joinRoom])
 
-  async function selectGame(gameId: 'reaction-rush' | 'brain-battle' | 'no-count-it' | 'democracy-merge') {
+  async function selectGame(gameId: MultiplayerGameId) {
     if (!room) return
     setLoading(true)
     setMessage('')
@@ -242,13 +285,15 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   const me = room?.players.find((player) => player.userId === telegramId)
   const isHost = Boolean(me?.isHost)
   const allReady = Boolean(room?.players.length && room.players.every((player) => player.isReady))
+  const selectedGameRules = availableGames.find((game) => game.game_id === room?.gameId)
   const canStart = Boolean(
     isHost &&
     room?.gameId &&
     room.status !== 'playing' &&
     room.status !== 'cancelled' &&
-    room.players.length >= 2 &&
-    room.players.length <= 4 &&
+    selectedGameRules &&
+    room.players.length >= selectedGameRules.min_players &&
+    room.players.length <= Math.min(room.maxPlayers ?? 4, selectedGameRules.max_players) &&
     allReady,
   )
 
@@ -287,6 +332,19 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
         room={room}
         startRequested={startRequested}
         onRoomUpdate={acceptRoom}
+        onReturnToRoom={returnToRoom}
+        onStartRequestHandled={() => setStartRequested(false)}
+      />
+    )
+  }
+
+  if (gameScreen && room?.gameId === 'rock-paper-scissors') {
+    return (
+      <RockPaperScissorsMatch
+        initData={initData}
+        room={room}
+        startRequested={startRequested}
+        onRoomUpdate={acceptRockPaperScissorsRoom}
         onReturnToRoom={returnToRoom}
         onStartRequestHandled={() => setStartRequested(false)}
       />
@@ -367,25 +425,34 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
                   className="invite-input"
                   value={room.gameId ?? ''}
                   onChange={(event) => {
-                    if (event.target.value === 'reaction-rush' || event.target.value === 'brain-battle' || event.target.value === 'no-count-it') {
-                      void selectGame(event.target.value)
-                    }
+                    const selected = availableGames.find((game) => game.game_id === event.target.value)
+                    if (selected) void selectGame(selected.game_id as MultiplayerGameId)
                   }}
-                  disabled={loading}
+                  disabled={loading || gamesLoading || Boolean(gamesError)}
                 >
                   <option value="">Выбери игру</option>
-                  <option value="reaction-rush">Reaction Rush</option>
-                  <option value="brain-battle">Brain Battle</option>
-                  <option value="no-count-it">NoCountIt</option>
-                  <option value="democracy-merge">Democracy Merge</option>
+                  {availableGames.map((game) => (
+                    <option key={game.game_id} value={game.game_id}>
+                      {getGamePresentation(game.game_id)?.title ?? game.game_id}
+                    </option>
+                  ))}
                 </select>
               ) : (
-                <p>Выбрана игра: {room.gameId === 'reaction-rush' ? 'Reaction Rush' : room.gameId === 'brain-battle' ? 'Brain Battle' : room.gameId === 'no-count-it' ? 'NoCountIt' : room.gameId === 'democracy-merge' ? 'Democracy Merge' : 'Пока не выбрана'}</p>
+                <p>Выбрана игра: {room.gameId ? getGamePresentation(room.gameId)?.title ?? room.gameId : 'Пока не выбрана'}</p>
               )}
-              {room.gameId === 'reaction-rush' && <p>Три раунда по 10 секунд. От 2 до 4 игроков.</p>}
-              {room.gameId === 'brain-battle' && <p>10 вопросов, 15 секунд на ответ. От 2 до 4 игроков.</p>}
-              {room.gameId === 'no-count-it' && <p>Три раунда на оценку количества конфет. От 2 до 4 игроков.</p>}
-              {room.gameId === 'democracy-merge' && <p>Поле 6×6, независимые партии и общий зачёт. От 2 до 4 игроков.</p>}
+              {gamesLoading && <p>Загружаем список игр…</p>}
+              {gamesError && (
+                <>
+                  <p role="alert">{gamesError}</p>
+                  <button className="ready-button" onClick={() => void refreshAvailableGames()} disabled={gamesLoading}>ПОВТОРИТЬ</button>
+                </>
+              )}
+              {room.gameId && selectedGameRules && (
+                <p>
+                  {getGamePresentation(room.gameId)?.description ?? room.gameId}
+                  {' '}От {selectedGameRules.min_players} до {selectedGameRules.max_players} игроков.
+                </p>
+              )}
               {room.gameId && (
                 <>
                   {!isHost && (

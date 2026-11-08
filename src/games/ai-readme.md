@@ -8,6 +8,7 @@ The current game directories use PascalCase:
 - `src/games/BrainBattle/`
 - `src/games/ReactionRush/`
 - `src/games/NoCountIt/`
+- `src/games/rockPaperScissors/`
 - `src/games/DemocracyMerge/`
 
 Each game currently owns its screens/components, game-specific state and logic, and (where implemented) its game-specific multiplayer UI and data contract. There is no shared generic game engine or game UI framework in `src/games` that a new game must extend. Do not invent a global registry, base class or generic game controller without a concrete requirement.
@@ -91,7 +92,7 @@ Use the public service methods for:
 - `heartbeat(auth, { roomId })`;
 - `getRoomToken(auth, { roomId })`.
 
-The current shared room contract is documented in `src/multiplayer/ai-readme.md`. The canonical `universal_lobby_reaction_rush.sql` flow creates an unselected room, lets the host select an enabled game, enforces room capacity (2–4), and checks the selected game's registered min/max when starting. The obsolete competing `multiplayer_game_lifecycle.sql` definition was removed; do not restore or apply an alternate definition of `multiplayer_execute_action`.
+The room contract and known implementation discrepancies are documented in `src/multiplayer/ai-readme.md`. In particular, the intended flow is create an unselected room, then let the host select a game; the checked-in lifecycle SQL files currently disagree about this and about player capacity. Do not duplicate or locally work around those common lifecycle operations in a game. A fix belongs in a separately scoped Multiplayer/SQL task.
 
 For a mounted room screen, use `createMultiplayerRoomSession` to own the shared room JWT, heartbeat and private Realtime watcher. Stop the session when the user leaves or the screen unmounts. The room snapshot is canonical; Broadcast is only an invalidation signal.
 
@@ -131,18 +132,45 @@ Do not set a room to `cancelled` merely because a match ended. Do not invent a g
 
 For another match, reuse the finished room and create a new game-specific match/session through the normal readiness flow. Every current player must confirm readiness before the trusted backend starts another match. Ensure stale requests from the previous match cannot affect the new one.
 
-## 6. Game rules and player limits
+## 6. Game availability and player limits
 
-Each game must define its actual minimum and maximum player count. The current SQL convention registers these values in `public.common_multiplayer_game_rules` with:
-- `game_id`;
-- `min_players`;
-- `max_players`;
-- `is_enabled`;
-- `updated_at`.
+The single source of truth for whether a game is offered in a mode is
+`public.common_game_availability`. Do not register new games in the legacy
+`public.common_multiplayer_game_rules` table; it is retained only for
+backward compatibility while older SQL dependencies are retired.
 
-The current game SQL examples register their rules in this table. The intended shared room capacity is at most four players, while each game's own minimum may be higher than one. Multiplayer should enforce the selected game's registered limits when starting a match.
+Every game must have one row in `common_game_availability` before it can be
+offered in Friend Battle. The row contains:
 
-The canonical shared lifecycle is `universal_lobby_reaction_rush.sql`. The historical `multiplayer_game_lifecycle.sql` alternative was removed because it conflicted with the canonical RPC; its maintenance helpers were retained separately in `multiplayer_room_maintenance.sql`. Do not recreate the old file or introduce a competing RPC definition.
+- `game_id`: stable identifier matching the ID used by the application,
+  Multiplayer Core and the game's server code;
+- `is_enabled`: global switch; when false, the game is hidden from both menus;
+- `is_solo_enabled`: whether it is offered in the solo menu;
+- `is_multiplayer_enabled`: whether it is offered and selectable in multiplayer;
+- `min_players` / `max_players`: authoritative multiplayer player limits;
+- `sort_order`: ascending display order in both menus;
+- `updated_at`: last configuration update.
+
+Player limits must satisfy `2 <= min_players <= max_players <= 4`.
+For a game requiring exactly two participants, set both values to `2`.
+A solo-only game still receives valid player-limit values because the columns
+are required, but those values are not used to enable its solo mode.
+
+The table is public read-only metadata: browser roles may SELECT through the
+Database facade, while all writes and configuration changes are performed
+through the approved SQL/deployment workflow. RLS must remain enabled.
+
+The menus load rows where `is_enabled = true` and the matching mode flag is
+true, ordered by `sort_order`. The server-side Multiplayer RPC and room
+capacity trigger must independently require both `is_enabled = true` and
+`is_multiplayer_enabled = true`, and use the row's player limits. Menu
+checks are only UX; the backend remains authoritative.
+
+The table controls availability, not executable UI. A new game must also be
+registered in `src/menus/gameAvailability.ts` so its stable ID maps to its
+display metadata, and connected to its solo/multiplayer components through
+the application/menu routing. Unknown IDs are intentionally not rendered
+until the corresponding game UI is present in the frontend.
 
 ## 7. Solo mode
 
@@ -172,7 +200,7 @@ Existing client-side `canStart` checks are useful for UI feedback only. The trus
 1. Audit the current project structure, Database API, Multiplayer API and existing game examples.
 2. Define the game rules, solo flow, multiplayer flow, match state, request/response contracts, minimum/maximum players, deadlines, scoring and tie behavior.
 3. Agree on which operations run in the browser and which run in trusted server code.
-4. Register the game ID and player limits in `common_multiplayer_game_rules` through the approved SQL workflow.
+4. Add or update the game's row in `common_game_availability` through the approved SQL workflow, setting the global/mode flags, player limits and display order. Register its display metadata and UI routing in `src/menus/gameAvailability.ts` and the relevant menu/application components.
 5. Build game UI and game-specific logic inside `src/games/<GameName>/`.
 6. Reuse Multiplayer for rooms, invitations, players, readiness, host, heartbeat and room session.
 7. Use Database for browser-side transport; implement game-specific Edge Function and SQL for authoritative match operations.

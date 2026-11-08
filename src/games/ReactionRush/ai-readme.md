@@ -99,7 +99,7 @@ The current SQL uses:
 
 A match has three rounds. Each round lasts 10 seconds. Every accepted tap adds one point, with a maximum of 1000 per player per round. Final match score is the sum across rounds. A unique highest total wins; a tie has no winner. Common room wins/matches and the game-specific leaderboard are updated when round 3 completes. The SQL then deletes that match's per-round rows from `games_reaction_rush_scores`; the completed match's final results remain in `games_reaction_rush_matches.final_results`.
 
-The game rules registry convention is `common_multiplayer_game_rules`, with Reaction Rush registered for 2–4 players in the game SQL. The current multiplayer UI also checks 2–4 players before enabling the host's start button. This client check is for presentation only: the later `multiplayer_game_lifecycle.sql` replacement does not consult the rules registry when starting a match. Verify the actual deployed RPC before claiming server-side min/max enforcement.
+Game availability and player limits are configured in `public.common_game_availability`. Reaction Rush is currently registered as multiplayer-only and requires exactly two players (`min_players = 2`, `max_players = 2`). The shared Multiplayer RPC and room-capacity trigger read this catalog; client-side checks are presentation only. Do not register new games in the legacy `common_multiplayer_game_rules` table.
 
 ## 6. Realtime and synchronization
 
@@ -135,7 +135,7 @@ The legacy `duels` table/function references in older code/README are not the cu
 
 ## 9. Verification
 
-Test solo mode separately. Multiplayer verification should cover create/join/select, 2–4 players, readiness, host start, accepted/rejected taps, 1000-point round cap, round deadline, concurrent finish requests, round advancement, final totals, winner/tie, leaderboard, common room stats, finish, results return/timeout, leave during match and reconnect.
+Test solo mode separately. Multiplayer verification should cover create/join/select, exactly 2 players (catalog min/max are both 2), readiness, host start, accepted/rejected taps, 1000-point round cap, round deadline, concurrent finish requests, round advancement, final totals, winner/tie, leaderboard, common room stats, finish, results return/timeout, leave during match and reconnect.
 
 A successful build does not prove that the Edge Function, SQL, Realtime policies or live multi-device flow are deployed and working. Report source/build checks, SQL/deployment state and real multi-client tests separately.
 

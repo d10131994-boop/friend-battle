@@ -169,3 +169,34 @@ Before changing Database:
 6. update affected module AI docs when the Database contract they rely on changes.
 
 Report source changes, build/lint, SQL/deployment and real integration tests separately. Never claim a database change is deployed or verified from a successful TypeScript build alone.
+
+
+## 10. Shared game availability catalog
+
+`public.common_game_availability` is the public read-only catalog used by
+both Solo and Multiplayer menus. Browser code reads it only through
+`database.getMany` from this module; menus must not import the raw Supabase
+client.
+
+The table is deliberately readable by `anon` and `authenticated` with RLS
+enabled and a SELECT-only policy. Do not grant browser roles INSERT, UPDATE
+or DELETE. Changes to game availability are configuration/deployment
+operations performed through approved SQL.
+
+The row contract is:
+- `game_id` (primary key);
+- `is_solo_enabled`, `is_multiplayer_enabled`;
+- `min_players`, `max_players`;
+- `is_enabled` (global switch);
+- `sort_order`;
+- `updated_at`.
+
+A game appears in a menu only when the global flag and that mode's flag are
+both true. The menu orders results by `sort_order`. The table is the
+availability source of truth; it does not imply that a corresponding game
+component or trusted server implementation is present in the current build.
+
+When adding a game, add its row to this table through the approved SQL
+workflow and update the menus' presentation/routing registry. The legacy
+`common_multiplayer_game_rules` table is not the source of truth for new
+features and must not be used for new game registration.

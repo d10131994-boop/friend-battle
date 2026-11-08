@@ -4,6 +4,7 @@ import DevMultiplayerSmokeTest from './multiplayer/DevSmokeTest'
 import { useReactionRush } from './games/ReactionRush/useReactionRush'
 import ReactionRush from './games/ReactionRush/ReactionRush'
 import BrainBattle from './games/BrainBattle/BrainBattle'
+import RockPaperScissorsSolo from './games/rockPaperScissors/RockPaperScissorsSolo'
 import DemocracyMergeSolo from './games/DemocracyMerge/DemocracyMergeSolo'
 import { MainMenu, MultiplayerRoomMenu, SoloRoomMenu } from './menus'
 import type { GameId } from './menus'
@@ -11,7 +12,7 @@ import BottomNavigation from './components/BottomNavigation/BottomNavigation'
 import PlayerProfile from './components/PlayerProfile/PlayerProfile'
 import { telegramUser, telegramInitData, telegramStartParam } from './services/telegram'
 
-type Screen = 'home' | 'solo-room' | 'reaction-game' | 'brain-game' | 'democracy-solo' | 'multiplayer-room' | 'profile'
+type Screen = 'home' | 'solo-room' | 'reaction-game' | 'brain-game' | 'rock-paper-scissors' | 'democracy-solo' | 'multiplayer-room' | 'profile'
 
 function getInviteCode(startParam: string | undefined): string | undefined {
   if (!startParam) return undefined
@@ -38,8 +39,13 @@ function App() {
       startSoloGame()
     } else if (gameId === 'brain-battle') {
       setScreen('brain-game')
-    } else {
+    } else if (gameId === 'rock-paper-scissors') {
+      setScreen('rock-paper-scissors')
+    } else if (gameId === 'democracy-merge') {
       setScreen('democracy-solo')
+    } else {
+      const unreachableGame: never = gameId
+      throw new Error(`Solo game route is not implemented: ${unreachableGame}`)
     }
   }
 
@@ -92,6 +98,8 @@ function App() {
       )}
 
       {screen === 'brain-game' && <BrainBattle onBack={() => setScreen('solo-room')} />}
+
+      {screen === 'rock-paper-scissors' && <RockPaperScissorsSolo onBack={() => setScreen('solo-room')} />}
 
       <div hidden={screen !== 'democracy-solo'}><DemocracyMergeSolo onBack={() => setScreen('solo-room')} /></div>
 
