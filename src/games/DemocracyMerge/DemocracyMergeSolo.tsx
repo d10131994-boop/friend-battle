@@ -151,7 +151,13 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       if (!active) return
       if (nextCheckpoint?.status === 'active' && Date.parse(nextCheckpoint.deadlineAt) <= Date.now()) {
         nextCheckpoint = finalizeSoloDeadline(nextCheckpoint, Date.now())
+        const previousBest = nextProfile.bestScore
         nextProfile = appendResult(nextProfile, nextCheckpoint)
+        if (nextCheckpoint.result && nextCheckpoint.result.score > previousBest) {
+          setRecordBroken(true)
+          setNewRecordToast(true)
+          window.setTimeout(() => setNewRecordToast(false), 3000)
+        }
         setGame(nextCheckpoint)
         setResumePrompt(false)
         persist(nextCheckpoint, nextProfile)
@@ -215,7 +221,13 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     if (!checkpoint) return
     if (Date.parse(checkpoint.deadlineAt) <= Date.now()) {
       const finalized = finalizeSoloDeadline(checkpoint, Date.now())
+      const brokeRecord = Boolean(finalized.result && finalized.result.score > profile.bestScore)
       const nextProfile = appendResult(profile, finalized)
+      if (brokeRecord) {
+        setRecordBroken(true)
+        setNewRecordToast(true)
+        window.setTimeout(() => setNewRecordToast(false), 3000)
+      }
       setCheckpoint(finalized)
       setGame(finalized)
       setProfile(nextProfile)
@@ -251,6 +263,11 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     if (!game || game.status !== 'active' || loading || now >= Date.parse(game.deadlineAt)) return
     try {
       const placed = placeSoloCharacter(game, cellIndex, Date.now())
+      if (placed.state.score > profile.bestScore && !recordBroken) {
+        setRecordBroken(true)
+        setNewRecordToast(true)
+        window.setTimeout(() => setNewRecordToast(false), 3000)
+      }
       if (placed.state.result) saveResult(placed.state)
       else saveCheckpoint(placed.state)
       const notifications = placed.rewards.map((reward) =>
@@ -267,7 +284,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     } catch (error) {
       setMessage(errorMessage(error))
     }
-  }, [game, loading, now, saveResult, saveCheckpoint])
+  }, [game, loading, now, profile.bestScore, recordBroken, saveResult, saveCheckpoint])
 
   const handleTool = useCallback((tool: ToolType, options: {
     cellIndex?: number
@@ -488,7 +505,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               <div><small>ОЧКИ</small><strong>{game.score}</strong></div>
               <div><small>МАКС. УРОВЕНЬ</small><strong>{game.maxLevel}</strong></div>
               <div><small>МОНЕТЫ</small><strong>🪙 {game.coins}</strong></div>
-              <div><small>РЕКОРД</small><strong>{profile.bestScore}</strong></div>
+              <div className={game.score > profile.bestScore ? 'dm-record-highlight' : ''}><small>РЕКОРД</small><strong>{Math.max(profile.bestScore, game.score)}</strong></div>
             </div>
             <button className="dm-primary-button" onClick={() => setShopOpen(true)} disabled={!canAct}>МАГАЗИН</button>
             <div className="dm-tools">
