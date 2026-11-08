@@ -226,6 +226,7 @@ DROP, TRUNCATE, массовый DELETE и другие необратимые �
 | `src/games/BrainBattle/ai-readme.md` | Реализация Brain Battle: solo и multiplayer, вопросы, серверные действия, scoring, результаты и известные ограничения. |
 | `src/games/ReactionRush/ai-readme.md` | Реализация Reaction Rush: solo и multiplayer, раунды, taps, scoring, leaderboard и известные ограничения. |
 | `src/games/NoCountIt/ai-readme.md` | Реализация NoCountIt: multiplayer-раунды, генерация сцен, серверная оценка, Storage и ограничения. |
+| `src/games/DemocracyMerge/ai-readme.md` | Реализация Democracy Merge: solo/multiplayer, поле и объединения, инструменты, экономика, серверные транзакции, история и дедлайны. |
 
 ### Порядок чтения
 
