@@ -63,6 +63,10 @@ function formatTime(milliseconds: number): string {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000))
   return `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`
 }
+function isPlayerDeparture(error: unknown): boolean {
+  return /not a current room member|not a room member|не участник комнаты|исключены из матча/i.test(errorMessage(error))
+}
+
 function createActionId(): string {
   return crypto.randomUUID()
 }
@@ -95,7 +99,7 @@ export default function DemocracyMergeMatch({
       setSnapshot(next)
       return next
     } catch (error) {
-      if (/not a current room member|not a room member|не участник/i.test(errorMessage(error))) {
+      if (isPlayerDeparture(error)) {
         onLeaveMatch()
       }
       throw error
@@ -111,7 +115,8 @@ export default function DemocracyMergeMatch({
         onRoomUpdate(next.room)
         setSnapshot(next)
       } catch (error) {
-        if (active) setMessage(errorMessage(error))
+        if (active && isPlayerDeparture(error)) onLeaveMatch()
+        else if (active) setMessage(errorMessage(error))
       }
     }
     void refresh()
@@ -122,7 +127,7 @@ export default function DemocracyMergeMatch({
       active = false
       if (interval !== null) window.clearInterval(interval)
     }
-  }, [initData, room.roomId, snapshot?.match?.status, onRoomUpdate])
+  }, [initData, room.roomId, snapshot?.match?.status, onRoomUpdate, onLeaveMatch])
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 250)
