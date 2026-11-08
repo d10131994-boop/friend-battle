@@ -1,6 +1,14 @@
 -- Democracy Merge V1 multiplayer persistence and player-departure lifecycle.
 -- Apply only after review and isolated-database testing; never apply to Production implicitly.
 
+
+INSERT INTO public.common_multiplayer_game_rules (game_id, min_players, max_players, is_enabled)
+VALUES ('democracy-merge', 2, 4, true)
+ON CONFLICT (game_id) DO UPDATE
+SET min_players = EXCLUDED.min_players,
+    max_players = EXCLUDED.max_players,
+    is_enabled = EXCLUDED.is_enabled;
+
 CREATE TABLE IF NOT EXISTS public.games_democracy_merge_matches (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   room_id uuid NOT NULL REFERENCES public.common_multiplayer_rooms(id) ON DELETE CASCADE,
