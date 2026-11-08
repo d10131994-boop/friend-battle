@@ -2,15 +2,7 @@
 -- This patch is intentionally game-scoped; shared Multiplayer tables and APIs
 -- are not modified.
 
-INSERT INTO public.common_multiplayer_game_rules (
-  game_id, min_players, max_players, is_enabled, updated_at
-)
-VALUES ('no-count-it', 2, 4, true, pg_catalog.now())
-ON CONFLICT (game_id) DO UPDATE SET
-  min_players = EXCLUDED.min_players,
-  max_players = EXCLUDED.max_players,
-  is_enabled = EXCLUDED.is_enabled,
-  updated_at = EXCLUDED.updated_at;
+-- Game availability and player limits are configured in common_game_availability.sql.
 
 CREATE TABLE IF NOT EXISTS public.games_no_count_it_matches (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
