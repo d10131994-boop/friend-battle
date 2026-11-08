@@ -405,7 +405,7 @@
   --dm-v3-cream: #fff1ca;
   color: var(--dm-v3-ink);
   background:
-    url('/democracy-merge/picture/v3/landscape-foreground.png') center bottom / 100% auto no-repeat,
+    url('/democracy-merge/picture/v3/landscape-foreground.png') center bottom / cover no-repeat,
     url('/democracy-merge/picture/v3/castle.png') right 8% bottom 16% / clamp(130px, 22vw, 320px) auto no-repeat,
     url('/democracy-merge/picture/v3/houses-village-alternative.png') left 6% bottom 13% / clamp(140px, 24vw, 340px) auto no-repeat,
     url('/democracy-merge/picture/v3/sky-clouds.png') center top / cover no-repeat,
@@ -439,31 +439,23 @@
   position: relative;
   max-width: 680px;
   gap: 2px;
-  padding: 17px;
+  padding: clamp(22px, 6.5vw, 46px);
   border: 0;
   border-radius: 12px;
-  background: #7ba640;
+  background: #7ba640 url('/democracy-merge/picture/v3/wooden-frame.webp') center / 100% 100% no-repeat;
   box-shadow: 0 7px 18px #3d4d2066;
 }
-.dm-solo-screen .dm-board::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: url('/democracy-merge/picture/v3/wooden-frame.webp') center / 100% 100% no-repeat;
-  pointer-events: none;
-  z-index: 2;
-}
-.dm-solo-screen .dm-cell {
+.dm-solo-screen .dm-solo-layout .dm-cell {
   border: 0;
   border-radius: 12%;
   background: #9bcf40 url('/democracy-merge/picture/v3/grass-01.webp') center / 100% 100% no-repeat;
   box-shadow: inset 0 2px 4px #fff6, inset 0 -3px 5px #426c2755;
 }
-.dm-solo-screen .dm-cell:nth-child(6n + 2) { background-image: url('/democracy-merge/picture/v3/grass-02.webp'); background-color: #79ad38; }
-.dm-solo-screen .dm-cell:nth-child(6n + 3) { background-image: url('/democracy-merge/picture/v3/grass-03.webp'); background-color: #8fbf45; }
-.dm-solo-screen .dm-cell:nth-child(6n + 4) { background-image: url('/democracy-merge/picture/v3/grass-04.webp'); background-color: #9ecb4e; }
-.dm-solo-screen .dm-cell:nth-child(6n + 5) { background-image: url('/democracy-merge/picture/v3/grass-05.webp'); background-color: #83b84c; }
-.dm-solo-screen .dm-cell:nth-child(6n) { background-image: url('/democracy-merge/picture/v3/grass-06.webp'); background-color: #a5d34f; }
+.dm-solo-screen .dm-solo-layout .dm-cell:nth-child(6n + 2) { background-image: url('/democracy-merge/picture/v3/grass-02.webp'); background-color: #79ad38; }
+.dm-solo-screen .dm-solo-layout .dm-cell:nth-child(6n + 3) { background-image: url('/democracy-merge/picture/v3/grass-03.webp'); background-color: #8fbf45; }
+.dm-solo-screen .dm-solo-layout .dm-cell:nth-child(6n + 4) { background-image: url('/democracy-merge/picture/v3/grass-04.webp'); background-color: #9ecb4e; }
+.dm-solo-screen .dm-solo-layout .dm-cell:nth-child(6n + 5) { background-image: url('/democracy-merge/picture/v3/grass-05.webp'); background-color: #83b84c; }
+.dm-solo-screen .dm-solo-layout .dm-cell:nth-child(6n) { background-image: url('/democracy-merge/picture/v3/grass-06.webp'); background-color: #a5d34f; }
 .dm-solo-screen .dm-tool-button,
 .dm-solo-screen .dm-primary-button,
 .dm-solo-screen .dm-secondary-button {
@@ -481,7 +473,7 @@
 }
 @media (max-width: 600px) {
   .dm-solo-screen { padding: 8px; }
-  .dm-solo-screen .dm-board { padding: 10px; gap: 1px; }
+  .dm-solo-screen .dm-board { padding: clamp(17px, 6vw, 32px); gap: 1px; }
   .dm-solo-screen .dm-current-card strong { width: 68px; height: 68px; }
 }
 
@@ -533,8 +525,24 @@
 @media (max-width: 700px) {
   .dm-solo-screen {
     background:
-      url('/democracy-merge/picture/v3/landscape-foreground.png') center bottom / 100% auto no-repeat,
+      url('/democracy-merge/picture/v3/landscape-foreground.png') center bottom / cover no-repeat,
       url('/democracy-merge/picture/v3/sky-clouds.png') center top / cover no-repeat,
       linear-gradient(180deg, #8cd9ff, #c6edff 28%, #6fae49);
   }
+}
+
+/* Issue 004: ensure portrait artwork is visible inside the decorative preview frame. */
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame > .dm-character-portrait {
+  display: grid;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+}
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame .dm-character-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 1;
 }
