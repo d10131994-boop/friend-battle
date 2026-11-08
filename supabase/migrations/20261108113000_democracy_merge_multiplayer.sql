@@ -1269,6 +1269,7 @@ BEGIN
     END IF;
     RETURN pg_catalog.jsonb_build_object(
       'replayed', false,
+      'matchId', v_match.id,
       'startedAt', v_pending.started_at,
       'expiresAt', v_pending.expires_at
     );
@@ -1282,6 +1283,7 @@ BEGIN
 
   RETURN pg_catalog.jsonb_build_object(
     'replayed', false,
+    'matchId', v_match.id,
     'startedAt', v_now,
     'expiresAt', v_now + interval '3 minutes'
   );
