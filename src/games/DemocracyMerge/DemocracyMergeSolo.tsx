@@ -599,7 +599,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <div><small>ЛУЧШИЙ РЕЗУЛЬТАТ</small><strong>{profile.bestScore}</strong></div>
             <div><small>МАКС. УРОВЕНЬ</small><strong>{profile.maxLevel}</strong></div>
           </div>
-          <button className="dm-primary-button" onClick={startNewGame}>НОВАЯ ИГРА</button>
           <button className="dm-secondary-button" onClick={() => setHistoryOpen(true)}>ИСТОРИЯ ПАРТИЙ</button>
           <button className="dm-secondary-button" onClick={leaveToMenu}>В ГЛАВНОЕ МЕНЮ</button>
         </section>
