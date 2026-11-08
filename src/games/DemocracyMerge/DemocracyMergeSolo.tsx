@@ -616,7 +616,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               <h3>ИНСТРУМЕНТЫ</h3>
               {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
                 <button key={tool} title={toolDescriptions[tool]} className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
-                  onClick={() => selectTool(tool)} disabled={!canAct || game.inventory[tool] < 1}>
+                  onClick={() => selectTool(tool)} aria-pressed={selectedTool === tool} aria-label={`${toolLabels[tool]}. В инвентаре ${game.inventory[tool]} из 3. Цена покупки ${TOOL_PRICES[tool]} монет. ${toolDescriptions[tool]}`} disabled={!canAct || game.inventory[tool] < 1}>
                   <span className="dm-tool-icon" aria-hidden="true"><img src={`/democracy-merge/tools/${tool}.svg`} alt="" draggable={false} /></span><span className="dm-tool-label">{toolLabels[tool]}</span><strong>{game.inventory[tool]}/3 · 🪙 {TOOL_PRICES[tool]}</strong>
                 </button>
               ))}
@@ -631,7 +631,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               <button onClick={() => setBoardZoom((zoom) => Math.max(0.7, Math.round((zoom - 0.1) * 10) / 10))} aria-label="Уменьшить поле">−</button>
               <span>{Math.round(boardZoom * 100)}%</span>
               <button onClick={() => setBoardZoom((zoom) => Math.min(1.6, Math.round((zoom + 0.1) * 10) / 10))} aria-label="Увеличить поле">+</button>
-              <button onClick={() => setBoardZoom(1)}>СБРОС</button>
+              <button onClick={() => setBoardZoom(1)} aria-label="Сбросить масштаб поля до 100 процентов">СБРОС</button>
             </div>
             <div className="dm-board-viewport" style={{ cursor: boardZoom > 1 ? 'grab' : 'auto' }} onTouchStart={handleBoardTouchStart} onTouchMove={handleBoardTouchMove} onTouchEnd={handleBoardTouchEnd} onMouseDown={handleBoardMouseDown} onMouseMove={handleBoardMouseMove} onMouseUp={handleBoardMouseUp} onMouseLeave={handleBoardMouseUp} onClickCapture={handleBoardClickCapture}>
             <div className="dm-board" style={{ transform: `scale(${boardZoom})` }} aria-label="Игровое поле 6 на 6">
@@ -646,7 +646,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               ))}
             </div>
             </div>
-            <div className="dm-board-footer">{selectedTool ? `Выбран инструмент: ${toolLabels[selectedTool]}` : 'Выбери свободную клетку для размещения персонажа.'}</div>
+            <div className="dm-board-footer" role="status" aria-live="polite">{selectedTool ? `Выбран инструмент: ${toolLabels[selectedTool]}` : 'Выбери свободную клетку для размещения персонажа.'}</div>
           </section>
           <aside className="dm-side-panel">
             <h3>СТАТИСТИКА</h3>
