@@ -8,6 +8,7 @@ The current game directories use PascalCase:
 - `src/games/BrainBattle/`
 - `src/games/ReactionRush/`
 - `src/games/NoCountIt/`
+- `src/games/DemocracyMerge/`
 
 Each game currently owns its screens/components, game-specific state and logic, and (where implemented) its game-specific multiplayer UI and data contract. There is no shared generic game engine or game UI framework in `src/games` that a new game must extend. Do not invent a global registry, base class or generic game controller without a concrete requirement.
 
@@ -90,7 +91,7 @@ Use the public service methods for:
 - `heartbeat(auth, { roomId })`;
 - `getRoomToken(auth, { roomId })`.
 
-The room contract and known implementation discrepancies are documented in `src/multiplayer/ai-readme.md`. In particular, the intended flow is create an unselected room, then let the host select a game; the checked-in lifecycle SQL files currently disagree about this and about player capacity. Do not duplicate or locally work around those common lifecycle operations in a game. A fix belongs in a separately scoped Multiplayer/SQL task.
+The current shared room contract is documented in `src/multiplayer/ai-readme.md`. The canonical `universal_lobby_reaction_rush.sql` flow creates an unselected room, lets the host select an enabled game, enforces room capacity (2–4), and checks the selected game's registered min/max when starting. The obsolete competing `multiplayer_game_lifecycle.sql` definition was removed; do not restore or apply an alternate definition of `multiplayer_execute_action`.
 
 For a mounted room screen, use `createMultiplayerRoomSession` to own the shared room JWT, heartbeat and private Realtime watcher. Stop the session when the user leaves or the screen unmounts. The room snapshot is canonical; Broadcast is only an invalidation signal.
 
@@ -141,7 +142,7 @@ Each game must define its actual minimum and maximum player count. The current S
 
 The current game SQL examples register their rules in this table. The intended shared room capacity is at most four players, while each game's own minimum may be higher than one. Multiplayer should enforce the selected game's registered limits when starting a match.
 
-The current checked-in `multiplayer_game_lifecycle.sql` replacement does not consult the rules registry and validates `maxPlayers` as 1–100, unlike `universal_lobby_reaction_rush.sql`. This is a known implementation conflict, not a reason for a game to introduce its own room capacity enforcement. Document it and keep it out of unrelated game changes.
+The canonical shared lifecycle is `universal_lobby_reaction_rush.sql`. The historical `multiplayer_game_lifecycle.sql` alternative was removed because it conflicted with the canonical RPC; its maintenance helpers were retained separately in `multiplayer_room_maintenance.sql`. Do not recreate the old file or introduce a competing RPC definition.
 
 ## 7. Solo mode
 
