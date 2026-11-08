@@ -3,7 +3,10 @@ name: CI
 on:
   push:
     branches:
-      - '**/*-AI'
+      - main
+      - 'friend-battle-*-release'
+      - 'friend-battle-*/**'
+      - '!**/*-AI'
   pull_request:
     branches:
       - main
