@@ -1,6 +1,8 @@
 # Friend Battle technical audit
 
-Audit snapshot: 2026-11-06. This document describes the integrated release branch and the observed Production state before task GAMES/COMMON issue-011. The rematch removal is being developed separately and is not reflected in this historical Production snapshot.
+Audit snapshot: 2026-11-06. This document describes the integrated release branch and the observed Production state before task GAMES/COMMON issue-011. It is a historical snapshot, not a live audit of the 2026-11-08 working branch.
+
+Since that snapshot, the app-wide rematch removal was applied to Production. The Democracy Merge work in release 04 is branch-only: its two SQL migrations, catalog registration and updated Edge Functions have not been applied to Production. Recheck the live schema and migration history before treating any finding below as current.
 
 ## Release state
 
