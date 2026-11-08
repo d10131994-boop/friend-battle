@@ -65,9 +65,14 @@ jobs:
           deno check --node-modules-dir=auto supabase/functions/brain-battle/index.ts
           deno check --node-modules-dir=auto supabase/functions/no-count-it/index.ts
           deno check --node-modules-dir=auto supabase/functions/rock-paper-scissors/index.ts
+          deno check --node-modules-dir=auto supabase/functions/democracy-merge/index.ts
           deno test supabase/functions/_shared/errors_test.ts
           deno test supabase/functions/rock-paper-scissors/gameRules_test.ts
           deno test supabase/functions/brain-battle/questions_test.ts
+          deno test supabase/functions/_shared/democracy_merge_engine_test.ts
+          deno test supabase/functions/_shared/democracy_merge_tools_test.ts
+          deno test supabase/functions/_shared/democracy_merge_events_test.ts
+          deno test supabase/functions/_shared/democracy_merge_solo_test.ts
 
   sql-syntax:
     name: Parse PostgreSQL SQL patches
@@ -90,7 +95,7 @@ jobs:
           from pathlib import Path
           from pglast import parse_sql
 
-          files = sorted([*Path("supabase/sql").rglob("*.sql"), *Path("supabase/tests").rglob("*.sql")])
+          files = sorted([*Path("supabase/sql").rglob("*.sql"), *Path("supabase/migrations").rglob("*.sql"), *Path("supabase/tests").rglob("*.sql")])
           if not files:
               raise SystemExit("No SQL files found under supabase/sql or supabase/tests")
 
@@ -109,7 +114,7 @@ jobs:
           start = shared_sql.index("CREATE OR REPLACE FUNCTION public.multiplayer_execute_action")
           end = shared_sql.index("CREATE OR REPLACE FUNCTION public.reaction_rush_start_match", start)
           shared_rpc = shared_sql[start:end]
-          forbidden = ("games_reaction_rush_", "games_brain_battle_")
+          forbidden = ("games_",)
           for table_prefix in forbidden:
               if table_prefix in shared_rpc:
                   failed = True

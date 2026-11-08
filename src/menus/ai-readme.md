@@ -82,3 +82,11 @@ The Solo routing in `src/App.tsx` is intentionally exhaustive: when a new
 Solo game ID is added to `SoloGameId`, TypeScript must fail the build until
 its explicit screen route is implemented. Do not replace this with a default
 route to an existing game.
+
+
+## Democracy Merge integration
+
+- Solo mode is registered in `SoloRoomMenu` and routed by `src/App.tsx` to `DemocracyMergeSolo`. The solo component owns its versioned local checkpoint and history; it must not use the shared Multiplayer room lifecycle.
+- Multiplayer mode is registered as `democracy-merge` in the room game selector and dispatched to `DemocracyMergeMatch`. The game receives the existing room and common menu callbacks; it does not create another room or manage common readiness.
+- A normal active-match departure uses the trusted Democracy Merge Edge Function and the pending shared `leave_active_match` SQL action. The generic room-menu leave operation is deliberately rejected for Democracy Merge while playing.
+- If the final active participant leaves, the room becomes cancelled but completed players must remain on the game results screen to read their immutable results. `MultiplayerRoomMenu` keeps the Democracy Merge game screen mounted for a cancelled room with a started session; the game UI then offers the main-menu exit.

@@ -27,3 +27,10 @@ This directory is reserved for database-level integration tests. Tests here must
 - Database integration tests must use an ephemeral/local database and synthetic test identities.
 - Never place Production credentials or real Telegram initData in test fixtures.
 - A passing build, SQL parser, or helper unit test does not prove that the deployed Production database or multi-device Telegram flow works.
+
+
+## Democracy Merge lifecycle coverage
+
+The isolated `democracy_merge_lifecycle.sql` test covers match lifecycle, five-minute disconnect handling, surrender, room closure, results retention, and history. It must not be run against Production.
+
+- `leave_active_match` is callable only by a trusted game server, is scoped to Democracy Merge, removes the specified room member, transfers host by earliest `joined_at`, and preserves the current playing session for remaining members. A final departure cancels an empty room. The Democracy Merge delete trigger records the game-owned `left` state in the same transaction. The game-owned disconnect-expiry job locks the room first, rechecks each player's last heartbeat, and uses the same trusted departure path after five minutes.
