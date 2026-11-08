@@ -281,6 +281,28 @@ BEGIN
     RAISE EXCEPTION 'Completed match must keep the shared room available for results';
   END IF;
 
+  -- Personal history is capped and deletable without changing independent aggregates.
+  IF (SELECT count(*) FROM public.games_democracy_merge_player_history WHERE match_id=v_match_id) <> 2 THEN
+    RAISE EXCEPTION 'Both completed and surrendered players must receive history records';
+  END IF;
+  v_snapshot := public.democracy_merge_get_personal_history(v_host || '_actions');
+  IF v_snapshot->'stats'->>'totalGames' <> '1'
+     OR jsonb_array_length(v_snapshot->'history') <> 1
+     OR v_snapshot->'history'->0->>'rank' <> '1' THEN
+    RAISE EXCEPTION 'Personal history and aggregate stats must include the completed match';
+  END IF;
+  v_rejected := public.democracy_merge_delete_history_record(
+    v_host || '_actions',
+    (v_snapshot->'history'->0->>'id')::uuid
+  );
+  IF NOT v_rejected THEN RAISE EXCEPTION 'The owner must be able to delete their own history entry'; END IF;
+  v_snapshot := public.democracy_merge_get_personal_history(v_host || '_actions');
+  IF jsonb_array_length(v_snapshot->'history') <> 0
+     OR v_snapshot->'stats'->>'totalGames' <> '1'
+     OR v_snapshot->'stats'->>'totalPoints' <> '0' THEN
+    RAISE EXCEPTION 'Deleting history must not change aggregate statistics';
+  END IF;
+
 
   -- The 30-minute deadline wins over the five-minute disconnect expiry.
   v_room := public.multiplayer_execute_action(
@@ -315,6 +337,36 @@ BEGIN
   UPDATE public.common_multiplayer_players
   SET last_seen_at = now() - interval '6 minutes'
   WHERE room_id=v_room_id AND user_id=v_host || '_deadline';
+
+  -- A placement request started before the deadline may finish; a new one may not.
+  v_state := jsonb_build_object(
+    'actionStartedAt', (now() - interval '2 seconds')::text,
+    'status', 'active',
+    'board', jsonb_set(v_board, '{0}', '{"kind":"character","level":1}'::jsonb, true),
+    'turnNumber', 1, 'score', 0, 'maxLevel', 1, 'mergeCount', 0,
+    'chainReactions', 0, 'toolsUsed', 0, 'coins', 200,
+    'inventory', '{"saw":0,"storage":0,"swap":0,"replace":0}'::jsonb,
+    'storage', 'null'::jsonb, 'level6MergeCount', 0, 'result', 'null'::jsonb
+  );
+  PERFORM public.democracy_merge_commit_player_action(
+    v_room_id, v_match_id, v_host || '_deadline', gen_random_uuid(),
+    'place_character', 0, v_state
+  );
+  v_state := jsonb_set(v_state, '{actionStartedAt}', to_jsonb((now() + interval '1 second')::text));
+  v_state := jsonb_set(v_state, '{board}', jsonb_set(v_board, '{0}', '{"kind":"character","level":1}'::jsonb, true));
+  v_state := jsonb_set(v_state, '{turnNumber}', '2'::jsonb);
+  v_rejected := false;
+  BEGIN
+    PERFORM public.democracy_merge_commit_player_action(
+      v_room_id, v_match_id, v_host || '_deadline', gen_random_uuid(),
+      'place_character', 1, v_state
+    );
+  EXCEPTION WHEN SQLSTATE '55000' THEN
+    v_rejected := true;
+  END;
+  IF NOT v_rejected THEN
+    RAISE EXCEPTION 'A new placement started after the deadline must be rejected';
+  END IF;
 
   v_expired := public.democracy_merge_expire_disconnected_players();
   IF v_expired <> 0 THEN
