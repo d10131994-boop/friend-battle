@@ -37,8 +37,27 @@ export function SoloRoomMenu({ onBack, onStart }: SoloRoomMenuProps) {
   }, [])
 
   useEffect(() => {
-    void refreshGames()
-  }, [refreshGames])
+    let active = true
+    loadGameAvailability('solo')
+      .then((availableGames) => {
+        if (!active) return
+        setGames(availableGames)
+        setGameId((current) =>
+          availableGames.some((game) => game.game_id === current)
+            ? current
+            : (availableGames[0]?.game_id as GameId | undefined) ?? '',
+        )
+      })
+      .catch((loadError: unknown) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : 'Не удалось загрузить список игр.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   return (
     <main className="app">
