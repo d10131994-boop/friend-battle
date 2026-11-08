@@ -365,7 +365,10 @@ Deno.serve(async (req: Request) => {
       p_room_id: roomId,
       p_user_id: userId,
     });
-    if (error) return fail("Не удалось получить состояние матча", 409);
+    if (error) {
+      if (error.code === "42501") return fail("Вы больше не участник комнаты и исключены из матча.", 403);
+      return fail("Не удалось получить состояние матча", 409);
+    }
     return respond(data);
   } catch (error) {
     console.error("Democracy Merge function error:", error instanceof Error ? error.message : "Unknown error");
