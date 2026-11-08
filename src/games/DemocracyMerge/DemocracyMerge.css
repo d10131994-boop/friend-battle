@@ -478,3 +478,47 @@
   .dm-solo-screen .dm-board { padding: 10px; gap: 1px; }
   .dm-solo-screen .dm-current-card strong { width: 68px; height: 68px; }
 }
+
+
+/* V3 artwork placement: keep controls functional while assets are staged. */
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame {
+  display: grid;
+  place-items: center;
+  width: clamp(70px, 13vw, 108px);
+  height: clamp(70px, 13vw, 108px);
+  padding: 14%;
+  border: 0;
+  border-radius: 0;
+  background: url('/democracy-merge/v3/next-character-frame.webp') center / contain no-repeat;
+  box-shadow: none;
+}
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame:has(.dm-character-art) {
+  width: clamp(70px, 13vw, 108px);
+  height: clamp(70px, 13vw, 108px);
+  background: url('/democracy-merge/v3/next-character-frame.webp') center / contain no-repeat;
+}
+.dm-solo-screen .dm-solo-layout .dm-tools {
+  background-image: url('/democracy-merge/v3/tools-panel.webp'), linear-gradient(#b87b39, #77421f);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+.dm-solo-screen .dm-solo-layout .dm-tool-icon img {
+  width: 48px;
+  height: 42px;
+  max-width: 90%;
+  object-fit: contain;
+}
+.dm-solo-screen .dm-v3-shop-tool-icon {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+.dm-solo-screen .dm-shop-row > span { display: inline-flex; align-items: center; gap: 6px; }
+.dm-solo-screen .dm-cell:focus-visible { outline: 3px solid #fff3aa; outline-offset: -3px; }
+.dm-solo-screen .dm-cell-selected { outline: 3px solid #ffdc59; outline-offset: -3px; }
+@media (max-width: 420px) {
+  .dm-solo-screen .dm-solo-layout .dm-tools { padding: 7px 4px; gap: 3px; }
+  .dm-solo-screen .dm-solo-layout .dm-tool-icon img { width: 36px; height: 34px; }
+}
