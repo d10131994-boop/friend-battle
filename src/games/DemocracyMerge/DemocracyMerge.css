@@ -450,14 +450,14 @@
 .dm-solo-screen .dm-cell {
   border: 0;
   border-radius: 12%;
-  background: none center / 100% 100% no-repeat, #9bcf40;
+  background: #9bcf40 url('/democracy-merge/picture/v3/grass-01.webp') center / 100% 100% no-repeat;
   box-shadow: inset 0 2px 4px #fff6, inset 0 -3px 5px #426c2755;
 }
-.dm-solo-screen .dm-cell:nth-child(6n + 2) { background-image: none; background-color: #79ad38; }
-.dm-solo-screen .dm-cell:nth-child(6n + 3) { background-image: none; background-color: #8fbf45; }
-.dm-solo-screen .dm-cell:nth-child(6n + 4) { background-image: none; background-color: #9ecb4e; }
-.dm-solo-screen .dm-cell:nth-child(6n + 5) { background-image: none; background-color: #83b84c; }
-.dm-solo-screen .dm-cell:nth-child(6n) { background-image: none; background-color: #a5d34f; }
+.dm-solo-screen .dm-cell:nth-child(6n + 2) { background-image: url('/democracy-merge/picture/v3/grass-02.webp'); background-color: #79ad38; }
+.dm-solo-screen .dm-cell:nth-child(6n + 3) { background-image: url('/democracy-merge/picture/v3/grass-03.webp'); background-color: #8fbf45; }
+.dm-solo-screen .dm-cell:nth-child(6n + 4) { background-image: url('/democracy-merge/picture/v3/grass-04.webp'); background-color: #9ecb4e; }
+.dm-solo-screen .dm-cell:nth-child(6n + 5) { background-image: url('/democracy-merge/picture/v3/grass-05.webp'); background-color: #83b84c; }
+.dm-solo-screen .dm-cell:nth-child(6n) { background-image: url('/democracy-merge/picture/v3/grass-06.webp'); background-color: #a5d34f; }
 .dm-solo-screen .dm-tool-button,
 .dm-solo-screen .dm-primary-button,
 .dm-solo-screen .dm-secondary-button {
