@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { TouchEvent as ReactTouchEvent } from 'react'
 import { telegramUser } from '../../services/telegram'
 import type { MultiplayerRoom } from '../../multiplayer'
 import {
@@ -101,6 +102,9 @@ export default function DemocracyMergeMatch({
   const [selectedHistoryRecord, setSelectedHistoryRecord] = useState<DemocracyMergeHistoryResponse['history'][number] | null>(null)
   const [deleteHistoryId, setDeleteHistoryId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [boardZoom, setBoardZoom] = useState(1)
+  const pinchStartDistanceRef = useRef<number | null>(null)
+  const pinchStartZoomRef = useRef(1)
   const [visualEvents, setVisualEvents] = useState<DemocracyMergeActionResponse['visualEvents']>(null)
   const [rewardToast, setRewardToast] = useState<string[]>([])
   const visualEventTimeoutRef = useRef<number | null>(null)
@@ -386,6 +390,26 @@ export default function DemocracyMergeMatch({
 
   const animationClasses = `${settings.animationsEnabled ? '': 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
 
+  const touchDistance = (touches: React.TouchList) => Math.hypot(
+    touches[0].clientX - touches[1].clientX,
+    touches[0].clientY - touches[1].clientY,
+  )
+  const handleBoardTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length === 2) {
+      pinchStartDistanceRef.current = touchDistance(event.touches)
+      pinchStartZoomRef.current = boardZoom
+    }
+  }
+  const handleBoardTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length === 2 && pinchStartDistanceRef.current) {
+      event.preventDefault()
+      const factor = touchDistance(event.touches) / pinchStartDistanceRef.current
+      setBoardZoom(Math.min(1.6, Math.max(0.7, pinchStartZoomRef.current * factor)))
+    }
+  }
+  const handleBoardTouchEnd = () => { pinchStartDistanceRef.current = null }
+
+
   if (!match || !me) {
     return (
       <main className={`app dm-match-shell ${animationClasses}`}>
@@ -506,7 +530,14 @@ export default function DemocracyMergeMatch({
           </aside>
 
           <section className="dm-board-section">
-            <div className="dm-board" aria-label="Игровое поле 6 на 6">
+            <div className="dm-board-zoom-controls">
+              <button onClick={() => setBoardZoom((zoom) => Math.max(0.7, Math.round((zoom - 0.1) * 10) / 10))} aria-label="Уменьшить поле">−</button>
+              <span>{Math.round(boardZoom * 100)}%</span>
+              <button onClick={() => setBoardZoom((zoom) => Math.min(1.6, Math.round((zoom + 0.1) * 10) / 10))} aria-label="Увеличить поле">+</button>
+              <button onClick={() => setBoardZoom(1)}>СБРОС</button>
+            </div>
+            <div className="dm-board-viewport" onTouchStart={handleBoardTouchStart} onTouchMove={handleBoardTouchMove} onTouchEnd={handleBoardTouchEnd}>
+            <div className="dm-board" style={{ transform: `scale(${boardZoom})` }} aria-label="Игровое поле 6 на 6">
               {board.map((cell, index) => {
                 const mergeIndex = visualEvents?.kind === 'placement'
                   ? visualEvents.merges?.findIndex((merge) => merge.cells.includes(index)) ?? -1
@@ -530,6 +561,7 @@ export default function DemocracyMergeMatch({
                 </button>
                 )
               })}
+            </div>
             </div>
             <div className="dm-board-footer">
               {me.status !== 'active'
