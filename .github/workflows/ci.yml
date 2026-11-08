@@ -116,6 +116,20 @@ jobs:
                   failed = True
                   print(f"ERROR shared Multiplayer RPC references game-owned table prefix: {table_prefix}")
 
+          # The release-04 active-departure migration also replaces the shared
+          # RPC. Keep its function body game-agnostic; game-specific policy is
+          # installed later through the heartbeat guard hook.
+          shared_migration_path = Path("supabase/migrations/20261108100000_multiplayer_active_match_departure.sql")
+          if shared_migration_path.exists():
+              shared_migration_sql = shared_migration_path.read_text(encoding="utf-8")
+              migration_start = shared_migration_sql.index("CREATE OR REPLACE FUNCTION public.multiplayer_execute_action")
+              migration_end = shared_migration_sql.index("CREATE OR REPLACE FUNCTION public.multiplayer_room_snapshot", migration_start)
+              shared_migration_rpc = shared_migration_sql[migration_start:migration_end]
+              for table_prefix in forbidden:
+                  if table_prefix in shared_migration_rpc:
+                      failed = True
+                      print(f"ERROR shared Multiplayer migration references game-owned table prefix: {table_prefix}")
+
           if failed:
               raise SystemExit(1)
           PY
