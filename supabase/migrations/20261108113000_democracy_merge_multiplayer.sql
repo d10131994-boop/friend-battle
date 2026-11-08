@@ -941,14 +941,15 @@ DECLARE
 BEGIN
   WITH participants AS (
     SELECT p.*,
-      pg_catalog.rank() OVER (ORDER BY p.score DESC, p.max_level DESC) AS player_rank,
-      pg_catalog.count(*) FILTER (
-        WHERE p.status IN ('completed', 'surrendered')
-          AND pg_catalog.rank() OVER (ORDER BY p.score DESC, p.max_level DESC) = 1
-      ) OVER () AS first_place_count
+      pg_catalog.rank() OVER (ORDER BY p.score DESC, p.max_level DESC) AS player_rank
     FROM public.games_democracy_merge_match_players p
     WHERE p.match_id = p_match_id
       AND p.status IN ('completed', 'surrendered')
+  ),
+  firsts AS (
+    SELECT count(*)::integer AS first_place_count
+    FROM participants
+    WHERE player_rank = 1
   ),
   inserted AS (
     INSERT INTO public.games_democracy_merge_player_history(
@@ -979,38 +980,32 @@ BEGIN
     SELECT
       i.user_id,
       count(*)::integer AS games,
-      count(*) FILTER (WHERE i.player_rank = 1 AND firsts.first_place_count = 1)::integer AS wins,
+      count(*) FILTER (WHERE i.player_rank = 1 AND f.first_place_count = 1)::integer AS wins,
       count(*) FILTER (WHERE i.player_rank > 1)::integer AS losses,
-      count(*) FILTER (WHERE i.player_rank = 1 AND firsts.first_place_count > 1)::integer AS draws,
+      count(*) FILTER (WHERE i.player_rank = 1 AND f.first_place_count > 1)::integer AS draws,
       sum(i.score)::bigint AS points,
       max(i.score)::bigint AS best_score,
       max(i.max_level)::smallint AS max_level
     FROM inserted i
-    CROSS JOIN LATERAL (
-      SELECT count(*)::integer AS first_place_count
-      FROM participants firsts
-      WHERE firsts.player_rank = 1
-    ) firsts
+    CROSS JOIN firsts f
     GROUP BY i.user_id
-  ),
-  updated AS (
-    INSERT INTO public.games_democracy_merge_player_stats(
-      user_id, total_games, wins, losses, draws, total_points, best_score, max_level, updated_at
-    )
-    SELECT user_id, games, wins, losses, draws, points, best_score, max_level, pg_catalog.clock_timestamp()
-    FROM deltas
-    ON CONFLICT (user_id) DO UPDATE SET
-      total_games = public.games_democracy_merge_player_stats.total_games + EXCLUDED.total_games,
-      wins = public.games_democracy_merge_player_stats.wins + EXCLUDED.wins,
-      losses = public.games_democracy_merge_player_stats.losses + EXCLUDED.losses,
-      draws = public.games_democracy_merge_player_stats.draws + EXCLUDED.draws,
-      total_points = public.games_democracy_merge_player_stats.total_points + EXCLUDED.total_points,
-      best_score = GREATEST(public.games_democracy_merge_player_stats.best_score, EXCLUDED.best_score),
-      max_level = GREATEST(public.games_democracy_merge_player_stats.max_level, EXCLUDED.max_level),
-      updated_at = EXCLUDED.updated_at
-    RETURNING user_id
   )
-  SELECT count(*)::integer INTO v_inserted FROM inserted;
+  INSERT INTO public.games_democracy_merge_player_stats(
+    user_id, total_games, wins, losses, draws, total_points, best_score, max_level, updated_at
+  )
+  SELECT user_id, games, wins, losses, draws, points, best_score, max_level, pg_catalog.clock_timestamp()
+  FROM deltas
+  ON CONFLICT (user_id) DO UPDATE SET
+    total_games = public.games_democracy_merge_player_stats.total_games + EXCLUDED.total_games,
+    wins = public.games_democracy_merge_player_stats.wins + EXCLUDED.wins,
+    losses = public.games_democracy_merge_player_stats.losses + EXCLUDED.losses,
+    draws = public.games_democracy_merge_player_stats.draws + EXCLUDED.draws,
+    total_points = public.games_democracy_merge_player_stats.total_points + EXCLUDED.total_points,
+    best_score = GREATEST(public.games_democracy_merge_player_stats.best_score, EXCLUDED.best_score),
+    max_level = GREATEST(public.games_democracy_merge_player_stats.max_level, EXCLUDED.max_level),
+    updated_at = EXCLUDED.updated_at;
+
+  GET DIAGNOSTICS v_inserted = ROW_COUNT;
 
   DELETE FROM public.games_democracy_merge_player_history h
   WHERE h.user_id IN (
