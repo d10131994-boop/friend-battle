@@ -123,6 +123,9 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const [rewardToast, setRewardToast] = useState<string[]>([])
   const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [boardZoom, setBoardZoom] = useState(1)
+  const pinchStartDistanceRef = useRef<number | null>(null)
+  const pinchStartZoomRef = useRef(1)
   const { settings, updateSettings } = useDemocracyMergeSettings()
   const notificationTimeoutRef = useRef<number | null>(null)
   const animationTimeoutRef = useRef<number | null>(null)
@@ -423,6 +426,26 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const isNewRecord = recordBroken
   const animationClasses = `${settings.animationsEnabled ? '' : 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
 
+  const touchDistance = (touches: React.TouchList) => Math.hypot(
+    touches[0].clientX - touches[1].clientX,
+    touches[0].clientY - touches[1].clientY,
+  )
+  const handleBoardTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length === 2) {
+      pinchStartDistanceRef.current = touchDistance(event.touches)
+      pinchStartZoomRef.current = boardZoom
+    }
+  }
+  const handleBoardTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length === 2 && pinchStartDistanceRef.current) {
+      event.preventDefault()
+      const factor = touchDistance(event.touches) / pinchStartDistanceRef.current
+      setBoardZoom(Math.min(1.6, Math.max(0.7, pinchStartZoomRef.current * factor)))
+    }
+  }
+  const handleBoardTouchEnd = () => { pinchStartDistanceRef.current = null }
+
+
   if (loading) {
     return <main className={`app dm-match-shell ${animationClasses}`}><div className="dm-waiting">Загружаем одиночную игру…</div></main>
   }
@@ -561,7 +584,14 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
           </aside>
 
           <section className="dm-board-section">
-            <div className="dm-board" aria-label="Игровое поле 6 на 6">
+            <div className="dm-board-zoom-controls">
+              <button onClick={() => setBoardZoom((zoom) => Math.max(0.7, Math.round((zoom - 0.1) * 10) / 10))} aria-label="Уменьшить поле">−</button>
+              <span>{Math.round(boardZoom * 100)}%</span>
+              <button onClick={() => setBoardZoom((zoom) => Math.min(1.6, Math.round((zoom + 0.1) * 10) / 10))} aria-label="Увеличить поле">+</button>
+              <button onClick={() => setBoardZoom(1)}>СБРОС</button>
+            </div>
+            <div className="dm-board-viewport" onTouchStart={handleBoardTouchStart} onTouchMove={handleBoardTouchMove} onTouchEnd={handleBoardTouchEnd}>
+            <div className="dm-board" style={{ transform: `scale(${boardZoom})` }} aria-label="Игровое поле 6 на 6">
               {game.board.map((cell, index) => (
                 <button key={index} className={`dm-cell ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
                   aria-label={cell === null ? `Свободная клетка ${index + 1}` : cell.kind === 'character'
@@ -571,6 +601,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
                     : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}>{obstacleIcons[cell.obstacleType]}</span>}
                 </button>
               ))}
+            </div>
             </div>
             <div className="dm-board-footer">{selectedTool ? `Выбран инструмент: ${toolLabels[selectedTool]}` : 'Выбери свободную клетку для размещения персонажа.'}</div>
           </section>
