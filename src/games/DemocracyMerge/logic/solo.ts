@@ -167,7 +167,7 @@ export function placeSoloCharacter(
   cellIndex: number,
   now = Date.now(),
   random: () => number = Math.random,
-): { state: SoloGameState; rewards: MergeReward[] } {
+): { state: SoloGameState; rewards: MergeReward[]; merges: ReturnType<typeof placeCharacter>['merges']; placementCellIndex: number; obstacleCellIndex: number | null } {
   assertActiveAndBeforeDeadline(source, now)
   const current = currentSoloCharacter(source)
   if (!current) throw new Error('The solo character sequence is exhausted.')
