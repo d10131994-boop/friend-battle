@@ -116,3 +116,9 @@
 .dm-results-table .dm-rank-bronze td:first-child{color:#c88a60;font-weight:900}
 
 .dm-purchase-reason{grid-column:1/-1;color:#d6b56a;font-size:10px}
+
+.dm-board-viewport{width:100%;max-width:620px;margin:0 auto;overflow:auto;overscroll-behavior:contain;touch-action:pan-x pan-y}
+.dm-board{transform-origin:top left}
+.dm-board-zoom-controls{display:flex;align-items:center;justify-content:flex-end;gap:6px;max-width:620px;margin:0 auto 8px}
+.dm-board-zoom-controls button{min-width:32px;padding:5px 8px;border:1px solid #424962;border-radius:7px;background:#252a3c;color:#fff;cursor:pointer;font-size:11px}
+.dm-board-zoom-controls span{min-width:42px;text-align:center;font-size:10px;opacity:.75}
