@@ -123,8 +123,7 @@ jobs:
           if shared_migration_path.exists():
               shared_migration_sql = shared_migration_path.read_text(encoding="utf-8")
               migration_start = shared_migration_sql.index("CREATE OR REPLACE FUNCTION public.multiplayer_execute_action")
-              migration_end = shared_migration_sql.index("CREATE OR REPLACE FUNCTION public.multiplayer_room_snapshot", migration_start)
-              shared_migration_rpc = shared_migration_sql[migration_start:migration_end]
+              shared_migration_rpc = shared_migration_sql[migration_start:]
               for table_prefix in forbidden:
                   if table_prefix in shared_migration_rpc:
                       failed = True
