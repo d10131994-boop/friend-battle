@@ -231,6 +231,7 @@ Deno.serve(async (req: Request) => {
       let status: "active" | "completed" | "surrendered" = "active";
       let result: Record<string, unknown> | null = null;
       const rewards: Array<Record<string, unknown>> = [];
+      let visualEvents: Record<string, unknown> | null = null;
 
       try {
       if (body.action === "place_character") {
@@ -256,9 +257,18 @@ Deno.serve(async (req: Request) => {
           }
         }
 
+        let obstacleCellIndex: number | null = null;
         if (match.obstacleEvent) {
-          nextBoard = placeObstacleAtRandomFreeCell(nextBoard, match.obstacleEvent, secureRandomUnit).board;
+          const obstacle = placeObstacleAtRandomFreeCell(nextBoard, match.obstacleEvent, secureRandomUnit);
+          nextBoard = obstacle.board;
+          obstacleCellIndex = obstacle.cellIndex;
         }
+        visualEvents = {
+          kind: "placement",
+          placementCellIndex: body.cellIndex,
+          merges: placement.merges,
+          obstacleCellIndex,
+        };
         const levels = nextBoard.flatMap((cell: { kind: string; level?: number } | null) =>
           cell?.kind === "character" && typeof cell.level === "number" ? [cell.level] : []);
         maxLevel = Math.max(maxLevel, ...levels, 1);
@@ -270,6 +280,7 @@ Deno.serve(async (req: Request) => {
         inventory = purchase.inventory;
         coins = purchase.coins;
       } else if (body.action === "use_tool") {
+        visualEvents = { kind: "tool", tool: body.tool };
         if (body.tool === "saw") {
           const used = applySaw(board, body.cellIndex, inventory, coins);
           nextBoard = used.board;
@@ -307,6 +318,7 @@ Deno.serve(async (req: Request) => {
         }
       } else {
         status = "surrendered";
+        visualEvents = { kind: "surrender" };
       }
 
       } catch (actionError) {
@@ -337,6 +349,7 @@ Deno.serve(async (req: Request) => {
         level6MergeCount,
         result,
         rewards,
+        visualEvents,
       };
       const { data, error } = await db.rpc("democracy_merge_commit_player_action", {
         p_room_id: roomId,
