@@ -93,7 +93,7 @@ function App() {
 
       {screen === 'brain-game' && <BrainBattle onBack={() => setScreen('solo-room')} />}
 
-      {screen === 'democracy-solo' && <DemocracyMergeSolo onBack={() => setScreen('solo-room')} />}
+      <div hidden={screen !== 'democracy-solo'}><DemocracyMergeSolo onBack={() => setScreen('solo-room')} /></div>
 
       {screen === 'profile' && (
         <main className="app">
