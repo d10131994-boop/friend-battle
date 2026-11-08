@@ -184,7 +184,7 @@ BEGIN
     RAISE EXCEPTION 'A player must not act during the synchronized five-second countdown';
   END IF;
   UPDATE public.games_democracy_merge_matches
-  SET game_started_at = pg_catalog.clock_timestamp() - interval '1 second'
+  SET game_started_at = started_at
   WHERE id = v_match_id;
   v_action_id := gen_random_uuid();
   PERFORM public.democracy_merge_reserve_action(
@@ -359,7 +359,7 @@ BEGIN
   );
   v_match_id := (v_start->>'matchId')::uuid;
   UPDATE public.games_democracy_merge_matches
-  SET game_started_at = pg_catalog.clock_timestamp() - interval '1 second'
+  SET game_started_at = started_at
   WHERE id = v_match_id;
   v_action_id := gen_random_uuid();
   v_snapshot := public.democracy_merge_reserve_action(
@@ -447,7 +447,7 @@ BEGIN
   );
   v_match_id := (v_start->>'matchId')::uuid;
   UPDATE public.games_democracy_merge_matches
-  SET game_started_at = pg_catalog.clock_timestamp() - interval '1 second'
+  SET game_started_at = started_at
   WHERE id = v_match_id;
   UPDATE public.common_multiplayer_players
   SET last_seen_at = now() - interval '6 minutes'
