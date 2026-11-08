@@ -617,7 +617,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
                 <button key={tool} title={toolDescriptions[tool]} className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
                   onClick={() => selectTool(tool)} aria-pressed={selectedTool === tool} aria-label={`${toolLabels[tool]}. В инвентаре ${game.inventory[tool]} из 3. Цена покупки ${TOOL_PRICES[tool]} монет. ${toolDescriptions[tool]}`} disabled={!canAct || game.inventory[tool] < 1}>
-                  <span className="dm-tool-icon" aria-hidden="true"><img src={`/democracy-merge/tools/${tool}.svg`} alt="" draggable={false} /></span><span className="dm-tool-label">{toolLabels[tool]}</span><strong>{game.inventory[tool]}/3 · 🪙 {TOOL_PRICES[tool]}</strong>
+                  <span className="dm-tool-icon" aria-hidden="true"><img src={`/democracy-merge/tools/${tool}.svg`} alt="" draggable={false} /></span><span className="dm-tool-label">{toolLabels[tool]}</span><strong>{game.inventory[tool]}/3</strong><small className="dm-tool-price">В магазине: 🪙 {TOOL_PRICES[tool]}</small>
                 </button>
               ))}
               <p className="dm-storage-note">{game.storage ? `В хранилище: уровень ${game.storage.level}` : 'Хранилище пусто'}</p>
