@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { telegramUser } from '../../services/telegram'
 import { getOpponentName, getRoundOutcome } from './logic/gameRules'
 import { ChoiceIcon, HandIllustration } from './HandIllustration'
+import { CaveResultScene, RoundScene } from './RpsScenes'
 import type { RockPaperScissorsChoice } from './types'
 import './rockPaperScissors.css'
 
@@ -45,6 +46,7 @@ type Props = { onBack: () => void }
 
 export default function RockPaperScissorsSolo({ onBack }: Props) {
   const [game, setGame] = useState<SoloState>(createInitialState)
+  const [sceneSeed] = useState(() => `solo-${Date.now()}-${Math.random()}`)
   const [now, setNow] = useState(0)
   const playerName = telegramUser?.first_name?.trim() || 'Ты'
 
@@ -152,6 +154,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
       </header>
 
       <section className="rps-arena">
+        <RoundScene seed={sceneSeed} />
         {game.phase === 'choosing' && (
           <>
             <div className="rps-timer" aria-label={`Осталось ${remaining} секунд`}>{remaining}</div>
@@ -208,22 +211,16 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
         )}
 
         {game.phase === 'completed' && (
-          <div className="rps-session-result">
-            <h1 className={`rps-session-title ${playerWon ? 'win' : 'loss'}`}>
-              {playerWon ? 'С победой!' : 'Не в этот раз'}
-            </h1>
-            <div className="rps-session-scores">
-              <div className="rps-session-player">
-                <span className="rps-session-name">{playerName}</span>
-                <strong className="rps-session-score">{game.playerScore}</strong>
-              </div>
-              <span className="rps-session-separator">:</span>
-              <div className="rps-session-player">
-                <span className="rps-session-name">{game.opponentName}</span>
-                <strong className="rps-session-score">{game.opponentScore}</strong>
-              </div>
-            </div>
-            <button type="button" className="rps-exit-button" onClick={onBack}>ВЫЙТИ</button>
+          <div className="rps-result-layout">
+            <CaveResultScene
+              title={playerWon ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ'}
+              tone={playerWon ? 'win' : 'loss'}
+              leftName={playerName}
+              leftScore={game.playerScore}
+              rightName={game.opponentName}
+              rightScore={game.opponentScore}
+            />
+            <button type="button" className="rps-exit-button rps-cave-exit" onClick={onBack}>ВЫЙТИ</button>
           </div>
         )}
       </section>
