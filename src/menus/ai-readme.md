@@ -19,7 +19,7 @@ Game modules own only their game-specific match state and gameplay. Multiplayer 
 
 `MultiplayerRoomMenu` creates a room with a maximum of four participants, accepts an optional invite code, and uses `createMultiplayerRoomSession` for heartbeat and private Realtime updates. Room snapshots remain canonical. The host is automatically marked ready when the room is created or returns to `finished`, because the agreed UI does not show the host a Ready button while the server start contract requires all players to be ready.
 
-The Start button is shown only to the host. It is enabled only when a game is selected, there are 2–4 participants and all participants are ready. Other participants can toggle their own readiness. These checks are UI guidance; the trusted backend must enforce permissions and lifecycle rules.
+The Start button is shown only to the host. It is enabled only when a game is selected, the current participant count satisfies that game's `min_players` / `max_players` values from `common_game_availability`, and all participants are ready. Other participants can toggle their own readiness. These checks are UI guidance; the trusted backend must enforce permissions and lifecycle rules.
 
 The room roster displays common `wins` and `matchesPlayed` fields. Game-specific match scores are not used for the common room score.
 
