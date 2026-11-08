@@ -8,7 +8,6 @@ import {
   currentSoloCharacter,
   deleteSoloHistoryRecord,
   finalizeSoloDeadline,
-  nextSoloCharacter,
   placeSoloCharacter,
   recordSoloResult,
   surrenderSoloGame,
@@ -443,7 +442,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   }
 
   const current = game ? currentSoloCharacter(game) : null
-  const next = game ? nextSoloCharacter(game) : null
   const remaining = game ? Date.parse(game.deadlineAt) - now : 0
   const canAct = Boolean(game?.status === 'active' && now < Date.parse(game.deadlineAt) && !loading)
   const isNewRecord = recordBroken
@@ -617,7 +615,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       ) : (
         <div className="dm-layout dm-solo-layout">
           <aside className="dm-side-panel">
-            <div className="dm-current-card"><small>ТЕКУЩИЙ ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small><strong>{current !== null ? <CharacterPortrait level={current} /> : '—'}</strong><span>Следующий: {next !== null ? <CharacterPortrait level={next} /> : '—'}</span></div>
+            <div className="dm-current-card"><small>ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small><strong>{current !== null ? <CharacterPortrait level={current} /> : '—'}</strong></div>
             <div className="dm-stats">
               <div><small>ОЧКИ</small><strong>{game.score}</strong></div>
               <div><small>МАКС. УРОВЕНЬ</small><strong>{game.maxLevel}</strong></div>
