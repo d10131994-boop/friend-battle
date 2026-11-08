@@ -370,3 +370,8 @@
 /* Illustrated solo obstacles preserve the three existing obstacle types. */
 .dm-solo-layout .dm-obstacle-icon{display:grid;place-items:center;width:94%;height:94%}
 .dm-solo-layout .dm-obstacle-icon img{width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;filter:drop-shadow(0 3px 2px #254a2355)}
+
+/* V2 solo illustrated tool icons. */
+.dm-solo-layout .dm-tool-icon{display:grid;place-items:center;width:100%;height:40px}
+.dm-solo-layout .dm-tool-icon img{display:block;width:42px;max-width:85%;height:40px;object-fit:contain;filter:drop-shadow(0 2px 1px #58341444)}
+@media(max-width:380px){.dm-solo-layout .dm-tool-icon{height:32px}.dm-solo-layout .dm-tool-icon img{height:32px}}
