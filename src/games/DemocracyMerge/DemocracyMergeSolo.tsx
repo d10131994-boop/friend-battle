@@ -274,7 +274,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       const placed = placeSoloCharacter(game, cellIndex, Date.now())
       if (settings.animationsEnabled) {
         setLastPlacedCell(placed.placementCellIndex)
-        setMergeCells(placed.merges.flatMap((merge) => merge.cells))
+        setMergeEvents(placed.merges)
         setObstacleCell(placed.obstacleCellIndex)
         if (animationTimeoutRef.current !== null) window.clearTimeout(animationTimeoutRef.current)
         animationTimeoutRef.current = window.setTimeout(() => {
@@ -284,7 +284,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
         }, settings.animationSpeed === 'fast' ? 500 : 1000)
       } else {
         setLastPlacedCell(null)
-        setMergeCells([])
+        setMergeEvents([])
         setObstacleCell(null)
       }
       if (placed.state.score > profile.bestScore && !recordBroken) {
