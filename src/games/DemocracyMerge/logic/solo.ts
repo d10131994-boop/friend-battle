@@ -22,7 +22,7 @@ import {
   returnStoredCharacter,
   storeCharacter,
   swapCharacters,
-  useSaw,
+  applySaw,
   type StoredCharacter,
   type ToolInventory,
   type ToolType,
@@ -228,7 +228,7 @@ export function applySoloTool(
   let toolsUsed = source.toolsUsed
 
   if (tool === 'saw') {
-    const result = useSaw(board, options.cellIndex ?? -1, inventory, coins)
+    const result = applySaw(board, options.cellIndex ?? -1, inventory, coins)
     board = result.board
     inventory = result.inventory
     coins = result.coins
