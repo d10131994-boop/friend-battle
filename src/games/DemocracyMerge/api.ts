@@ -1,6 +1,6 @@
 import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
-import type { Board, CharacterLevel, ObstacleType } from './logic/gameEngine'
+import type { Board, CharacterLevel, MergeEvent, ObstacleType } from './logic/gameEngine'
 import type { ToolInventory, StoredCharacter, ToolType } from './logic/tools'
 
 export type DemocracyMergePlayerStatus = 'active' | 'completed' | 'surrendered' | 'left'
@@ -110,7 +110,16 @@ export function returnDemocracyMergeToRoom(
   return invoke(initData, { action: 'return_to_room', roomId })
 }
 
+export type DemocracyMergeVisualEvents = {
+  kind: 'placement' | 'tool' | 'purchase' | 'surrender'
+  placementCellIndex?: number
+  obstacleCellIndex?: number | null
+  merges?: MergeEvent[]
+  tool?: ToolType
+}
+
 export type DemocracyMergeActionResponse = DemocracyMergeSnapshot & {
+  visualEvents?: DemocracyMergeVisualEvents | null
   rewards?: Array<
     | { kind: 'money_bag'; coins: number }
     | { kind: 'tool'; tool: ToolType }
