@@ -55,8 +55,21 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   }, [])
 
   useEffect(() => {
-    void refreshAvailableGames()
-  }, [refreshAvailableGames])
+    let active = true
+    loadGameAvailability('multiplayer')
+      .then((games) => {
+        if (active) setAvailableGames(games)
+      })
+      .catch((error: unknown) => {
+        if (active) setGamesError(errorMessage(error, 'Не удалось загрузить список игр.'))
+      })
+      .finally(() => {
+        if (active) setGamesLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const acceptRoom = useCallback((nextRoom: MultiplayerRoom) => {
     setRoom(nextRoom)
