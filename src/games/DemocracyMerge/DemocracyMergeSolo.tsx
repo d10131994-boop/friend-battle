@@ -17,6 +17,7 @@ import {
   type SoloProfile,
 } from './logic/solo'
 import type { ToolType } from './logic/tools'
+import { assertBoard } from './logic/gameEngine'
 import { TOOL_PRICES } from './logic/events'
 import './DemocracyMerge.css'
 
@@ -56,13 +57,39 @@ function errorMessage(error: unknown): string {
 function validStoredData(value: unknown): value is StoredSoloData {
   if (!value || typeof value !== 'object') return false
   const data = value as Partial<StoredSoloData>
-  return data.version === 1 && !!data.profile && Array.isArray(data.profile.history) &&
-    typeof data.profile.totalGames === 'number' && typeof data.profile.totalPoints === 'number' &&
-    typeof data.profile.bestScore === 'number' && typeof data.profile.maxLevel === 'number' &&
-    (data.checkpoint === null || (!!data.checkpoint && data.checkpoint.version === 1 &&
-      Array.isArray(data.checkpoint.board) && data.checkpoint.board.length === 36 &&
-      Array.isArray(data.checkpoint.characterSequence) && Array.isArray(data.checkpoint.obstacleSequence) &&
-      typeof data.checkpoint.deadlineAt === 'string'))
+  if (
+    data.version !== 1 || !data.profile || !Array.isArray(data.profile.history) ||
+    !Number.isInteger(data.profile.totalGames) || data.profile.totalGames < 0 ||
+    !Number.isFinite(data.profile.totalPoints) || data.profile.totalPoints < 0 ||
+    !Number.isFinite(data.profile.bestScore) || data.profile.bestScore < 0 ||
+    !Number.isInteger(data.profile.maxLevel) || data.profile.maxLevel < 1 || data.profile.maxLevel > 6
+  ) return false
+  if (data.checkpoint === null) return true
+  const state = data.checkpoint
+  if (
+    !state || state.version !== 1 || !Array.isArray(state.board) || state.board.length !== 36 ||
+    !Array.isArray(state.characterSequence) || state.characterSequence.length < 2 ||
+    !Array.isArray(state.obstacleSequence) || state.obstacleSequence.length !== state.characterSequence.length ||
+    !Number.isInteger(state.turnNumber) || state.turnNumber < 0 ||
+    !Number.isFinite(state.score) || state.score < 0 ||
+    !Number.isInteger(state.maxLevel) || state.maxLevel < 1 || state.maxLevel > 6 ||
+    !Number.isInteger(state.coins) || state.coins < 0 ||
+    !['active', 'completed', 'surrendered'].includes(state.status) ||
+    !Number.isFinite(Date.parse(state.startedAt)) || !Number.isFinite(Date.parse(state.deadlineAt)) ||
+    state.characterSequence.some((level) => !Number.isInteger(level) || level < 1 || level > 6) ||
+    state.obstacleSequence.some((event) => event !== null && !['barricade', 'police', 'rock'].includes(event)) ||
+    !state.inventory || !['saw', 'storage', 'swap', 'replace'].every((tool) =>
+      Number.isInteger(state.inventory[tool as ToolType]) &&
+      state.inventory[tool as ToolType] >= 0 && state.inventory[tool as ToolType] <= 3) ||
+    (state.storage !== null && (!Number.isInteger(state.storage?.level) ||
+      state.storage.level < 1 || state.storage.level > 6))
+  ) return false
+  try {
+    assertBoard(state.board)
+  } catch {
+    return false
+  }
+  return true
 }
 
 function appendResult(profile: SoloProfile, state: SoloGameState): SoloProfile {
