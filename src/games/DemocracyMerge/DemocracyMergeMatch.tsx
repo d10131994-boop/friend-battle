@@ -524,11 +524,10 @@ export default function DemocracyMergeMatch({
           {(match.status === 'completed' || match.status === 'cancelled') && (
             <button className="dm-secondary-button" onClick={() => void openHistory()}>ИСТОРИЯ МАТЧЕЙ</button>
           )}
-          {match.status === 'completed' || match.status === 'cancelled'
-            ? room.status === 'cancelled'
-              ? <button className="dm-primary-button" onClick={onMainMenu}>В ГЛАВНОЕ МЕНЮ</button>
-              : <button className="dm-primary-button" onClick={() => void returnToRoom()} disabled={loading}>ВЕРНУТЬСЯ В КОМНАТУ</button>
-            : <p className="dm-waiting-note">Твоя партия завершена. Ожидаем остальных игроков. Результат уже сохранён.</p>}
+          {room.status === 'cancelled'
+            ? <button className="dm-primary-button" onClick={onMainMenu}>В ГЛАВНОЕ МЕНЮ</button>
+            : <button className="dm-primary-button" onClick={() => void returnToRoom()} disabled={loading}>ВЫЙТИ В МЕНЮ КОМНАТЫ</button>}
+          {match.status === 'playing' && <p className="dm-waiting-note">Твоя партия завершена. Остальные игроки ещё играют. Результат сохранён.</p>}
         </section>
       ) : (
         <div className="dm-layout">
