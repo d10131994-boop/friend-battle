@@ -222,8 +222,10 @@ BEGIN
         RAISE EXCEPTION 'Room cannot start a game in its current state' USING ERRCODE = '55000';
       END IF;
       SELECT min_players, max_players INTO v_min_players, v_game_max_players
-      FROM public.common_multiplayer_game_rules
-      WHERE game_id = v_room.game_id AND is_enabled = true;
+      FROM public.common_game_availability
+      WHERE game_id = v_room.game_id
+        AND is_enabled = true
+        AND is_multiplayer_enabled = true;
       IF NOT FOUND THEN
         RAISE EXCEPTION 'Selected game is not enabled for multiplayer' USING ERRCODE = '55000';
       END IF;
@@ -275,8 +277,10 @@ BEGIN
     END IF;
     v_game_id := pg_catalog.btrim(p_payload->>'gameId');
     IF v_game_id IS NULL OR NOT EXISTS (
-      SELECT 1 FROM public.common_multiplayer_game_rules
-      WHERE game_id = v_game_id AND is_enabled = true
+      SELECT 1 FROM public.common_game_availability
+      WHERE game_id = v_game_id
+        AND is_enabled = true
+        AND is_multiplayer_enabled = true
     ) THEN
       RAISE EXCEPTION 'Unsupported game selection' USING ERRCODE = '22023';
     END IF;
