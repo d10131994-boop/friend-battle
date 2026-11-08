@@ -393,7 +393,7 @@ export default function DemocracyMergeMatch({
 
   const animationClasses = `${settings.animationsEnabled ? '': 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
 
-  const touchDistance = (touches: TouchList) => Math.hypot(
+  const touchDistance = (touches: ReactTouchEvent<HTMLDivElement>['touches']) => Math.hypot(
     touches[0].clientX - touches[1].clientX,
     touches[0].clientY - touches[1].clientY,
   )
