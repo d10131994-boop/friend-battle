@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) return fail("Invalid request body", 400);
-    const actions = ["start_match", "get_match", "place_character", "use_tool", "buy_tool", "surrender", "leave_match", "return_to_room"];
+    const actions = ["start_match", "get_match", "place_character", "use_tool", "buy_tool", "surrender", "leave_match", "return_to_room", "get_history", "delete_history_record"];
     if (typeof body.action !== "string" || !actions.includes(body.action)) {
       return fail("Unknown Democracy Merge action", 400);
     }
@@ -122,11 +122,32 @@ Deno.serve(async (req: Request) => {
     const userId = String(user.id);
     const displayName = user.first_name?.trim().slice(0, 100) || "Игрок";
     const roomId = typeof body.roomId === "string" ? body.roomId.trim() : "";
-    if (!/^[0-9a-f-]{36}$/i.test(roomId)) return fail("A valid roomId is required", 400);
+    const historyAction = body.action === "get_history" || body.action === "delete_history_record";
+    if (!historyAction && !/^[0-9a-f-]{36}$/i.test(roomId)) return fail("A valid roomId is required", 400);
 
     const db = createClient(url, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    if (body.action === "get_history") {
+      const { data, error } = await db.rpc("democracy_merge_get_personal_history", {
+        p_user_id: userId,
+      });
+      if (error) return fail("Не удалось загрузить историю матчей", 409);
+      return respond(data);
+    }
+
+    if (body.action === "delete_history_record") {
+      if (typeof body.recordId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.recordId)) {
+        return fail("Некорректная запись истории", 400);
+      }
+      const { data, error } = await db.rpc("democracy_merge_delete_history_record", {
+        p_user_id: userId,
+        p_record_id: body.recordId,
+      });
+      if (error) return fail("Не удалось удалить запись истории", 409);
+      return respond({ deleted: data === true });
+    }
 
     if (body.action === "start_match") {
       const { data: room, error: roomError } = await db.rpc("multiplayer_execute_action", {
