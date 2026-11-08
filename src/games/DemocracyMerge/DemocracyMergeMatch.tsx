@@ -338,6 +338,8 @@ export default function DemocracyMergeMatch({
     }
   }
 
+  const animationClasses = `${settings.animationsEnabled ? '': 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
+
   if (!match || !me) {
     return (
       <main className={`app dm-match-shell ${animationClasses}`}>
@@ -352,12 +354,11 @@ export default function DemocracyMergeMatch({
     )
   }
 
-  const animationClasses = `${settings.animationsEnabled ? '' : 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
   const ownRank = match.finalResults?.find((player) => player.userId === telegramId)?.rank ?? null
   const board = me.board
 
   return (
-    <main className="app dm-match-shell">
+    <main className={`app dm-match-shell ${animationClasses}`}>
       <header className="dm-header">
         <button className="dm-secondary-button" onClick={() => setLeaveConfirm(true)} disabled={!canAct}>ВЫЙТИ ИЗ МАТЧА</button>
         <div><div className="dm-eyebrow">FRIEND BATTLE</div><h1>DEMOCRACY <span>MERGE</span></h1><button className="dm-secondary-button dm-settings-trigger" onClick={() => setSettingsOpen(true)}>НАСТРОЙКИ</button></div>
