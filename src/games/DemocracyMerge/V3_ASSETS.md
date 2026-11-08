@@ -1,32 +1,24 @@
 # Democracy Merge V3 — asset integration status
 
-V3 updates the **solo** presentation only. Gameplay, persistence, and multiplayer remain unchanged until separately verified.
+V3 changes the solo presentation. Gameplay, persistence, and multiplayer must remain unchanged.
 
-## Approved assets available in the handoff ZIP
+## Installed assets
 
-The ZIP `democracy-merge-v3-assets-available.zip` contains these files under `public/democracy-merge/v3/`:
+All paths below are relative to `public/democracy-merge/picture/v3/`.
 
-- `foreground-decor.webp`
-- `village.webp`
-- `wooden-frame.webp`
-- `info-panel.webp`
-- `next-character-frame.webp`
-- `tools-panel.webp`
-- `tool-saw.webp`, `tool-storage.webp`, `tool-swap.webp`, `tool-replace.webp`
-- `icon-random.webp`, `icon-dice.webp`, `icon-hourglass.webp`, `icon-trophy.webp`, `icon-tasks.webp`, `icon-coins.webp`
-- `icon-gift.webp`, `icon-gift-reward.webp`, `icon-gift-open.webp`, `icon-gift-celebration.webp`
-- `icon-party.webp`, `icon-party-hat.webp`, `icon-festive-hat.webp`
+- Board: `grass-01.webp` through `grass-06.webp`, `wooden-frame.webp`
+- UI: `info-panel.webp`, `next-character-frame.webp`, `tools-panel.webp`
+- Tools: `tool-saw.webp`, `tool-storage.webp`, `tool-swap.webp`, `tool-replace.webp`
+- Icons: `icon-random.webp`, `icon-dice.webp`, `icon-hourglass.webp`, `icon-trophy.webp`, `icon-tasks.webp`, `icon-coins.webp`, `icon-gift.webp`, `icon-gift-reward.webp`, `icon-gift-open.webp`, `icon-gift-celebration.webp`, `icon-party.webp`, `icon-party-hat.webp`, `icon-festive-hat.webp`
+- Scenery: `foreground-decor.webp`, `village.webp`, `sky-clouds.png`, `castle.png`, `houses-alternative.png`, `houses-village-alternative.png`, `landscape-foreground.png`, `windmill.png`, `decorative-object.png`
 
-**Important:** These binary files have not been committed to GitHub. A CSS reference is not proof that the corresponding file exists.
+The background currently uses `sky-clouds.png`, `castle.png`, `houses-village-alternative.png`, and `landscape-foreground.png`. At widths up to 700px, castle and houses are hidden to preserve gameplay readability. Other scenery files are available but not currently placed.
 
-## Missing from the handoff
+## Verification status
 
-- `grass-light.webp`, `grass-dark.webp`, `grass-medium.webp`, `grass-flowers.webp`, `grass-leaves.webp`, `grass-striped.webp` (check final approved names against the original asset register)
-- Remaining previously approved scenery and other assets not in the ZIP
-- Resources #35 and #36: intentionally deferred to V4
-
-## Installation and verification
-
-Extract the ZIP at the repository root, preserving the `public/democracy-merge/v3/` directory structure. Do not replace approved graphics with AI-generated approximations without approval. Commit the binary files on this issue branch. Run `npm ci`, `npm run build`, and `npm run lint` after staging; visually verify a solo match at mobile and desktop widths.
-
-The solo toolbar uses existing SVG files as a fallback when V3 WebP icons are absent. CSS colors remain as a fallback for board cells. Multiplayer must not be restyled until the solo experience is verified.
+- All listed assets are present in the issue branch according to the GitHub comparison against `friend-battle-05-release`.
+- Draft PR: https://github.com/d10131994-boop/friend-battle/pull/107
+- Build, lint, and visual review: **not yet confirmed**. The current GitHub commit has no reported workflow runs or combined statuses. Do not describe CI as passed.
+- Check desktop and mobile solo screens, image scaling, background contrast, interactive controls, and missing asset requests.
+- Run `npm ci`, `npm run build`, and `npm run lint` in a network-enabled checkout or GitHub Actions before merging.
+- Resources #35 and #36 remain deferred to V4 per the original V3 handoff notes.
