@@ -348,3 +348,5 @@
 .dm-solo-layout .dm-current-card span>.dm-character-portrait{
   width:32px;height:36px;display:inline-grid;vertical-align:middle;
 }
+
+.dm-character-portrait:has(.dm-character-art) .dm-character-fallback{visibility:hidden}
