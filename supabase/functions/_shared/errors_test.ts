@@ -12,6 +12,7 @@ Deno.test("maps expected PostgreSQL errors to stable HTTP statuses", async () =>
     ["42501", 403],
     ["23505", 409],
     ["55000", 409],
+    ["40001", 409],
     ["54000", 409],
     ["22023", 400],
     ["XX000", 500],

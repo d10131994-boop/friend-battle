@@ -9,6 +9,7 @@ import BrainBattleMatch from '../games/BrainBattle/BrainBattleMatch'
 import ReactionRushMatch from '../games/ReactionRush/ReactionRushMatch'
 import NoCountItMatch from '../games/NoCountIt/NoCountItMatch'
 import RockPaperScissorsMatch from '../games/rockPaperScissors/RockPaperScissorsMatch'
+import DemocracyMergeMatch from '../games/DemocracyMerge/DemocracyMergeMatch'
 import { getGamePresentation, loadGameAvailability } from './gameAvailability'
 import type { GameAvailability, MultiplayerGameId } from './gameAvailability'
 
@@ -81,8 +82,13 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
       setStartRequested(false)
     }
     if (nextRoom.status === 'cancelled') {
-      setGameScreen(false)
-      setMessage('Эта комната закрыта.')
+      if (nextRoom.gameId === 'democracy-merge' && nextRoom.startedAt) {
+        setGameScreen(true)
+        setMessage('')
+      } else {
+        setGameScreen(false)
+        setMessage('Эта комната закрыта.')
+      }
     }
   }, [])
 
@@ -266,6 +272,16 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     setStartRequested(false)
   }
 
+  const leaveDemocracyMerge = useCallback(() => {
+    void sessionRef.current?.stop()
+    sessionRef.current = null
+    setRoom(null)
+    setActiveGameId(null)
+    setGameScreen(false)
+    setStartRequested(false)
+    onBack()
+  }, [onBack])
+
   const me = room?.players.find((player) => player.userId === telegramId)
   const isHost = Boolean(me?.isHost)
   const allReady = Boolean(room?.players.length && room.players.every((player) => player.isReady))
@@ -280,6 +296,21 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
     room.players.length <= Math.min(room.maxPlayers ?? 4, selectedGameRules.max_players) &&
     allReady,
   )
+
+  if (gameScreen && room?.gameId === 'democracy-merge') {
+    return (
+      <DemocracyMergeMatch
+        initData={initData}
+        room={room}
+        startRequested={startRequested}
+        onRoomUpdate={acceptRoom}
+        onReturnToRoom={returnToRoom}
+        onLeaveMatch={leaveDemocracyMerge}
+        onMainMenu={onBack}
+        onStartRequestHandled={() => setStartRequested(false)}
+      />
+    )
+  }
 
   if (gameScreen && room?.gameId === 'brain-battle') {
     return (
