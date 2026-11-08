@@ -366,3 +366,7 @@
   white-space:normal;
 }
 .dm-solo-layout .dm-tool-button:disabled{filter:saturate(.5);opacity:.55}
+
+/* Illustrated solo obstacles preserve the three existing obstacle types. */
+.dm-solo-layout .dm-obstacle-icon{display:grid;place-items:center;width:94%;height:94%}
+.dm-solo-layout .dm-obstacle-icon img{width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;filter:drop-shadow(0 3px 2px #254a2355)}
