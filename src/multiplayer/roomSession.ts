@@ -111,7 +111,11 @@ export function createMultiplayerRoomSession(
 
     heartbeatInFlight = true
     try {
-      await options.service.heartbeat(options.auth, { roomId: options.roomId })
+      const heartbeat = await options.service.heartbeat(options.auth, { roomId: options.roomId })
+      if (heartbeat.expired) {
+        reportError(new Error('Срок возвращения в матч истёк. Вы исключены из Democracy Merge.'))
+        await stop()
+      }
     } catch (error) {
       reportError(error)
     } finally {
