@@ -1317,3 +1317,50 @@ GRANT EXECUTE ON FUNCTION public.democracy_merge_reserve_action(uuid, text, uuid
 GRANT EXECUTE ON FUNCTION public.democracy_merge_release_action(uuid, text, uuid)
   TO service_role;
 
+
+
+-- Install Democracy Merge's heartbeat policy only after its match tables exist.
+-- The shared Multiplayer migration calls this hook but remains game-schema agnostic.
+CREATE OR REPLACE FUNCTION public.multiplayer_game_heartbeat_guard(
+  p_room_id uuid,
+  p_user_id text,
+  p_last_seen timestamptz
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+BEGIN
+  IF p_last_seen <= pg_catalog.clock_timestamp() - interval '5 minutes'
+     AND EXISTS (
+       SELECT 1
+       FROM public.games_democracy_merge_match_players mp
+       JOIN public.games_democracy_merge_matches dm ON dm.id = mp.match_id
+       WHERE mp.room_id = p_room_id
+         AND mp.user_id = p_user_id
+         AND mp.status = 'active'
+         AND dm.status = 'playing'
+         AND dm.deadline_at > pg_catalog.clock_timestamp()
+     ) THEN
+    PERFORM public.multiplayer_execute_action(
+      'leave_active_match',
+      '__game_server__',
+      'Game server',
+      pg_catalog.jsonb_build_object(
+        'roomId', p_room_id,
+        'gameId', 'democracy-merge',
+        'playerUserId', p_user_id
+      )
+    );
+    RETURN true;
+  END IF;
+  RETURN false;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.multiplayer_game_heartbeat_guard(uuid, text, timestamptz)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.multiplayer_game_heartbeat_guard(uuid, text, timestamptz)
+  TO service_role;
+
