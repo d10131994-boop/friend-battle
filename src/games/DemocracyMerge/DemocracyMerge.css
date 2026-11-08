@@ -235,3 +235,94 @@
 @media(prefers-reduced-motion:reduce){
   .dm-solo-layout .dm-cell{animation:none!important;transition:none!important}
 }
+
+/* V2 parchment dialogs, results and calm entry effects (solo only). */
+.dm-match-shell:has(.dm-solo-layout) .dm-modal-backdrop,
+.dm-match-shell:has(.dm-results) .dm-modal-backdrop{
+  background:rgba(35,24,13,.73);
+  backdrop-filter:blur(2px);
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-modal,.dm-confirm-modal,.dm-settings-modal),
+.dm-match-shell:has(.dm-results) :is(.dm-shop-modal,.dm-confirm-modal,.dm-settings-modal){
+  background:linear-gradient(150deg,#fff0c9,#edce90);
+  color:#573419;
+  border:8px ridge #a96c32;
+  border-radius:16px;
+  box-shadow:0 8px 0 #4b2b14,0 20px 45px #24120888;
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-modal,.dm-confirm-modal,.dm-settings-modal) h2,
+.dm-match-shell:has(.dm-results) :is(.dm-shop-modal,.dm-confirm-modal,.dm-settings-modal) h2{
+  color:#6c3b1b;
+  text-align:center;
+  text-shadow:0 1px #fff9e6;
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-modal,.dm-settings-modal) header button,
+.dm-match-shell:has(.dm-results) .dm-shop-modal header button{
+  color:#573419;
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-row,.dm-settings-toggle,.dm-settings-field),
+.dm-match-shell:has(.dm-results) .dm-shop-row{
+  border-bottom-color:#c9a56c;
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-row,.dm-confirm-modal) button,
+.dm-match-shell:has(.dm-results) :is(.dm-shop-row,.dm-confirm-modal) button{
+  background:#8a542a;
+  color:#fff1d0;
+  border:2px solid #633918;
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-row,.dm-confirm-modal) button:disabled{
+  opacity:.45;
+}
+.dm-match-shell:has(.dm-solo-layout) .dm-settings-field select{
+  background:#f8e5b5;color:#573419;border-color:#a96c32;
+}
+.dm-match-shell:has(.dm-results){
+  color:#573419;
+  min-height:100dvh;
+  max-width:none;
+  background:linear-gradient(180deg,#91d5f0,#c7e6a1 42%,#70ae3d);
+}
+.dm-match-shell:has(.dm-results) .dm-results{
+  max-width:540px;
+  padding:clamp(14px,4vw,26px);
+  background:linear-gradient(145deg,#fff0c9,#edce90);
+  color:#573419;
+  border:9px ridge #a96c32;
+  box-shadow:0 8px 0 #4b2b14,0 18px 40px #24120866;
+}
+.dm-match-shell:has(.dm-results) .dm-results h2{
+  color:#74401b;
+  font-size:clamp(21px,5vw,30px);
+}
+.dm-match-shell:has(.dm-results) :is(.dm-personal-result,.dm-solo-stats div){
+  background:#f8e5b5;
+  color:#573419;
+  border:2px solid #c69b58;
+}
+.dm-match-shell:has(.dm-results) .dm-primary-button{
+  background:linear-gradient(#80bc3b,#478c24);
+  border:2px solid #376b1c;
+}
+.dm-match-shell:has(.dm-results) .dm-secondary-button{
+  background:#f8e5b5;
+  color:#573419;
+  border:2px solid #8a542a;
+}
+.dm-match-shell:has(.dm-solo-layout) .dm-cell-placed{
+  animation:dm-v2-place .38s cubic-bezier(.22,1.5,.55,1);
+}
+.dm-match-shell:has(.dm-solo-layout) .dm-cell-obstacle{
+  animation:dm-v2-obstacle .38s ease-out;
+}
+@keyframes dm-v2-place{
+  from{transform:scale(.7);opacity:.55}
+  75%{transform:scale(1.06);opacity:1}
+  to{transform:scale(1);opacity:1}
+}
+@keyframes dm-v2-obstacle{
+  from{transform:scale(.82);opacity:.4;filter:sepia(.6)}
+  to{transform:scale(1);opacity:1;filter:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .dm-match-shell:has(.dm-solo-layout) :is(.dm-cell-placed,.dm-cell-obstacle){animation:none!important}
+}
