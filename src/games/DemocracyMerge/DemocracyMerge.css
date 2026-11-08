@@ -90,3 +90,23 @@
 
 .dm-history-entry-main{display:flex;flex:1;min-width:0;flex-direction:column;align-items:flex-start;gap:4px;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
 .dm-history-entry-main small{max-width:100%}
+
+.dm-settings-trigger{margin-top:6px;padding:6px 10px;font-size:9px}
+.dm-settings-modal{width:min(420px,92vw);padding:22px;border-radius:16px;background:#171a29;border:1px solid #424962;color:#fff}
+.dm-settings-modal>header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.dm-settings-modal>header h2{margin:0;font-size:18px}
+.dm-settings-modal>header button{border:0;background:transparent;color:inherit;font-size:20px}
+.dm-settings-toggle,.dm-settings-field{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #343a52}
+.dm-settings-toggle input{width:18px;height:18px}
+.dm-settings-field select{padding:8px;border-radius:8px;background:#252a3c;color:#fff;border:1px solid #424962}
+.dm-settings-modal>p{font-size:11px;opacity:.7;line-height:1.5}
+.dm-animations-off *, .dm-animations-off *::before, .dm-animations-off *::after{animation:none!important;transition:none!important}
+.dm-animation-fast *, .dm-animation-fast *::before, .dm-animation-fast *::after{animation-duration:50%!important;transition-duration:50%!important}
+.dm-cell{transition:transform .5s ease,filter .5s ease,box-shadow .5s ease}
+.dm-cell:active:not(:disabled){transform:scale(.94)}
+.dm-cell-placed{animation:dm-place .5s ease-out}
+.dm-cell-merge{animation:dm-merge .8s ease-out}
+.dm-cell-obstacle{animation:dm-obstacle-appear 1s ease-out}
+@keyframes dm-place{0%{transform:scale(.7);filter:brightness(1.8)}100%{transform:scale(1);filter:brightness(1)}}
+@keyframes dm-merge{0%{transform:scale(1);filter:brightness(1.8)}45%{transform:scale(.82);filter:brightness(1.5)}100%{transform:scale(1);filter:brightness(1)}}
+@keyframes dm-obstacle-appear{0%{transform:scale(.2);opacity:.2}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1);opacity:1}}
