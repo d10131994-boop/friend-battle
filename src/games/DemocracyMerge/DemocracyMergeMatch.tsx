@@ -90,6 +90,7 @@ export default function DemocracyMergeMatch({
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyData, setHistoryData] = useState<DemocracyMergeHistoryResponse | null>(null)
   const [historyMessage, setHistoryMessage] = useState('')
+  const [selectedHistoryRecord, setSelectedHistoryRecord] = useState<DemocracyMergeHistoryResponse['history'][number] | null>(null)
   const [deleteHistoryId, setDeleteHistoryId] = useState<string | null>(null)
   const [oneMinuteNotice, setOneMinuteNotice] = useState(false)
   const startAttemptRef = useRef(false)
@@ -325,6 +326,7 @@ export default function DemocracyMergeMatch({
           history: historyData.history.filter((record) => record.id !== deleteHistoryId),
         })
       }
+      if (result.deleted && selectedHistoryRecord?.id === deleteHistoryId) setSelectedHistoryRecord(null)
       setDeleteHistoryId(null)
     } catch (error) {
       setHistoryMessage(errorMessage(error))
@@ -536,11 +538,11 @@ export default function DemocracyMergeMatch({
                   <div className="dm-history-list">
                     {historyData.history.map((record) => (
                       <article className="dm-history-entry" key={record.id}>
-                        <div>
+                        <button className="dm-history-entry-main" onClick={() => setSelectedHistoryRecord(record)}>
                           <strong>{new Date(record.completedAt).toLocaleString()}</strong>
                           <small>{record.playerCount} игрока · {record.opponents.map((opponent) => opponent.displayName).join(', ') || 'без соперников'}</small>
                           <small>{record.status === 'surrendered' ? 'Сдача' : 'Завершён'} · место {record.rank} · {record.score} очков · ур. {record.maxLevel}</small>
-                        </div>
+                        </button>
                         <button className="dm-danger-button" onClick={() => setDeleteHistoryId(record.id)} disabled={historyLoading}>УДАЛИТЬ</button>
                       </article>
                     ))}
@@ -548,6 +550,25 @@ export default function DemocracyMergeMatch({
                 )}
               </>
             )}
+          </section>
+        </div>
+      )}
+
+      {selectedHistoryRecord && (
+        <div className="dm-modal-backdrop">
+          <section className="dm-confirm-modal" role="dialog" aria-modal="true">
+            <h2>РЕЗУЛЬТАТ МАТЧА</h2>
+            <p>Дата: {new Date(selectedHistoryRecord.completedAt).toLocaleString()}</p>
+            <p>Место: <strong>{selectedHistoryRecord.rank}</strong></p>
+            <p>Игроков: {selectedHistoryRecord.playerCount}</p>
+            <p>Соперники: {selectedHistoryRecord.opponents.map((opponent) => opponent.displayName).join(', ') || '—'}</p>
+            <p>Очки: {selectedHistoryRecord.score}</p>
+            <p>Максимальный уровень: {selectedHistoryRecord.maxLevel}</p>
+            <p>Объединений: {selectedHistoryRecord.mergeCount}</p>
+            <p>Цепных реакций: {selectedHistoryRecord.chainReactions}</p>
+            <p>Использовано инструментов: {selectedHistoryRecord.toolsUsed}</p>
+            <p>Осталось монет: {selectedHistoryRecord.coins}</p>
+            <div><button onClick={() => setSelectedHistoryRecord(null)}>ЗАКРЫТЬ</button></div>
           </section>
         </div>
       )}
