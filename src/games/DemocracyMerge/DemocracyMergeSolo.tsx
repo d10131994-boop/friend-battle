@@ -22,6 +22,7 @@ import type { MergeEvent } from './logic/gameEngine'
 import { assertBoard } from './logic/gameEngine'
 import { TOOL_PRICES } from './logic/events'
 import { useDemocracyMergeSettings } from './settings'
+import CharacterPortrait from './CharacterPortrait'
 import './DemocracyMerge.css'
 
 type StoredSoloData = {
@@ -605,7 +606,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       ) : (
         <div className="dm-layout dm-solo-layout">
           <aside className="dm-side-panel">
-            <div className="dm-current-card"><small>ТЕКУЩИЙ ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small><strong>{current ?? '—'}</strong><span>Следующий: {next ?? '—'}</span></div>
+            <div className="dm-current-card"><small>ТЕКУЩИЙ ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small><strong>{current !== null ? <CharacterPortrait level={current} /> : '—'}</strong><span>Следующий: {next !== null ? <CharacterPortrait level={next} /> : '—'}</span></div>
             <div className="dm-stats">
               <div><small>ОЧКИ</small><strong>{game.score}</strong></div>
               <div><small>МАКС. УРОВЕНЬ</small><strong>{game.maxLevel}</strong></div>
@@ -641,7 +642,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
                   aria-label={cell === null ? `Свободная клетка ${index + 1}` : cell.kind === 'character'
                     ? `Персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}>
                   {cell === null ? '' : cell.kind === 'character'
-                    ? <span className={`dm-character dm-level-${cell.level}`}>{cell.level}</span>
+                    ? <span className={`dm-character dm-level-${cell.level}`}><CharacterPortrait level={cell.level} /></span>
                     : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}>{obstacleIcons[cell.obstacleType]}</span>}
                 </button>
               ))}
