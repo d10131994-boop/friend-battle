@@ -126,6 +126,9 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const [boardZoom, setBoardZoom] = useState(1)
   const pinchStartDistanceRef = useRef<number | null>(null)
   const pinchStartZoomRef = useRef(1)
+  const dragStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null)
+  const dragMovedRef = useRef(false)
+  const suppressClickRef = useRef(false)
   const { settings, updateSettings } = useDemocracyMergeSettings()
   const notificationTimeoutRef = useRef<number | null>(null)
   const animationTimeoutRef = useRef<number | null>(null)
@@ -444,6 +447,40 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     }
   }
   const handleBoardTouchEnd = () => { pinchStartDistanceRef.current = null }
+  const handleBoardMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (boardZoom <= 1 || event.button !== 0) return
+    dragStartRef.current = {
+      x: event.clientX, y: event.clientY,
+      scrollLeft: event.currentTarget.scrollLeft,
+      scrollTop: event.currentTarget.scrollTop,
+    }
+    dragMovedRef.current = false
+    event.currentTarget.style.cursor = 'grabbing'
+  }
+  const handleBoardMouseMove = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const start = dragStartRef.current
+    if (!start) return
+    const dx = event.clientX - start.x
+    const dy = event.clientY - start.y
+    if (Math.abs(dx) + Math.abs(dy) > 3) {
+      dragMovedRef.current = true
+      event.preventDefault()
+      event.currentTarget.scrollLeft = start.scrollLeft - dx
+      event.currentTarget.scrollTop = start.scrollTop - dy
+    }
+  }
+  const handleBoardMouseUp = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (dragMovedRef.current) suppressClickRef.current = true
+    dragStartRef.current = null
+    event.currentTarget.style.cursor = boardZoom > 1 ? 'grab' : 'auto'
+  }
+  const handleBoardClickCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!suppressClickRef.current) return
+    suppressClickRef.current = false
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
 
 
   if (loading) {
@@ -590,7 +627,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               <button onClick={() => setBoardZoom((zoom) => Math.min(1.6, Math.round((zoom + 0.1) * 10) / 10))} aria-label="Увеличить поле">+</button>
               <button onClick={() => setBoardZoom(1)}>СБРОС</button>
             </div>
-            <div className="dm-board-viewport" onTouchStart={handleBoardTouchStart} onTouchMove={handleBoardTouchMove} onTouchEnd={handleBoardTouchEnd}>
+            <div className="dm-board-viewport" onTouchStart={handleBoardTouchStart} onTouchMove={handleBoardTouchMove} onTouchEnd={handleBoardTouchEnd} onMouseDown={handleBoardMouseDown} onMouseMove={handleBoardMouseMove} onMouseUp={handleBoardMouseUp} onMouseLeave={handleBoardMouseUp} onClickCapture={handleBoardClickCapture}>
             <div className="dm-board" style={{ transform: `scale(${boardZoom})` }} aria-label="Игровое поле 6 на 6">
               {game.board.map((cell, index) => (
                 <button key={index} className={`dm-cell ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
