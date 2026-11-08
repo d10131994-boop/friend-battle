@@ -100,6 +100,9 @@ BEGIN
 
   IF NOT FOUND THEN RETURN OLD; END IF;
 
+  DELETE FROM public.games_democracy_merge_pending_actions
+  WHERE match_id = v_match.id AND user_id = OLD.user_id;
+
   UPDATE public.games_democracy_merge_match_players
   SET status = 'left',
       result = NULL,
@@ -146,6 +149,7 @@ BEGIN
     SET status = 'completed', completed_at = v_now, final_results = v_results
     WHERE id = v_match.id AND status = 'playing';
     PERFORM public.democracy_merge_record_completed_match(v_match.id);
+    DELETE FROM public.games_democracy_merge_pending_actions WHERE match_id = v_match.id;
 
     -- A match with no active participants is over. Preserve completed results,
     -- but close the shared room so no new participant can enter this session.
@@ -172,6 +176,10 @@ SET search_path TO ''
 AS $function$
 BEGIN
   IF OLD.status = 'playing' AND NEW.status = 'cancelled' THEN
+    DELETE FROM public.games_democracy_merge_pending_actions
+    WHERE match_id IN (
+      SELECT id FROM public.games_democracy_merge_matches WHERE room_id = NEW.id
+    );
     UPDATE public.games_democracy_merge_matches
     SET status = 'cancelled',
         completed_at = COALESCE(completed_at, pg_catalog.clock_timestamp())
@@ -587,6 +595,7 @@ DECLARE
   v_match public.games_democracy_merge_matches%ROWTYPE;
   v_player public.games_democracy_merge_match_players%ROWTYPE;
   v_receipt public.games_democracy_merge_action_receipts%ROWTYPE;
+  v_action_started_at timestamptz;
   v_status text;
   v_turn_number integer;
   v_score bigint;
@@ -642,15 +651,22 @@ BEGIN
     RETURN v_receipt.response;
   END IF;
 
+  SELECT started_at INTO v_action_started_at
+  FROM public.games_democracy_merge_pending_actions
+  WHERE match_id = p_match_id
+    AND user_id = p_user_id
+    AND action_id = p_action_id
+    AND action_type = p_action_type
+    AND expires_at > v_now
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Action reservation is missing or expired' USING ERRCODE = '55000';
+  END IF;
+
   IF v_room.status <> 'playing' OR v_match.status <> 'playing' THEN
     RAISE EXCEPTION 'Match is no longer active' USING ERRCODE = '55000';
   END IF;
-  IF v_match.deadline_at <= v_now AND NOT (
-    p_action_type = 'place_character'
-    AND NULLIF(p_state->>'actionStartedAt', '') IS NOT NULL
-    AND (p_state->>'actionStartedAt')::timestamptz <= v_match.deadline_at
-    AND (p_state->>'actionStartedAt')::timestamptz <= v_now
-  ) THEN
+  IF v_match.deadline_at <= v_now AND v_action_started_at > v_match.deadline_at THEN
     RAISE EXCEPTION 'Match deadline has passed' USING ERRCODE = '55000';
   END IF;
   IF NOT EXISTS (
@@ -788,6 +804,12 @@ BEGIN
     match_id, user_id, action_id, action_type, response
   ) VALUES (p_match_id, p_user_id, p_action_id, p_action_type, v_response);
 
+  DELETE FROM public.games_democracy_merge_pending_actions
+  WHERE match_id = p_match_id AND user_id = p_user_id AND action_id = p_action_id;
+  IF v_active_count = 0 THEN
+    DELETE FROM public.games_democracy_merge_pending_actions WHERE match_id = p_match_id;
+  END IF;
+
   RETURN v_response;
 END;
 $function$;
@@ -814,6 +836,12 @@ BEGIN
       AND m.deadline_at <= pg_catalog.clock_timestamp()
       AND r.status = 'playing'
       AND r.game_id = 'democracy-merge'
+      AND NOT EXISTS (
+        SELECT 1 FROM public.games_democracy_merge_pending_actions pending
+        WHERE pending.match_id = m.id
+          AND pending.started_at <= m.deadline_at
+          AND pending.expires_at > pg_catalog.clock_timestamp()
+      )
     ORDER BY m.room_id
   LOOP
     SELECT * INTO v_room
@@ -833,7 +861,12 @@ BEGIN
     IF NOT FOUND THEN CONTINUE; END IF;
 
     v_now := pg_catalog.clock_timestamp();
-    IF v_match.deadline_at > v_now THEN CONTINUE; END IF;
+    IF v_match.deadline_at > v_now OR EXISTS (
+      SELECT 1 FROM public.games_democracy_merge_pending_actions pending
+      WHERE pending.match_id = v_match.id
+        AND pending.started_at <= v_match.deadline_at
+        AND pending.expires_at > v_now
+    ) THEN CONTINUE; END IF;
 
     UPDATE public.games_democracy_merge_match_players
     SET status = 'completed',
