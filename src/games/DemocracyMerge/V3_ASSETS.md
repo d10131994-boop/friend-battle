@@ -18,7 +18,9 @@ The background currently uses `sky-clouds.png`, `castle.png`, `houses-village-al
 
 - All listed assets are present in the issue branch according to the GitHub comparison against `friend-battle-05-release`.
 - Draft PR: https://github.com/d10131994-boop/friend-battle/pull/107
-- Build, lint, and visual review: **not yet confirmed**. The current GitHub commit has no reported workflow runs or combined statuses. Do not describe CI as passed.
+- CI run #835: **passed**. Production build and lint, Supabase Edge Function checks, and SQL syntax checks all completed successfully. Run: https://github.com/d10131994-boop/friend-battle/actions/runs/42512673239
+- Static asset path audit: **passed** for 14 literal CSS asset URLs. The four tool WebP assets are also listed in the GitHub branch comparison and referenced through dynamic paths in TSX.
+- Browser visual review and interactive gameplay: **not yet confirmed**. CI does not replace browser testing.
 - Check desktop and mobile solo screens, image scaling, background contrast, interactive controls, and missing asset requests.
 - Run `npm ci`, `npm run build`, and `npm run lint` in a network-enabled checkout or GitHub Actions before merging.
 - Resources #35 and #36 remain deferred to V4 per the original V3 handoff notes.
