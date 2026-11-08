@@ -636,7 +636,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <div className="dm-board-viewport" style={{ cursor: boardZoom > 1 ? 'grab' : 'auto' }} onTouchStart={handleBoardTouchStart} onTouchMove={handleBoardTouchMove} onTouchEnd={handleBoardTouchEnd} onMouseDown={handleBoardMouseDown} onMouseMove={handleBoardMouseMove} onMouseUp={handleBoardMouseUp} onMouseLeave={handleBoardMouseUp} onClickCapture={handleBoardClickCapture}>
             <div className="dm-board" style={{ transform: `scale(${boardZoom})` }} aria-label="Игровое поле 6 на 6">
               {game.board.map((cell, index) => (
-                <button key={index} className={`dm-cell ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
+                <button key={index} className={`dm-cell ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''} ${selectedTool === 'swap' && swapFirstCell === index ? 'dm-cell-selected' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
                   aria-label={cell === null ? `Свободная клетка ${index + 1}` : cell.kind === 'character'
                     ? `Персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}>
                   {cell === null ? '' : cell.kind === 'character'
@@ -646,7 +646,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               ))}
             </div>
             </div>
-            <div className="dm-board-footer" role="status" aria-live="polite">{selectedTool ? `Выбран инструмент: ${toolLabels[selectedTool]}` : 'Выбери свободную клетку для размещения персонажа.'}</div>
+            <div className="dm-board-footer" role="status" aria-live="polite">{selectedTool === 'swap' && swapFirstCell !== null ? `Выбрана клетка ${swapFirstCell + 1}. Выберите вторую клетку для перестановки.` : selectedTool ? `Выбран инструмент: ${toolLabels[selectedTool]}` : 'Выбери свободную клетку для размещения персонажа.'}</div>
           </section>
           <aside className="dm-side-panel">
             <h3>СТАТИСТИКА</h3>
