@@ -3,6 +3,9 @@ import { telegramUser } from '../../services/telegram'
 import type { MultiplayerRoom } from '../../multiplayer'
 import {
   buyDemocracyMergeTool,
+  getDemocracyMergeHistory,
+  deleteDemocracyMergeHistoryRecord,
+  type DemocracyMergeHistoryResponse,
   getDemocracyMergeMatch,
   leaveDemocracyMergeMatch,
   placeDemocracyMergeCharacter,
@@ -83,6 +86,11 @@ export default function DemocracyMergeMatch({
   const [shopOpen, setShopOpen] = useState(false)
   const [surrenderConfirm, setSurrenderConfirm] = useState(false)
   const [leaveConfirm, setLeaveConfirm] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyData, setHistoryData] = useState<DemocracyMergeHistoryResponse | null>(null)
+  const [historyMessage, setHistoryMessage] = useState('')
+  const [deleteHistoryId, setDeleteHistoryId] = useState<string | null>(null)
   const [oneMinuteNotice, setOneMinuteNotice] = useState(false)
   const startAttemptRef = useRef(false)
   const oneMinuteNoticeRef = useRef<string | null>(null)
@@ -292,6 +300,39 @@ export default function DemocracyMergeMatch({
     }
   }
 
+  async function openHistory() {
+    setHistoryOpen(true)
+    setHistoryLoading(true)
+    setHistoryMessage('')
+    try {
+      setHistoryData(await getDemocracyMergeHistory(initData))
+    } catch (error) {
+      setHistoryMessage(errorMessage(error))
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  async function confirmDeleteHistory() {
+    if (!deleteHistoryId || !historyData) return
+    setHistoryLoading(true)
+    setHistoryMessage('')
+    try {
+      const result = await deleteDemocracyMergeHistoryRecord(initData, deleteHistoryId)
+      if (result.deleted) {
+        setHistoryData({
+          ...historyData,
+          history: historyData.history.filter((record) => record.id !== deleteHistoryId),
+        })
+      }
+      setDeleteHistoryId(null)
+    } catch (error) {
+      setHistoryMessage(errorMessage(error))
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
   if (!match || !me) {
     return (
       <main className="app dm-match-shell">
@@ -365,6 +406,9 @@ export default function DemocracyMergeMatch({
             <p>Осталось монет: <strong>{me.coins}</strong></p>
             <p>Место: <strong>{ownRank ?? 'Без места'}</strong></p>
           </div>
+          {(match.status === 'completed' || match.status === 'cancelled') && (
+            <button className="dm-secondary-button" onClick={() => void openHistory()}>ИСТОРИЯ МАТЧЕЙ</button>
+          )}
           {match.status === 'completed' || match.status === 'cancelled'
             ? room.status === 'cancelled'
               ? <button className="dm-primary-button" onClick={onMainMenu}>В ГЛАВНОЕ МЕНЮ</button>
@@ -466,6 +510,57 @@ export default function DemocracyMergeMatch({
               </div>
             ))}
             <p className="dm-shop-note">Мешок с монетами можно получить только в награду.</p>
+          </section>
+        </div>
+      )}
+
+
+      {historyOpen && (
+        <div className="dm-modal-backdrop" role="presentation" onClick={() => setHistoryOpen(false)}>
+          <section className="dm-history-modal" role="dialog" aria-modal="true" aria-label="История матчей" onClick={(event) => event.stopPropagation()}>
+            <header><h2>ИСТОРИЯ МАТЧЕЙ</h2><button onClick={() => setHistoryOpen(false)}>✕</button></header>
+            {historyLoading && <p>Загружаем историю…</p>}
+            {historyMessage && <p className="dm-message" role="alert">{historyMessage}</p>}
+            {historyData && (
+              <>
+                <div className="dm-history-stats">
+                  <div><small>МАТЧЕЙ</small><strong>{historyData.stats.totalGames}</strong></div>
+                  <div><small>ПОБЕД</small><strong>{historyData.stats.wins}</strong></div>
+                  <div><small>ПОРАЖЕНИЙ</small><strong>{historyData.stats.losses}</strong></div>
+                  <div><small>НИЧЬИХ</small><strong>{historyData.stats.draws}</strong></div>
+                  <div><small>ОЧКОВ ВСЕГО</small><strong>{historyData.stats.totalPoints}</strong></div>
+                  <div><small>РЕКОРД</small><strong>{historyData.stats.bestScore}</strong></div>
+                  <div><small>МАКС. УРОВЕНЬ</small><strong>{historyData.stats.maxLevel}</strong></div>
+                </div>
+                {historyData.history.length === 0 ? <p>Завершённых матчей пока нет.</p> : (
+                  <div className="dm-history-list">
+                    {historyData.history.map((record) => (
+                      <article className="dm-history-entry" key={record.id}>
+                        <div>
+                          <strong>{new Date(record.completedAt).toLocaleString()}</strong>
+                          <small>{record.playerCount} игрока · {record.opponents.map((opponent) => opponent.displayName).join(', ') || 'без соперников'}</small>
+                          <small>{record.status === 'surrendered' ? 'Сдача' : 'Завершён'} · место {record.rank} · {record.score} очков · ур. {record.maxLevel}</small>
+                        </div>
+                        <button className="dm-danger-button" onClick={() => setDeleteHistoryId(record.id)} disabled={historyLoading}>УДАЛИТЬ</button>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        </div>
+      )}
+
+      {deleteHistoryId && (
+        <div className="dm-modal-backdrop">
+          <section className="dm-confirm-modal" role="dialog" aria-modal="true">
+            <h2>Удалить запись?</h2>
+            <p>Удалится только запись из истории. Общая статистика и результат матча останутся без изменений.</p>
+            <div>
+              <button onClick={() => setDeleteHistoryId(null)}>ОТМЕНА</button>
+              <button className="dm-danger-button" onClick={() => void confirmDeleteHistory()} disabled={historyLoading}>УДАЛИТЬ</button>
+            </div>
           </section>
         </div>
       )}
