@@ -386,6 +386,13 @@ BEGIN
            AND mp.status = 'active'
            AND dm.status = 'playing'
            AND dm.deadline_at > pg_catalog.clock_timestamp()
+           AND NOT EXISTS (
+             SELECT 1 FROM public.games_democracy_merge_pending_actions pending
+             WHERE pending.match_id = dm.id
+               AND pending.user_id = p_user_id
+               AND pending.started_at <= v_last_seen + interval '5 minutes'
+               AND pending.expires_at > pg_catalog.clock_timestamp()
+           )
        ) THEN
       PERFORM public.multiplayer_execute_action(
         'leave_active_match',
