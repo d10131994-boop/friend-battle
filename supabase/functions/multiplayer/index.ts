@@ -249,7 +249,8 @@ Deno.serve(async (req: Request) => {
       finish_game: "room_finished",
       leave_active_match: "player_left",
     };
-    const event = eventByAction[action];
+    const heartbeatExpired = action === "heartbeat" && (data as { expired?: boolean } | null)?.expired === true;
+    const event = heartbeatExpired ? "player_left" : eventByAction[action];
     if (roomId && event) {
       try {
         const channel = supabase.channel(`room:${roomId}`, { config: { private: true } });
