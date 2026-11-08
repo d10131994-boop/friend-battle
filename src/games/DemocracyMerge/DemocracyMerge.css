@@ -114,3 +114,5 @@
 .dm-results-table .dm-rank-gold td:first-child{color:#f0cc65;font-weight:900}
 .dm-results-table .dm-rank-silver td:first-child{color:#c6d0e3;font-weight:900}
 .dm-results-table .dm-rank-bronze td:first-child{color:#c88a60;font-weight:900}
+
+.dm-purchase-reason{grid-column:1/-1;color:#d6b56a;font-size:10px}
