@@ -408,7 +408,7 @@ export default function DemocracyMergeMatch({
               <thead><tr><th>МЕСТО</th><th>ИГРОК</th><th>ОЧКИ</th><th>УРОВЕНЬ</th></tr></thead>
               <tbody>
                 {match.finalResults.map((player) => (
-                  <tr key={player.userId} className={player.userId === telegramId ? 'dm-own-result' : ''}>
+                  <tr key={player.userId} className={`${player.userId === telegramId ? 'dm-own-result' : ''} ${player.rank === 1 ? 'dm-rank-gold' : player.rank === 2 ? 'dm-rank-silver' : player.rank === 3 ? 'dm-rank-bronze' : ''}`}>
                     <td>{player.rank ?? '—'}</td>
                     <td>{player.displayName}{player.status === 'left' ? ' · Вышел' : ''}</td>
                     <td>{player.score}</td><td>{player.maxLevel}</td>
