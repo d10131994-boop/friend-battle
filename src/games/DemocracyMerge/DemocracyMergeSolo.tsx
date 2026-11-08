@@ -94,7 +94,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const [rewardToast, setRewardToast] = useState<string[]>([])
   const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState(false)
   const notificationTimeoutRef = useRef<number | null>(null)
-  const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
 
   const persist = useCallback((nextCheckpoint: SoloGameState | null, nextProfile: SoloProfile) => {
     const payload: StoredSoloData = { version: 1, checkpoint: nextCheckpoint, profile: nextProfile }
@@ -167,7 +166,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       }
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [game?.status, game?.deadlineAt, now, profile, persist])
+  }, [game, now, profile, persist])
 
   useEffect(() => () => {
     if (notificationTimeoutRef.current !== null) window.clearTimeout(notificationTimeoutRef.current)
