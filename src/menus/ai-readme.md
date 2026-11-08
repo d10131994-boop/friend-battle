@@ -77,3 +77,8 @@ that require an exact player count.
 Keep the menu registry and app routing in sync with the catalog row. A game
 is not ready for users merely because its database row exists; its required
 frontend and trusted server implementation must also be deployed.
+
+The Solo routing in `src/App.tsx` is intentionally exhaustive: when a new
+Solo game ID is added to `SoloGameId`, TypeScript must fail the build until
+its explicit screen route is implemented. Do not replace this with a default
+route to an existing game.
