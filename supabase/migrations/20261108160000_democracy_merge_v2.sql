@@ -308,10 +308,16 @@ BEGIN
     PERFORM public.democracy_merge_record_completed_match(v_match.id);
     DELETE FROM public.games_democracy_merge_pending_actions WHERE match_id = v_match.id;
 
-    -- Keep the shared room lifecycle consistent with the existing return-to-room flow.
-    UPDATE public.common_multiplayer_rooms
-    SET status = 'finished', finished_at = COALESCE(finished_at, v_now)
-    WHERE id = OLD.room_id AND status = 'playing';
+    -- If nobody is left in the shared room, close it. Otherwise leave it playing
+    -- until the surviving member invokes the normal finish_game return flow.
+    IF NOT EXISTS (
+      SELECT 1 FROM public.common_multiplayer_players
+      WHERE room_id = OLD.room_id
+    ) THEN
+      UPDATE public.common_multiplayer_rooms
+      SET status = 'cancelled', finished_at = COALESCE(finished_at, v_now)
+      WHERE id = OLD.room_id AND status = 'playing';
+    END IF;
   END IF;
 
   RETURN OLD;
