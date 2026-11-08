@@ -345,7 +345,7 @@ Deno.serve(async (req: Request) => {
             level6MergeCount = resolved.level6MergeCount;
             swapMerges.push(...resolved.merges);
           }
-          maxLevel = Math.max(maxLevel, ...nextBoard.flatMap(cell => cell?.kind === "character" ? [cell.level] : []), 1);
+          maxLevel = Math.max(maxLevel, ...nextBoard.flatMap((cell: { kind: string; level?: number } | null) => cell?.kind === "character" && typeof cell.level === "number" ? [cell.level] : []), 1);
           visualEvents = { kind: "tool", tool: "swap", merges: swapMerges };
         } else {
           if (!match.currentCharacter) throw new Error("Нет текущего персонажа для замены");
