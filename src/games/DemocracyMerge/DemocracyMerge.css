@@ -418,7 +418,7 @@
 }
 .dm-solo-screen .dm-header {
   padding: 12px;
-  background-image: url('/democracy-merge/v3/info-panel.webp'), linear-gradient(145deg, #f7d995, #c98b47 65%, #a45b2b);
+  background-image: url('/info-panel.webp'), linear-gradient(145deg, #f7d995, #c98b47 65%, #a45b2b);
   background-size: 100% 100%;
 }
 .dm-solo-screen .dm-header h1 span { color: #78451d; }
@@ -443,7 +443,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: url('/democracy-merge/v3/wooden-frame.webp') center / 100% 100% no-repeat;
+  background: url('/wooden-frame.webp') center / 100% 100% no-repeat;
   pointer-events: none;
   z-index: 2;
 }
@@ -489,16 +489,16 @@
   padding: 14%;
   border: 0;
   border-radius: 0;
-  background: url('/democracy-merge/v3/next-character-frame.webp') center / contain no-repeat;
+  background: url('/next-character-frame.webp') center / contain no-repeat;
   box-shadow: none;
 }
 .dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame:has(.dm-character-art) {
   width: clamp(70px, 13vw, 108px);
   height: clamp(70px, 13vw, 108px);
-  background: url('/democracy-merge/v3/next-character-frame.webp') center / contain no-repeat;
+  background: url('/next-character-frame.webp') center / contain no-repeat;
 }
 .dm-solo-screen .dm-solo-layout .dm-tools {
-  background-image: url('/democracy-merge/v3/tools-panel.webp'), linear-gradient(#b87b39, #77421f);
+  background-image: url('/tools-panel.webp'), linear-gradient(#b87b39, #77421f);
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
