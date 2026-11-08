@@ -1,0 +1,29 @@
+name: Main release guard
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+
+permissions:
+  contents: read
+
+jobs:
+  release-branch-name:
+    name: Release branch name
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require "release" in the source branch name
+        env:
+          SOURCE_BRANCH: ${{ github.head_ref }}
+        run: |
+          if [[ "${SOURCE_BRANCH,,}" != *release* ]]; then
+            echo "::error::Pull requests into main must come from a branch whose name contains 'release'."
+            exit 1
+          fi
+          echo "Source branch '${SOURCE_BRANCH}' is allowed."

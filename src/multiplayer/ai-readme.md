@@ -174,3 +174,37 @@ A game-specific match can be complete while the shared room is still `playing`. 
 Room closure remains separate and unchanged. An explicit leave during a match resets the room to `waiting` and clears its selected game; the game-owned cleanup hook handles interrupted game state. If the last player explicitly leaves, the room becomes `cancelled`. Host closure and the scheduled idle-room cleanup also retain their existing cancellation behavior.
 
 The shared Multiplayer schema and public API contain no rematch status, vote rows, vote action or lifecycle mode. Do not reintroduce these fields or add a generic rematch framework. The historical migration files that introduced rematch remain in migration history; the new removal migration drops the deployed schema objects and columns.
+
+## 12. Selected-game room capacity
+
+The Rock Paper Scissors integration adds `multiplayer_set_room_capacity_from_game`, a `BEFORE UPDATE OF game_id` trigger on `common_multiplayer_rooms`. When the host selects an enabled game, the trigger reads that game's `max_players` rule, rejects the selection if the room already contains more players than allowed, and stores that maximum in the room's `max_players`. When the game is cleared as part of the normal leave/reset lifecycle, the trigger restores the standard four-player room capacity. The existing `join_room` action then enforces the selected game's capacity before match start. This behavior is delivered in `supabase/sql/rock_paper_scissors_multiplayer.sql`; it is not live until that SQL patch is applied. Keep the trigger and game-rule table in sync if selection capacity semantics change.
+
+
+## Game availability and authoritative player limits
+
+The shared game catalog is `public.common_game_availability`. It is the
+source of truth for global enablement, Solo/Multiplayer availability, player
+limits and menu ordering.
+
+For every multiplayer game, the canonical
+`public.multiplayer_execute_action` RPC must validate game selection and
+match start against a catalog row with both `is_enabled = true` and
+`is_multiplayer_enabled = true`. The `start_game` action uses the row's
+`min_players` and `max_players`. The room-capacity trigger
+`public.multiplayer_set_room_capacity_from_game()` also reads the same row
+and sets `common_multiplayer_rooms.max_players` to its `max_players`
+value, so the existing join-room capacity check remains authoritative.
+
+Do not use the legacy `public.common_multiplayer_game_rules` table to
+register new games. It may remain in the database temporarily for backward
+compatibility, but it is no longer the source of truth for menus, game
+selection, room capacity or match start.
+
+The catalog is public read-only metadata. Browser menus read it through
+`src/database`; the trusted SQL RPC and trigger independently enforce
+multiplayer availability and player limits. Never rely on the menu's
+`canStart` check as a security boundary.
+
+When a new game is added, its row must be created in
+`common_game_availability` before multiplayer selection can succeed. The
+game ID must exactly match the ID used by the room and trusted game server.

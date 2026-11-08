@@ -4,13 +4,14 @@ import DevMultiplayerSmokeTest from './multiplayer/DevSmokeTest'
 import { useReactionRush } from './games/ReactionRush/useReactionRush'
 import ReactionRush from './games/ReactionRush/ReactionRush'
 import BrainBattle from './games/BrainBattle/BrainBattle'
+import RockPaperScissorsSolo from './games/rockPaperScissors/RockPaperScissorsSolo'
 import { MainMenu, MultiplayerRoomMenu, SoloRoomMenu } from './menus'
 import type { GameId } from './menus'
 import BottomNavigation from './components/BottomNavigation/BottomNavigation'
 import PlayerProfile from './components/PlayerProfile/PlayerProfile'
 import { telegramUser, telegramInitData, telegramStartParam } from './services/telegram'
 
-type Screen = 'home' | 'solo-room' | 'reaction-game' | 'brain-game' | 'multiplayer-room' | 'profile'
+type Screen = 'home' | 'solo-room' | 'reaction-game' | 'brain-game' | 'rock-paper-scissors' | 'multiplayer-room' | 'profile'
 
 function getInviteCode(startParam: string | undefined): string | undefined {
   if (!startParam) return undefined
@@ -35,8 +36,13 @@ function App() {
     if (gameId === 'reaction-rush') {
       setScreen('reaction-game')
       startSoloGame()
-    } else {
+    } else if (gameId === 'brain-battle') {
       setScreen('brain-game')
+    } else if (gameId === 'rock-paper-scissors') {
+      setScreen('rock-paper-scissors')
+    } else {
+      const unreachableGame: never = gameId
+      throw new Error(`Solo game route is not implemented: ${unreachableGame}`)
     }
   }
 
@@ -89,6 +95,8 @@ function App() {
       )}
 
       {screen === 'brain-game' && <BrainBattle onBack={() => setScreen('solo-room')} />}
+
+      {screen === 'rock-paper-scissors' && <RockPaperScissorsSolo onBack={() => setScreen('solo-room')} />}
 
       {screen === 'profile' && (
         <main className="app">

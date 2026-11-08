@@ -1,6 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  getGamePresentation,
+  loadGameAvailability,
+} from './gameAvailability'
+import type { GameAvailability, SoloGameId } from './gameAvailability'
 
-export type GameId = 'reaction-rush' | 'brain-battle'
+export type GameId = SoloGameId
 
 type SoloRoomMenuProps = {
   onBack: () => void
@@ -8,7 +13,51 @@ type SoloRoomMenuProps = {
 }
 
 export function SoloRoomMenu({ onBack, onStart }: SoloRoomMenuProps) {
-  const [gameId, setGameId] = useState<GameId>('reaction-rush')
+  const [games, setGames] = useState<GameAvailability[]>([])
+  const [gameId, setGameId] = useState<GameId | ''>('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const refreshGames = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const availableGames = await loadGameAvailability('solo')
+      setGames(availableGames)
+      setGameId((current) =>
+        availableGames.some((game) => game.game_id === current)
+          ? current
+          : (availableGames[0]?.game_id as GameId | undefined) ?? '',
+      )
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Не удалось загрузить список игр.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    loadGameAvailability('solo')
+      .then((availableGames) => {
+        if (!active) return
+        setGames(availableGames)
+        setGameId((current) =>
+          availableGames.some((game) => game.game_id === current)
+            ? current
+            : (availableGames[0]?.game_id as GameId | undefined) ?? '',
+        )
+      })
+      .catch((loadError: unknown) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : 'Не удалось загрузить список игр.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   return (
     <main className="app">
@@ -24,11 +73,37 @@ export function SoloRoomMenu({ onBack, onStart }: SoloRoomMenuProps) {
       </section>
       <section className="game-card">
         <h2>ВЫБОР ИГРЫ</h2>
-        <select className="invite-input" value={gameId} onChange={(event) => setGameId(event.target.value as GameId)}>
-          <option value="reaction-rush">Reaction Rush</option>
-          <option value="brain-battle">Brain Battle</option>
-        </select>
-        <button className="play-button" onClick={() => onStart(gameId)}>НАЧАТЬ</button>
+        {loading ? (
+          <p>Загружаем список игр…</p>
+        ) : error ? (
+          <>
+            <p role="alert">{error}</p>
+            <button className="play-button" onClick={() => void refreshGames()}>ПОВТОРИТЬ</button>
+          </>
+        ) : games.length === 0 ? (
+          <p>Сейчас нет игр, доступных в одиночном режиме.</p>
+        ) : (
+          <>
+            <select
+              className="invite-input"
+              value={gameId}
+              onChange={(event) => setGameId(event.target.value as GameId)}
+            >
+              {games.map((game) => (
+                <option key={game.game_id} value={game.game_id}>
+                  {getGamePresentation(game.game_id)?.title ?? game.game_id}
+                </option>
+              ))}
+            </select>
+            <button
+              className="play-button"
+              onClick={() => gameId && onStart(gameId)}
+              disabled={!gameId}
+            >
+              НАЧАТЬ
+            </button>
+          </>
+        )}
       </section>
     </main>
   )
