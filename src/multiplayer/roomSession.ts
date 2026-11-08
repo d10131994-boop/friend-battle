@@ -206,6 +206,7 @@ export function createMultiplayerRoomSession(
         })
 
         await sendHeartbeat()
+        if (stopped) return
         heartbeatTimer = setInterval(() => { void sendHeartbeat() }, HEARTBEAT_INTERVAL_MS)
         tokenTimer = setInterval(() => { void refreshTokenIfNeeded() }, TOKEN_CHECK_INTERVAL_MS)
         if (typeof document !== 'undefined') {
