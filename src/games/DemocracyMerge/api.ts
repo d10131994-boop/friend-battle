@@ -152,3 +152,47 @@ export function surrenderDemocracyMergeMatch(
 ): Promise<DemocracyMergeActionResponse> {
   return invoke(initData, { action: 'surrender', roomId, actionId })
 }
+
+export type DemocracyMergeHistoryRecord = {
+  id: string
+  matchId: string
+  completedAt: string
+  playerCount: number
+  opponents: Array<{ displayName: string; status: 'active' | 'completed' | 'surrendered' | 'left' }>
+  status: 'completed' | 'surrendered'
+  score: number
+  maxLevel: CharacterLevel
+  mergeCount: number
+  chainReactions: number
+  toolsUsed: number
+  coins: number
+  rank: number
+}
+
+export type DemocracyMergeAggregateStats = {
+  totalGames: number
+  wins: number
+  losses: number
+  draws: number
+  totalPoints: number
+  bestScore: number
+  maxLevel: CharacterLevel
+}
+
+export type DemocracyMergeHistoryResponse = {
+  history: DemocracyMergeHistoryRecord[]
+  stats: DemocracyMergeAggregateStats
+}
+
+export function getDemocracyMergeHistory(
+  initData: string | undefined,
+): Promise<DemocracyMergeHistoryResponse> {
+  return invoke(initData, { action: 'get_history' })
+}
+
+export function deleteDemocracyMergeHistoryRecord(
+  initData: string | undefined,
+  recordId: string,
+): Promise<{ deleted: boolean }> {
+  return invoke(initData, { action: 'delete_history_record', recordId })
+}
