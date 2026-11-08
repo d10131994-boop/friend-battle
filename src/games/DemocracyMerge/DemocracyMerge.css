@@ -397,14 +397,14 @@
 
 
 /* Democracy Merge V3 — solo-only countryside art direction.
-   Asset URLs intentionally retain CSS fallbacks until approved WebP files
-   have been committed to public/democracy-merge/v3/. */
+   Approved art is served from public/democracy-merge/picture/v3/.
+   Keep CSS colors as fallbacks for missing imagery. */
 .dm-solo-screen {
   --dm-v3-wood: #875024;
   --dm-v3-ink: #4c301c;
   --dm-v3-cream: #fff1ca;
   color: var(--dm-v3-ink);
-  background: linear-gradient(180deg, #8cd9ff 0%, #c6edff 23%, #a9d872 52%, #6fae49 100%);
+  background: url('/democracy-merge/picture/v3/sky-clouds.png') center top / cover no-repeat, linear-gradient(180deg, #8cd9ff 0%, #c6edff 23%, #a9d872 52%, #6fae49 100%);
 }
 .dm-solo-screen .dm-header,
 .dm-solo-screen .dm-side-panel,
