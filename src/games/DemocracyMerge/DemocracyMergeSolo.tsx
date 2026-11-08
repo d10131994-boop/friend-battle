@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react'
 import { telegramUser } from '../../services/telegram'
 import {
   buySoloTool,
@@ -42,6 +43,12 @@ const toolIcons: Record<ToolType, string> = {
   storage: '📦',
   swap: '🔀',
   replace: '🔄',
+}
+const toolDescriptions: Record<ToolType, string> = {
+  saw: 'Удаляет персонажа, заграждение или полицейского бесплатно; камень — за 50 монет.',
+  storage: 'Переносит персонажа в хранилище. Инструмент расходуется только при возврате персонажа.',
+  swap: 'Меняет местами двух обычных персонажей. Препятствия выбирать нельзя.',
+  replace: 'Заменяет текущего персонажа случайным персонажем того же уровня.',
 }
 const obstacleIcons = { barricade: '🧱', police: '👮', rock: '🪨' }
 const obstacleLabels = { barricade: 'Заграждение', police: 'Полицейский', rock: 'Камень' }
@@ -429,7 +436,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const isNewRecord = recordBroken
   const animationClasses = `${settings.animationsEnabled ? '' : 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
 
-  const touchDistance = (touches: TouchList) => Math.hypot(
+  const touchDistance = (touches: ReactTouchEvent<HTMLDivElement>['touches']) => Math.hypot(
     touches[0].clientX - touches[1].clientX,
     touches[0].clientY - touches[1].clientY,
   )
