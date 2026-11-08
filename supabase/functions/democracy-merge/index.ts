@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sqlErrorResponse } from "../_shared/errors.ts";
 import {
   generateCharacterSequence,
   isBoardFull,
@@ -133,7 +134,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await db.rpc("democracy_merge_get_personal_history", {
         p_user_id: userId,
       });
-      if (error) return fail("Не удалось загрузить историю матчей", 409);
+      if (error) return sqlErrorResponse(error, corsHeaders, { operation: "get_personal_history", fallbackMessage: "Не удалось загрузить историю матчей" });
       return respond(data);
     }
 
@@ -145,7 +146,7 @@ Deno.serve(async (req: Request) => {
         p_user_id: userId,
         p_record_id: body.recordId,
       });
-      if (error) return fail("Не удалось удалить запись истории", 409);
+      if (error) return sqlErrorResponse(error, corsHeaders, { operation: "delete_history_record", fallbackMessage: "Не удалось удалить запись истории" });
       return respond({ deleted: data === true });
     }
 
@@ -169,7 +170,7 @@ Deno.serve(async (req: Request) => {
         p_character_sequence: characterSequence,
         p_obstacle_sequence: obstacleSequence,
       });
-      if (error) return fail("Не удалось начать матч Democracy Merge", 409);
+      if (error) return sqlErrorResponse(error, corsHeaders, { operation: "start_match", fallbackMessage: "Не удалось начать матч Democracy Merge" });
       await broadcast(db, roomId, "match_started");
       return respond({
         room: data.room,
@@ -198,7 +199,14 @@ Deno.serve(async (req: Request) => {
         p_action_id: body.actionId,
         p_action_type: actionType,
       });
-      if (reservationError) return fail("Ход уже нельзя начать: время матча истекло или партия завершена.", 409);
+      if (reservationError) return sqlErrorResponse(reservationError, corsHeaders, {
+        operation: "reserve_action",
+        fallbackMessage: "Не удалось зарезервировать действие",
+        messages: {
+          55000: "Ход уже нельзя начать: время матча истекло, обратный отсчёт не завершён или партия завершена.",
+          42501: "Вы больше не участник комнаты.",
+        },
+      });
       if (reservation?.replayed === true) return respond(reservation.response);
       const reservedMatchId = reservation?.matchId;
       if (typeof reservedMatchId !== "string" || !/^[0-9a-f-]{36}$/i.test(reservedMatchId)) {
@@ -213,7 +221,11 @@ Deno.serve(async (req: Request) => {
         await db.rpc("democracy_merge_release_action", {
           p_match_id: reservedMatchId, p_user_id: userId, p_action_id: body.actionId,
         });
-        return fail("Не удалось получить состояние матча", 409);
+        return sqlErrorResponse(snapshotError, corsHeaders, {
+          operation: "match_snapshot",
+          fallbackMessage: "Не удалось получить состояние матча",
+          messages: { 42501: "Вы больше не участник комнаты и исключены из матча." },
+        });
       }
       const match = snapshot?.match;
       const me = match?.me;
@@ -378,8 +390,11 @@ Deno.serve(async (req: Request) => {
         await db.rpc("democracy_merge_release_action", {
           p_match_id: match.matchId, p_user_id: userId, p_action_id: body.actionId,
         });
-        const statusCode = error.code === "40001" ? 409 : 400;
-        return fail(error.code === "40001" ? "Состояние изменилось. Обновите матч и повторите действие." : "Не удалось сохранить действие", statusCode);
+        return sqlErrorResponse(error, corsHeaders, {
+          operation: "commit_player_action",
+          fallbackMessage: "Не удалось сохранить действие",
+          messages: { 40001: "Состояние изменилось. Обновите матч и повторите действие." },
+        });
       }
       await broadcast(db, roomId, "match_updated");
       return respond(data);
@@ -400,7 +415,7 @@ Deno.serve(async (req: Request) => {
         p_display_name: "Game server",
         p_payload: { roomId, gameId: "democracy-merge", playerUserId: userId },
       });
-      if (error) return fail("Не удалось окончательно выйти из матча", 409);
+      if (error) return sqlErrorResponse(error, corsHeaders, { operation: "leave_active_match", fallbackMessage: "Не удалось окончательно выйти из матча" });
       await broadcast(db, roomId, "player_left");
       return respond({ room: data });
     }
@@ -421,7 +436,7 @@ Deno.serve(async (req: Request) => {
         p_display_name: "Game server",
         p_payload: { roomId, gameId: "democracy-merge", startedAt: snapshot.match.startedAt },
       });
-      if (error) return fail("Не удалось завершить общую комнату", 409);
+      if (error) return sqlErrorResponse(error, corsHeaders, { operation: "finish_game", fallbackMessage: "Не удалось завершить общую комнату" });
       await broadcast(db, roomId, "room_finished");
       return respond({ room: data });
     }
@@ -431,8 +446,11 @@ Deno.serve(async (req: Request) => {
       p_user_id: userId,
     });
     if (error) {
-      if (error.code === "42501") return fail("Вы больше не участник комнаты и исключены из матча.", 403);
-      return fail("Не удалось получить состояние матча", 409);
+      return sqlErrorResponse(error, corsHeaders, {
+        operation: "match_snapshot",
+        fallbackMessage: "Не удалось получить состояние матча",
+        messages: { 42501: "Вы больше не участник комнаты и исключены из матча." },
+      });
     }
     return respond(data);
   } catch (error) {
