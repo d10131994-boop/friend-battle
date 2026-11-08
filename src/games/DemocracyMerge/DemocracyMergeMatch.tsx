@@ -89,11 +89,18 @@ export default function DemocracyMergeMatch({
   const me = match?.me ?? null
 
   const refreshMatch = useCallback(async () => {
-    const next = await getDemocracyMergeMatch(initData, room.roomId)
-    onRoomUpdate(next.room)
-    setSnapshot(next)
-    return next
-  }, [initData, room.roomId, onRoomUpdate])
+    try {
+      const next = await getDemocracyMergeMatch(initData, room.roomId)
+      onRoomUpdate(next.room)
+      setSnapshot(next)
+      return next
+    } catch (error) {
+      if (/not a current room member|not a room member|не участник/i.test(errorMessage(error))) {
+        onLeaveMatch()
+      }
+      throw error
+    }
+  }, [initData, room.roomId, onRoomUpdate, onLeaveMatch])
 
   useEffect(() => {
     let active = true
