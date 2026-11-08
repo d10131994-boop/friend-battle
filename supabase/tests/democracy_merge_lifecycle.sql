@@ -358,7 +358,7 @@ BEGIN
   v_room := public.multiplayer_execute_action(
     'heartbeat', v_host || '_heartbeat', 'Heartbeat host', jsonb_build_object('roomId', v_room_id)
   );
-  IF v_room->>'expired' <> 'true' THEN
+  IF v_room->>'expired' IS DISTINCT FROM 'true' THEN
     RAISE EXCEPTION 'A late heartbeat must report an expired return window';
   END IF;
   IF EXISTS (
