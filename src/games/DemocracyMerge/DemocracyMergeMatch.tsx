@@ -94,6 +94,10 @@ export default function DemocracyMergeMatch({
   const [selectedHistoryRecord, setSelectedHistoryRecord] = useState<DemocracyMergeHistoryResponse['history'][number] | null>(null)
   const [deleteHistoryId, setDeleteHistoryId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [visualEvents, setVisualEvents] = useState<DemocracyMergeActionResponse['visualEvents']>(null)
+  const [rewardToast, setRewardToast] = useState<string[]>([])
+  const visualEventTimeoutRef = useRef<number | null>(null)
+  const rewardTimeoutRef = useRef<number | null>(null)
   const { settings, updateSettings } = useDemocracyMergeSettings()
   const [oneMinuteNotice, setOneMinuteNotice] = useState(false)
   const startAttemptRef = useRef(false)
@@ -183,6 +187,8 @@ export default function DemocracyMergeMatch({
 
   useEffect(() => () => {
     if (oneMinuteTimeoutRef.current !== null) window.clearTimeout(oneMinuteTimeoutRef.current)
+    if (visualEventTimeoutRef.current !== null) window.clearTimeout(visualEventTimeoutRef.current)
+    if (rewardTimeoutRef.current !== null) window.clearTimeout(rewardTimeoutRef.current)
   }, [])
 
   const isCountdown = Boolean(match?.gameStartedAt && Date.parse(match.gameStartedAt) > now)
@@ -198,7 +204,27 @@ export default function DemocracyMergeMatch({
     onRoomUpdate(response.room)
     setSnapshot(response)
     setMessage('')
-  }, [onRoomUpdate])
+    if (settings.animationsEnabled && response.visualEvents) {
+      setVisualEvents(response.visualEvents)
+      if (visualEventTimeoutRef.current !== null) window.clearTimeout(visualEventTimeoutRef.current)
+      const mergeCount = response.visualEvents.merges?.length ?? 0
+      const duration = settings.animationSpeed === 'fast' ? 500 : 1000
+      visualEventTimeoutRef.current = window.setTimeout(() => setVisualEvents(null), duration + Math.max(0, mergeCount - 1) * (duration / 2))
+    } else {
+      setVisualEvents(null)
+    }
+    if (response.rewards?.length) {
+      setRewardToast(response.rewards.map((reward) => reward.kind === 'money_bag'
+        ? `+ ${reward.coins} монет`
+        : `Инструмент: ${toolLabels[reward.tool]}`))
+      if (rewardTimeoutRef.current !== null) window.clearTimeout(rewardTimeoutRef.current)
+      rewardTimeoutRef.current = window.setTimeout(() => setRewardToast([]), 3000)
+    } else if (response.visualEvents?.kind === 'purchase' && response.visualEvents.tool) {
+      setRewardToast([`Куплено: ${toolLabels[response.visualEvents.tool]}`])
+      if (rewardTimeoutRef.current !== null) window.clearTimeout(rewardTimeoutRef.current)
+      rewardTimeoutRef.current = window.setTimeout(() => setRewardToast([]), 3000)
+    }
+  }, [onRoomUpdate, settings.animationsEnabled, settings.animationSpeed])
 
   const submitAction = useCallback(async (
     action: () => Promise<DemocracyMergeActionResponse>,
@@ -371,6 +397,7 @@ export default function DemocracyMergeMatch({
         <div className="dm-countdown"><span>{countdown > 0 ? countdown : 'СТАРТ!'}</span></div>
       )}
       {oneMinuteNotice && <div className="dm-toast">До окончания матча осталась 1 минута</div>}
+      {rewardToast.length > 0 && <div className="dm-toast dm-reward-toast">{rewardToast.join(' · ')}</div>}
       {message && <div className="dm-message">{message}</div>}
 
       {match.status === 'completed' || match.status === 'cancelled' || me.status !== 'active' ? (
@@ -459,10 +486,17 @@ export default function DemocracyMergeMatch({
 
           <section className="dm-board-section">
             <div className="dm-board" aria-label="Игровое поле 6 на 6">
-              {board.map((cell, index) => (
+              {board.map((cell, index) => {
+                const mergeIndex = visualEvents?.kind === 'placement'
+                  ? visualEvents.merges?.findIndex((merge) => merge.cells.includes(index)) ?? -1
+                  : -1
+                const placed = visualEvents?.kind === 'placement' && visualEvents.placementCellIndex === index
+                const obstacle = visualEvents?.kind === 'placement' && visualEvents.obstacleCellIndex === index
+                return (
                 <button
                   key={index}
-                  className={`dm-cell ${cell?.kind === 'obstacle' ? 'dm-obstacle' : ''} ${swapFirstCell === index ? 'dm-cell-selected' : ''}`}
+                  className={`dm-cell ${cell?.kind === 'obstacle' ? 'dm-obstacle' : ''} ${swapFirstCell === index ? 'dm-cell-selected' : ''} ${placed ? 'dm-cell-placed' : ''} ${mergeIndex >= 0 ? 'dm-cell-merge' : ''} ${obstacle ? 'dm-cell-obstacle' : ''}`}
+                  style={mergeIndex >= 0 ? { animationDelay: `${mergeIndex * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined}
                   onClick={() => void clickCell(index)}
                   disabled={!canAct}
                   aria-label={cell === null ? `Свободная клетка ${index + 1}` : cell.kind === 'character'
@@ -473,7 +507,8 @@ export default function DemocracyMergeMatch({
                     ? <span className={`dm-character dm-level-${cell.level}`}>{cell.level}</span>
                     : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}>{obstacleIcons[cell.obstacleType]}</span>}
                 </button>
-              ))}
+                )
+              })}
             </div>
             <div className="dm-board-footer">
               {me.status !== 'active'
