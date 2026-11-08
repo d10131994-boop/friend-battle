@@ -642,7 +642,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
                     ? `Персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}>
                   {cell === null ? '' : cell.kind === 'character'
                     ? <span className={`dm-character dm-level-${cell.level}`}><CharacterPortrait level={cell.level} /></span>
-                    : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}>{obstacleIcons[cell.obstacleType]}</span>}
+                    : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}><img src={`/democracy-merge/obstacles/${cell.obstacleType}.svg`} alt="" aria-hidden="true" draggable={false} /></span>}
                 </button>
               ))}
             </div>
