@@ -29,8 +29,8 @@ Deno.test('three equal characters merge and preserve the placement cell', () => 
   board[0] = { kind: 'character', level: 1 }
   board[1] = { kind: 'character', level: 1 }
   const result = placeCharacter(board, 2, 1)
-  if (result.merges.length !== 1 || result.scoreDelta !== 10) {
-    throw new Error('A level 1 triple must produce one level 2 merge worth 10 points.')
+  if (result.merges.length !== 1 || result.scoreDelta !== 20) {
+    throw new Error('A level 1 triple must produce one level 2 merge worth 20 points for two cleared cells.')
   }
   if (result.board[2]?.kind !== 'character' || result.board[2].level !== 2) {
     throw new Error('The placed cell must contain the upgraded character.')
@@ -44,7 +44,7 @@ Deno.test('a connected group of four or more is merged in full', () => {
   const board = createEmptyBoard()
   for (const index of [0, 1, 6]) board[index] = { kind: 'character', level: 2 }
   const result = placeCharacter(board, 7, 2)
-  if (result.merges[0]?.cells.length !== 4 || result.scoreDelta !== 30) {
+  if (result.merges[0]?.cells.length !== 4 || result.scoreDelta !== 90) {
     throw new Error('All four connected characters must merge into one level 3 character.')
   }
 })
@@ -56,7 +56,7 @@ Deno.test('merge chains resolve automatically and score every stage', () => {
   board[8] = { kind: 'character', level: 2 }
   board[14] = { kind: 'character', level: 2 }
   const result = placeCharacter(board, 2, 1)
-  if (result.merges.length !== 2 || result.scoreDelta !== 40) {
+  if (result.merges.length !== 2 || result.scoreDelta !== 80) {
     throw new Error('The level 1 merge and resulting level 2 chain must both score.')
   }
   if (result.board[2]?.kind !== 'character' || result.board[2].level !== 3) {
@@ -86,8 +86,8 @@ Deno.test('level 6 repeat merges use the repeat score', () => {
   secondBoard[0] = { kind: 'character', level: 6 }
   secondBoard[1] = { kind: 'character', level: 6 }
   const repeated = placeCharacter(secondBoard, 2, 6, first.level6MergeCount)
-  if (first.scoreDelta !== 810 || repeated.scoreDelta !== 2430) {
-    throw new Error('First level 6 merge is worth 810; subsequent merges are worth 2430.')
+  if (first.scoreDelta !== 1620 || repeated.scoreDelta !== 4860) {
+    throw new Error('First level 6 merge is worth 1620; subsequent merges are worth 4860.')
   }
   if (repeated.board[2]?.kind !== 'character' || repeated.board[2].level !== 6) {
     throw new Error('Level 6 must remain capped at level 6.')
@@ -106,4 +106,14 @@ Deno.test('character generation follows the agreed weighted boundaries', () => {
   if (sequence.some((level) => level !== 6)) {
     throw new Error('Injected random source must be used for every sequence entry.')
   }
+})
+
+Deno.test('solo can merge beyond level six while multiplayer remains capped', () => {
+  const board = createEmptyBoard()
+  board[0] = { kind: 'character', level: 6 }
+  board[1] = { kind: 'character', level: 6 }
+  const solo = placeCharacter(board, 2, 6, 0, 10)
+  const multiplayer = placeCharacter(board, 2, 6)
+  if (solo.board[2]?.kind !== 'character' || solo.board[2].level !== 7) throw new Error('Solo must unlock level seven.')
+  if (multiplayer.board[2]?.kind !== 'character' || multiplayer.board[2].level !== 6) throw new Error('Multiplayer must retain its level six cap.')
 })
