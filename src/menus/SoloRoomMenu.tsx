@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   getGamePresentation,
   loadGameAvailability,
@@ -18,7 +18,7 @@ export function SoloRoomMenu({ onBack, onStart }: SoloRoomMenuProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  async function refreshGames() {
+  const refreshGames = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -34,11 +34,11 @@ export function SoloRoomMenu({ onBack, onStart }: SoloRoomMenuProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     void refreshGames()
-  }, [])
+  }, [refreshGames])
 
   return (
     <main className="app">
