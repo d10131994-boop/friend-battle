@@ -320,10 +320,10 @@ export default function DemocracyMergeMatch({
       {oneMinuteNotice && <div className="dm-toast">До окончания матча осталась 1 минута</div>}
       {message && <div className="dm-message">{message}</div>}
 
-      {match.status === 'completed' || match.status === 'cancelled' ? (
+      {match.status === 'completed' || match.status === 'cancelled' || me.status !== 'active' ? (
         <section className="dm-results">
-          <h2>{match.status === 'completed' ? 'МАТЧ ЗАВЕРШЁН' : 'КОМНАТА ЗАКРЫТА'}</h2>
-          {match.finalResults && (
+          <h2>{match.status === 'completed' ? 'МАТЧ ЗАВЕРШЁН' : match.status === 'cancelled' ? 'КОМНАТА ЗАКРЫТА' : 'ТВОЯ ПАРТИЯ ЗАВЕРШЕНА'}</h2>
+          {match.finalResults ? (
             <table className="dm-results-table">
               <thead><tr><th>МЕСТО</th><th>ИГРОК</th><th>ОЧКИ</th><th>УРОВЕНЬ</th></tr></thead>
               <tbody>
@@ -336,6 +336,19 @@ export default function DemocracyMergeMatch({
                 ))}
               </tbody>
             </table>
+          ) : (
+            <section className="dm-live-results">
+              <h3>ТЕКУЩИЕ РЕЗУЛЬТАТЫ ИГРОКОВ</h3>
+              <table className="dm-results-table">
+                <thead><tr><th>ИГРОК</th><th>ОЧКИ</th><th>УРОВЕНЬ</th></tr></thead>
+                <tbody>
+                  <tr className="dm-own-result"><td>{me.displayName} · Ты</td><td>{me.score}</td><td>{me.maxLevel}</td></tr>
+                  {match.players.map((player) => (
+                    <tr key={player.userId}><td>{player.displayName}</td><td>{player.score}</td><td>{player.maxLevel}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
           )}
           <div className="dm-personal-result">
             <h3>ТВОЙ РЕЗУЛЬТАТ</h3>
@@ -347,9 +360,11 @@ export default function DemocracyMergeMatch({
             <p>Осталось монет: <strong>{me.coins}</strong></p>
             <p>Место: <strong>{ownRank ?? 'Без места'}</strong></p>
           </div>
-          {room.status === 'cancelled'
-            ? <button className="dm-primary-button" onClick={onMainMenu}>В ГЛАВНОЕ МЕНЮ</button>
-            : <button className="dm-primary-button" onClick={() => void returnToRoom()} disabled={loading}>ВЕРНУТЬСЯ В КОМНАТУ</button>}
+          {match.status === 'completed' || match.status === 'cancelled'
+            ? room.status === 'cancelled'
+              ? <button className="dm-primary-button" onClick={onMainMenu}>В ГЛАВНОЕ МЕНЮ</button>
+              : <button className="dm-primary-button" onClick={() => void returnToRoom()} disabled={loading}>ВЕРНУТЬСЯ В КОМНАТУ</button>
+            : <p className="dm-waiting-note">Твоя партия завершена. Ожидаем остальных игроков. Результат уже сохранён.</p>}
         </section>
       ) : (
         <div className="dm-layout">
