@@ -18,7 +18,7 @@ import {
   returnStoredCharacter,
   storeCharacter,
   swapCharacters,
-  useSaw,
+  applySaw,
   type ToolInventory,
   type ToolType,
 } from "../../../src/games/DemocracyMerge/logic/tools.ts";
@@ -233,7 +233,7 @@ Deno.serve(async (req: Request) => {
       } else if (body.action === "use_tool") {
         if (!["saw", "storage", "swap", "replace"].includes(body.tool)) return fail("Неизвестный инструмент", 400);
         if (body.tool === "saw") {
-          const used = useSaw(board, body.cellIndex, inventory, coins);
+          const used = applySaw(board, body.cellIndex, inventory, coins);
           nextBoard = used.board;
           inventory = used.inventory;
           coins = used.coins;
