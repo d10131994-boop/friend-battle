@@ -17,6 +17,7 @@ import {
   type SoloProfile,
 } from './logic/solo'
 import type { ToolType } from './logic/tools'
+import type { MergeEvent } from './logic/gameEngine'
 import { assertBoard } from './logic/gameEngine'
 import { TOOL_PRICES } from './logic/events'
 import { useDemocracyMergeSettings } from './settings'
@@ -126,7 +127,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const notificationTimeoutRef = useRef<number | null>(null)
   const animationTimeoutRef = useRef<number | null>(null)
   const [lastPlacedCell, setLastPlacedCell] = useState<number | null>(null)
-  const [mergeCells, setMergeCells] = useState<number[]>([])
+  const [mergeEvents, setMergeEvents] = useState<MergeEvent[]>([])
   const [obstacleCell, setObstacleCell] = useState<number | null>(null)
 
   const persist = useCallback((nextCheckpoint: SoloGameState | null, nextProfile: SoloProfile) => {
@@ -278,7 +279,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
         if (animationTimeoutRef.current !== null) window.clearTimeout(animationTimeoutRef.current)
         animationTimeoutRef.current = window.setTimeout(() => {
           setLastPlacedCell(null)
-          setMergeCells([])
+          setMergeEvents([])
           setObstacleCell(null)
         }, settings.animationSpeed === 'fast' ? 500 : 1000)
       } else {
@@ -549,7 +550,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
           <section className="dm-board-section">
             <div className="dm-board" aria-label="Игровое поле 6 на 6">
               {game.board.map((cell, index) => (
-                <button key={index} className={`dm-cell ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeCells.includes(index) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''}`} onClick={() => clickCell(index)} disabled={!canAct}
+                <button key={index} className={`dm-cell ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
                   aria-label={cell === null ? `Свободная клетка ${index + 1}` : cell.kind === 'character'
                     ? `Персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}>
                   {cell === null ? '' : cell.kind === 'character'
