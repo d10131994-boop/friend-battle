@@ -13,23 +13,29 @@ function seededNumber(seed: string, index: number) {
 }
 
 const props = [
-  { x: 13, y: 25, rotate: -18, kind: 0 },
-  { x: 79, y: 21, rotate: 24, kind: 1 },
-  { x: 18, y: 69, rotate: 13, kind: 2 },
-  { x: 83, y: 72, rotate: -28, kind: 3 },
-  { x: 49, y: 13, rotate: 8, kind: 4 },
-  { x: 48, y: 84, rotate: -9, kind: 5 },
-  { x: 7, y: 47, rotate: 32, kind: 6 },
-  { x: 91, y: 48, rotate: -14, kind: 7 },
+  { x: 34, y: 31, rotate: -18, kind: 0 },
+  { x: 66, y: 30, rotate: 24, kind: 1 },
+  { x: 29, y: 49, rotate: 13, kind: 2 },
+  { x: 71, y: 51, rotate: -28, kind: 3 },
+  { x: 36, y: 69, rotate: 8, kind: 4 },
+  { x: 64, y: 70, rotate: -9, kind: 5 },
+  { x: 50, y: 20, rotate: 32, kind: 6 },
+  { x: 51, y: 81, rotate: -14, kind: 7 },
 ]
 
 function CampObject({ kind }: { kind: number }) {
   const stroke = '#514139'
-  const fill = ['#9b927d', '#b6a17d', '#819078', '#b17e64'][kind % 4]
-  if (kind % 4 === 0) return <path d="M-18 2 L-5 -15 L8 -8 L18 8 L4 18 L-12 12 Z" fill={fill} stroke={stroke} strokeWidth="3" strokeLinejoin="round" />
-  if (kind % 4 === 1) return <g stroke={stroke} strokeWidth="3" strokeLinecap="round"><path d="M-19 5 Q-5 -8 18 4 L11 13 Q-5 8 -19 5Z" fill={fill}/><path d="M-9 -10 L10 14 M4 -14 L-12 12" fill="none"/></g>
-  if (kind % 4 === 2) return <g stroke={stroke} strokeWidth="3" strokeLinejoin="round"><path d="M-16 12 L-12 -10 L4 -18 L17 -5 L11 14 Z" fill={fill}/><path d="M-12 -10 L11 14 M4 -18 L-2 5" fill="none"/></g>
-  return <g stroke={stroke} strokeWidth="3" strokeLinecap="round"><path d="M-17 9 Q-4 -17 17 -7 L10 13 Q-1 5 -17 9Z" fill={fill}/><path d="M-5 -2 L12 6" fill="none"/></g>
+  const fill = ['#9b927d', '#b6a17d', '#819078', '#b17e64', '#a69b83', '#8e9b83', '#b18b70', '#9b8c79'][kind]
+  switch (kind) {
+    case 0: return <path d="M-18 2 L-5 -15 L8 -8 L18 8 L4 18 L-12 12Z" fill={fill} stroke={stroke} strokeWidth="3" strokeLinejoin="round"/>
+    case 1: return <g stroke={stroke} strokeWidth="3" strokeLinecap="round"><path d="M-19 5 Q-5 -8 18 4 L11 13 Q-5 8 -19 5Z" fill={fill}/><path d="M-9 -10 L10 14 M4 -14 L-12 12" fill="none"/></g>
+    case 2: return <g stroke={stroke} strokeWidth="3" strokeLinejoin="round"><path d="M-16 12 L-12 -10 L4 -18 L17 -5 L11 14Z" fill={fill}/><path d="M-12 -10 L11 14 M4 -18 L-2 5" fill="none"/></g>
+    case 3: return <g stroke={stroke} strokeWidth="3" strokeLinecap="round"><path d="M-17 9 Q-4 -17 17 -7 L10 13 Q-1 5 -17 9Z" fill={fill}/><path d="M-5 -2 L12 6" fill="none"/></g>
+    case 4: return <g stroke={stroke} strokeWidth="3" strokeLinejoin="round"><path d="M-18 12 L-12 -12 L2 -3 L17 -17 L12 14Z" fill={fill}/><path d="M-12 -12 L12 14" fill="none"/></g>
+    case 5: return <g stroke={stroke} strokeWidth="3" strokeLinecap="round"><path d="M-18 7 Q-6 -15 2 -3 Q15 -20 19 7 L8 15 L-12 13Z" fill={fill}/><path d="M-4 -3 L-9 13 M8 -4 L12 12" fill="none"/></g>
+    case 6: return <g stroke={stroke} strokeWidth="3" strokeLinejoin="round"><path d="M-18 8 L-9 -13 L5 -8 L18 10 L3 16Z" fill={fill}/><path d="M-9 -13 L3 16 M5 -8 L-18 8" fill="none"/></g>
+    default: return <g stroke={stroke} strokeWidth="3" strokeLinecap="round"><path d="M-18 8 L-4 -10 L17 -5 L10 13Z" fill={fill}/><path d="M-12 -2 L14 5 M-2 -11 L2 15" fill="none"/></g>
+  }
 }
 
 export function RoundScene({ seed }: SceneProps) {
