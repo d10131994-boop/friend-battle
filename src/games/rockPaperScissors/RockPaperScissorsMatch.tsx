@@ -3,6 +3,7 @@ import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
 import { telegramUser } from '../../services/telegram'
 import { ChoiceIcon, HandIllustration } from './HandIllustration'
+import { CaveResultScene, RoundScene } from './RpsScenes'
 import type { RockPaperScissorsChoice, RockPaperScissorsMatch as MatchState, RockPaperScissorsSnapshot } from './types'
 import './rockPaperScissors.css'
 
@@ -195,6 +196,7 @@ export default function RockPaperScissorsMatch({
       </header>
 
       <section className="rps-arena">
+        <RoundScene seed={match?.matchId ?? roomId} />
         {!match && (
           <div className="rps-phase-message">
             {loading ? 'Запускаем игру…' : 'Подключаемся к матчу…'}
@@ -253,22 +255,16 @@ export default function RockPaperScissorsMatch({
         )}
 
         {isCompleted && (
-          <div className="rps-session-result">
-            <h1 className={`rps-session-title ${isWinner ? 'win' : 'loss'}`}>
-              {isWinner ? 'С победой!' : 'Не в этот раз'}
-            </h1>
-            <div className="rps-session-scores">
-              <div className="rps-session-player">
-                <span className="rps-session-name">{finalResults[0]?.displayName ?? 'Игрок 1'}</span>
-                <strong className="rps-session-score">{finalResults[0]?.score ?? 0}</strong>
-              </div>
-              <span className="rps-session-separator">:</span>
-              <div className="rps-session-player">
-                <span className="rps-session-name">{finalResults[1]?.displayName ?? 'Игрок 2'}</span>
-                <strong className="rps-session-score">{finalResults[1]?.score ?? 0}</strong>
-              </div>
-            </div>
-            <button type="button" className="rps-exit-button" onClick={() => void finishAndReturn()} disabled={loading}>
+          <div className="rps-result-layout">
+            <CaveResultScene
+              title={isWinner ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ'}
+              tone={isWinner ? 'win' : 'loss'}
+              leftName={finalResults[0]?.displayName ?? 'Игрок 1'}
+              leftScore={finalResults[0]?.score ?? 0}
+              rightName={finalResults[1]?.displayName ?? 'Игрок 2'}
+              rightScore={finalResults[1]?.score ?? 0}
+            />
+            <button type="button" className="rps-exit-button rps-cave-exit" onClick={() => void finishAndReturn()} disabled={loading}>
               {loading ? 'ВОЗВРАЩАЕМСЯ…' : 'ВЕРНУТЬСЯ В КОМНАТУ'}
             </button>
           </div>
