@@ -326,3 +326,25 @@
 @media(prefers-reduced-motion:reduce){
   .dm-match-shell:has(.dm-solo-layout) :is(.dm-cell-placed,.dm-cell-obstacle){animation:none!important}
 }
+
+/* Solo character portraits: PNGs are optional until the approved art is uploaded. */
+.dm-character-portrait{position:relative;display:grid;place-items:center;width:100%;height:100%;min-width:0;min-height:0}
+.dm-character-portrait .dm-character-fallback{display:grid;place-items:center;width:100%;height:100%}
+.dm-character-portrait .dm-character-art{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:contain;object-position:center;z-index:1;
+}
+.dm-solo-layout .dm-character{
+  width:94%;height:94%;border-radius:0;
+  background:transparent;box-shadow:none;
+}
+.dm-solo-layout .dm-current-card strong:has(.dm-character-art){
+  width:58px;height:58px;
+  background:transparent;border:0;box-shadow:none;
+}
+.dm-solo-layout .dm-current-card span:has(>.dm-character-portrait){
+  display:inline-flex;align-items:center;gap:4px;
+}
+.dm-solo-layout .dm-current-card span>.dm-character-portrait{
+  width:32px;height:36px;display:inline-grid;vertical-align:middle;
+}
