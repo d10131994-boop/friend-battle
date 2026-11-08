@@ -390,3 +390,7 @@
     transition:none!important;
   }
 }
+
+/* Clarify shop price versus owned inventory on the solo toolbar. */
+.dm-solo-layout .dm-tool-price{display:block;color:#76512e;font-size:clamp(8px,2vw,10px);font-weight:700;line-height:1.15;text-align:center}
+.dm-solo-layout .dm-tool-button strong{line-height:1.1}
