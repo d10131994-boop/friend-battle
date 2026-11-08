@@ -160,7 +160,7 @@ export default function DemocracyMergeMatch({
   }, [initData, room.roomId, snapshot?.match?.status, onRoomUpdate, onLeaveMatch])
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 250)
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [])
 
