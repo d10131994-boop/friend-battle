@@ -229,6 +229,23 @@ BEGIN
     v_room_id, v_match_id, v_guest || '_actions', gen_random_uuid(),
     'surrender', 0, v_state
   );
+  UPDATE public.common_multiplayer_players
+  SET last_seen_at = now() - interval '6 minutes'
+  WHERE room_id=v_room_id AND user_id=v_guest || '_actions';
+  v_room := public.multiplayer_execute_action(
+    'heartbeat', v_guest || '_actions', 'Action guest', jsonb_build_object('roomId', v_room_id)
+  );
+  IF v_room->>'expired' = 'true'
+     OR NOT EXISTS (
+       SELECT 1 FROM public.common_multiplayer_players
+       WHERE room_id=v_room_id AND user_id=v_guest || '_actions'
+     )
+     OR NOT EXISTS (
+       SELECT 1 FROM public.games_democracy_merge_match_players
+       WHERE match_id=v_match_id AND user_id=v_guest || '_actions' AND status='surrendered'
+     ) THEN
+    RAISE EXCEPTION 'A surrendered player must keep their result and room membership after disconnect';
+  END IF;
 
   v_state := jsonb_build_object(
     'status', 'completed',
@@ -308,6 +325,57 @@ BEGIN
   IF (SELECT status FROM public.games_democracy_merge_matches WHERE id=v_match_id) <> 'completed'
      OR (SELECT status FROM public.common_multiplayer_rooms WHERE id=v_room_id) <> 'playing' THEN
     RAISE EXCEPTION 'Deadline finalization must preserve the results room';
+  END IF;
+
+  -- A heartbeat after five minutes expires an active player before it can refresh presence.
+  v_room := public.multiplayer_execute_action(
+    'create_room', v_host || '_heartbeat', 'Heartbeat host', jsonb_build_object('maxPlayers', 2)
+  );
+  v_room_id := (v_room->>'roomId')::uuid;
+  PERFORM public.multiplayer_execute_action(
+    'join_room', v_guest || '_heartbeat', 'Heartbeat guest',
+    jsonb_build_object('inviteCode', v_room->>'inviteCode')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'select_game', v_host || '_heartbeat', 'Heartbeat host',
+    jsonb_build_object('roomId', v_room_id, 'gameId', 'democracy-merge')
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_host || '_heartbeat', 'Heartbeat host',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  PERFORM public.multiplayer_execute_action(
+    'set_ready', v_guest || '_heartbeat', 'Heartbeat guest',
+    jsonb_build_object('roomId', v_room_id, 'isReady', true)
+  );
+  v_start := public.democracy_merge_start_match(
+    v_room_id, v_host || '_heartbeat', v_characters, v_obstacles
+  );
+  v_match_id := (v_start->>'matchId')::uuid;
+  UPDATE public.common_multiplayer_players
+  SET last_seen_at = now() - interval '6 minutes'
+  WHERE room_id=v_room_id AND user_id=v_host || '_heartbeat';
+  v_room := public.multiplayer_execute_action(
+    'heartbeat', v_host || '_heartbeat', 'Heartbeat host', jsonb_build_object('roomId', v_room_id)
+  );
+  IF v_room->>'expired' <> 'true' THEN
+    RAISE EXCEPTION 'A late heartbeat must report an expired return window';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players
+    WHERE room_id=v_room_id AND user_id=v_host || '_heartbeat'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM public.games_democracy_merge_match_players
+    WHERE match_id=v_match_id AND user_id=v_host || '_heartbeat' AND status='left'
+  ) THEN
+    RAISE EXCEPTION 'A late heartbeat must atomically remove and mark the active player left';
+  END IF;
+  IF (SELECT status FROM public.common_multiplayer_rooms WHERE id=v_room_id) <> 'playing'
+     OR NOT EXISTS (
+       SELECT 1 FROM public.common_multiplayer_players
+       WHERE room_id=v_room_id AND user_id=v_guest || '_heartbeat' AND is_host
+     ) THEN
+    RAISE EXCEPTION 'The remaining participant must continue and receive host status';
   END IF;
 
 END;
