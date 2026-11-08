@@ -145,6 +145,7 @@ BEGIN
     UPDATE public.games_democracy_merge_matches
     SET status = 'completed', completed_at = v_now, final_results = v_results
     WHERE id = v_match.id AND status = 'playing';
+    PERFORM public.democracy_merge_record_completed_match(v_match.id);
 
     -- A match with no active participants is over. Preserve completed results,
     -- but close the shared room so no new participant can enter this session.
@@ -778,6 +779,7 @@ BEGIN
         completed_at = v_now,
         final_results = public.democracy_merge_build_final_results(p_match_id)
     WHERE id = p_match_id AND status = 'playing';
+    PERFORM public.democracy_merge_record_completed_match(p_match_id);
   END IF;
 
   v_response := public.democracy_merge_match_snapshot(p_room_id, p_user_id)
@@ -853,6 +855,7 @@ BEGIN
         completed_at = v_now,
         final_results = public.democracy_merge_build_final_results(v_match.id)
     WHERE id = v_match.id AND status = 'playing';
+    PERFORM public.democracy_merge_record_completed_match(v_match.id);
 
     v_finalized := v_finalized + 1;
   END LOOP;
