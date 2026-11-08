@@ -173,6 +173,9 @@ BEGIN
   );
   v_match_id := (v_start->>'matchId')::uuid;
   v_action_id := gen_random_uuid();
+  PERFORM public.democracy_merge_reserve_action(
+    v_room_id, v_host || '_actions', v_action_id, 'place_character'
+  );
   v_state := jsonb_build_object(
     'status', 'active',
     'board', jsonb_set(v_board, '{0}', '{"kind":"character","level":1}'::jsonb, true),
@@ -207,9 +210,13 @@ BEGIN
   END IF;
 
   v_rejected := false;
+  v_action_id := gen_random_uuid();
+  PERFORM public.democracy_merge_reserve_action(
+    v_room_id, v_host || '_actions', v_action_id, 'place_character'
+  );
   BEGIN
     PERFORM public.democracy_merge_commit_player_action(
-      v_room_id, v_match_id, v_host || '_actions', gen_random_uuid(),
+      v_room_id, v_match_id, v_host || '_actions', v_action_id,
       'place_character', 0, v_state
     );
   EXCEPTION WHEN SQLSTATE '40001' THEN
@@ -232,8 +239,12 @@ BEGIN
     'level6MergeCount', 0,
     'result', '{"score":0,"maxLevel":1}'::jsonb
   );
+  v_action_id := gen_random_uuid();
+  PERFORM public.democracy_merge_reserve_action(
+    v_room_id, v_guest || '_actions', v_action_id, 'surrender'
+  );
   PERFORM public.democracy_merge_commit_player_action(
-    v_room_id, v_match_id, v_guest || '_actions', gen_random_uuid(),
+    v_room_id, v_match_id, v_guest || '_actions', v_action_id,
     'surrender', 0, v_state
   );
   UPDATE public.common_multiplayer_players
@@ -269,8 +280,12 @@ BEGIN
     'level6MergeCount', 0,
     'result', '{"score":0,"maxLevel":1}'::jsonb
   );
+  v_action_id := gen_random_uuid();
+  PERFORM public.democracy_merge_reserve_action(
+    v_room_id, v_host || '_actions', v_action_id, 'place_character'
+  );
   v_snapshot := public.democracy_merge_commit_player_action(
-    v_room_id, v_match_id, v_host || '_actions', gen_random_uuid(),
+    v_room_id, v_match_id, v_host || '_actions', v_action_id,
     'place_character', 1, v_state
   );
   IF v_snapshot->'match'->>'status' <> 'completed'
@@ -329,6 +344,10 @@ BEGIN
     v_room_id, v_host || '_deadline', v_characters, v_obstacles
   );
   v_match_id := (v_start->>'matchId')::uuid;
+  v_action_id := gen_random_uuid();
+  PERFORM public.democracy_merge_reserve_action(
+    v_room_id, v_host || '_deadline', v_action_id, 'place_character'
+  );
   UPDATE public.games_democracy_merge_matches
   SET started_at = now() - interval '31 minutes',
       game_started_at = now() - interval '30 minutes',
@@ -338,9 +357,8 @@ BEGIN
   SET last_seen_at = now() - interval '6 minutes'
   WHERE room_id=v_room_id AND user_id=v_host || '_deadline';
 
-  -- A placement request started before the deadline may finish; a new one may not.
+  -- A placement reserved before the deadline may finish; a new one may not.
   v_state := jsonb_build_object(
-    'actionStartedAt', (now() - interval '2 seconds')::text,
     'status', 'active',
     'board', jsonb_set(v_board, '{0}', '{"kind":"character","level":1}'::jsonb, true),
     'turnNumber', 1, 'score', 0, 'maxLevel', 1, 'mergeCount', 0,
@@ -349,17 +367,13 @@ BEGIN
     'storage', 'null'::jsonb, 'level6MergeCount', 0, 'result', 'null'::jsonb
   );
   PERFORM public.democracy_merge_commit_player_action(
-    v_room_id, v_match_id, v_host || '_deadline', gen_random_uuid(),
+    v_room_id, v_match_id, v_host || '_deadline', v_action_id,
     'place_character', 0, v_state
   );
-  v_state := jsonb_set(v_state, '{actionStartedAt}', to_jsonb((now() + interval '1 second')::text));
-  v_state := jsonb_set(v_state, '{board}', jsonb_set(v_board, '{0}', '{"kind":"character","level":1}'::jsonb, true));
-  v_state := jsonb_set(v_state, '{turnNumber}', '2'::jsonb);
   v_rejected := false;
   BEGIN
-    PERFORM public.democracy_merge_commit_player_action(
-      v_room_id, v_match_id, v_host || '_deadline', gen_random_uuid(),
-      'place_character', 1, v_state
+    PERFORM public.democracy_merge_reserve_action(
+      v_room_id, v_host || '_deadline', gen_random_uuid(), 'place_character'
     );
   EXCEPTION WHEN SQLSTATE '55000' THEN
     v_rejected := true;
