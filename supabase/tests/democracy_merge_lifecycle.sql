@@ -345,14 +345,18 @@ BEGIN
   );
   v_match_id := (v_start->>'matchId')::uuid;
   v_action_id := gen_random_uuid();
-  PERFORM public.democracy_merge_reserve_action(
+  v_snapshot := public.democracy_merge_reserve_action(
     v_room_id, v_host || '_deadline', v_action_id, 'place_character'
   );
   UPDATE public.games_democracy_merge_matches
   SET started_at = now() - interval '31 minutes',
       game_started_at = now() - interval '30 minutes',
-      deadline_at = now() - interval '1 second'
+      deadline_at = (v_snapshot->>'startedAt')::timestamptz + interval '1 microsecond'
   WHERE id = v_match_id;
+  PERFORM pg_catalog.pg_sleep(0.01);
+  IF public.democracy_merge_finalize_expired_matches() <> 0 THEN
+    RAISE EXCEPTION 'Deadline finalization must wait for an in-flight action reserved before the deadline';
+  END IF;
   UPDATE public.common_multiplayer_players
   SET last_seen_at = now() - interval '6 minutes'
   WHERE room_id=v_room_id AND user_id=v_host || '_deadline';
@@ -428,6 +432,17 @@ BEGIN
   UPDATE public.common_multiplayer_players
   SET last_seen_at = now() - interval '6 minutes'
   WHERE room_id=v_room_id AND user_id=v_host || '_heartbeat';
+  v_rejected := false;
+  BEGIN
+    PERFORM public.democracy_merge_reserve_action(
+      v_room_id, v_host || '_heartbeat', gen_random_uuid(), 'place_character'
+    );
+  EXCEPTION WHEN SQLSTATE '55000' THEN
+    v_rejected := true;
+  END;
+  IF NOT v_rejected THEN
+    RAISE EXCEPTION 'A player past the five-minute reconnect window cannot start a new action';
+  END IF;
   v_room := public.multiplayer_execute_action(
     'heartbeat', v_host || '_heartbeat', 'Heartbeat host', jsonb_build_object('roomId', v_room_id)
   );
