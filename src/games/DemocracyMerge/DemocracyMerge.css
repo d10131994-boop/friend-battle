@@ -87,3 +87,6 @@
 .dm-history-entry small{font-size:10px;opacity:.7;overflow-wrap:anywhere}
 .dm-history-entry button{flex:none;padding:7px 10px;font-size:9px}
 @media(max-width:520px){.dm-history-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.dm-history-entry{align-items:flex-start}.dm-history-modal{padding:16px}}
+
+.dm-history-entry-main{display:flex;flex:1;min-width:0;flex-direction:column;align-items:flex-start;gap:4px;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.dm-history-entry-main small{max-width:100%}
