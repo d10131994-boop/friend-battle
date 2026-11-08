@@ -122,3 +122,275 @@
 .dm-board-zoom-controls{display:flex;align-items:center;justify-content:flex-end;gap:6px;max-width:620px;margin:0 auto 8px}
 .dm-board-zoom-controls button{min-width:32px;padding:5px 8px;border:1px solid #424962;border-radius:7px;background:#252a3c;color:#fff;cursor:pointer;font-size:11px}
 .dm-board-zoom-controls span{min-width:42px;text-align:center;font-size:10px;opacity:.75}
+
+/* Democracy Merge V2: parchment-and-wood solo presentation.
+   Scoped to the solo screen; multiplayer remains unchanged. */
+.dm-match-shell:has(.dm-solo-layout){
+  --dm-wood:#875023;--dm-wood-dark:#4c2a14;--dm-parchment:#f8e5b5;
+  color:#543219;
+  background:linear-gradient(180deg,#91d5f0 0%,#c7e6a1 40%,#70ae3d 100%);
+  min-height:100dvh;
+  max-width:none;
+}
+.dm-match-shell:has(.dm-solo-layout) .dm-header{
+  max-width:650px;margin:0 auto 10px;gap:8px;
+}
+.dm-match-shell:has(.dm-solo-layout) .dm-header h1{color:#693817;text-shadow:0 1px #fff4c6}
+.dm-match-shell:has(.dm-solo-layout) .dm-header h1 span{color:#a35b1c}
+.dm-match-shell:has(.dm-solo-layout) .dm-eyebrow{color:#5c381e;opacity:1}
+.dm-match-shell:has(.dm-solo-layout) .dm-timer{
+  background:var(--dm-parchment);color:#613917;
+  border:3px solid var(--dm-wood);box-shadow:0 3px 0 var(--dm-wood-dark);
+}
+.dm-solo-layout{
+  display:flex;flex-direction:column;gap:10px;
+  align-items:stretch;max-width:650px;margin:0 auto;
+}
+.dm-solo-layout>.dm-side-panel{display:contents}
+.dm-solo-layout .dm-current-card{
+  order:1;background:var(--dm-parchment);color:#59361c;
+  border:3px solid var(--dm-wood);box-shadow:0 3px 0 var(--dm-wood-dark);
+  padding:8px;flex-direction:row;justify-content:center;flex-wrap:wrap;
+}
+.dm-solo-layout .dm-current-card strong{
+  width:42px;height:42px;background:#e4b95d;color:#543219;
+  border:2px solid #ad7b30;box-shadow:none;
+}
+.dm-solo-layout .dm-current-card small,.dm-solo-layout .dm-stats small{opacity:.85}
+.dm-solo-layout .dm-stats{order:0;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.dm-solo-layout .dm-stats div{
+  min-width:0;padding:7px 4px;text-align:center;
+  background:var(--dm-parchment);color:#59361c;
+  border:2px solid var(--dm-wood);box-shadow:0 2px 0 var(--dm-wood-dark);
+}
+.dm-solo-layout .dm-stats strong{font-size:clamp(12px,3.5vw,18px);overflow-wrap:anywhere}
+.dm-solo-layout .dm-board-section{order:2;min-width:0}
+.dm-solo-layout .dm-board-viewport{max-width:none}
+.dm-solo-layout .dm-board{
+  max-width:none;width:100%;gap:clamp(2px,.7vw,5px);
+  padding:clamp(7px,2vw,14px);
+  border:clamp(6px,2vw,13px) ridge #a96a30;
+  border-radius:14px;
+  background:#76501f;
+  box-shadow:0 6px 0 #4c2a14,0 10px 20px #26461a66;
+}
+.dm-solo-layout .dm-cell{
+  background:#9bcb43;border:1px solid #67952c;border-radius:5px;
+  box-shadow:inset 0 -3px 0 #4e8c2b33;
+}
+.dm-solo-layout .dm-cell:nth-child(12n+2),
+.dm-solo-layout .dm-cell:nth-child(12n+4),
+.dm-solo-layout .dm-cell:nth-child(12n+6),
+.dm-solo-layout .dm-cell:nth-child(12n+7),
+.dm-solo-layout .dm-cell:nth-child(12n+9),
+.dm-solo-layout .dm-cell:nth-child(12n+11){background:#86bb36}
+.dm-solo-layout .dm-cell:focus-visible{outline:3px solid #ffe17a;outline-offset:-3px}
+.dm-solo-layout .dm-cell-selected{outline:3px solid #ffd34e;outline-offset:-3px}
+.dm-solo-layout .dm-cell-merge{box-shadow:inset 0 0 16px #ffe36a,0 0 8px #ffe36a}
+.dm-solo-layout .dm-character{box-shadow:0 2px 2px #29441455}
+.dm-solo-layout .dm-board-footer{color:#543219;opacity:1;font-weight:700}
+.dm-solo-layout .dm-board-zoom-controls button{
+  color:#543219;background:var(--dm-parchment);border-color:var(--dm-wood);
+}
+.dm-solo-layout .dm-board-zoom-controls span{color:#543219;opacity:1}
+.dm-solo-layout .dm-tools{
+  order:3;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:6px;padding:10px 7px;border:5px ridge #b57837;
+  border-radius:13px;background:linear-gradient(#a9672e,#77421f);
+  box-shadow:0 4px 0 #4c2a14;
+}
+.dm-solo-layout .dm-tools h3,.dm-solo-layout .dm-storage-note{
+  grid-column:1/-1;color:#fff0c9;text-align:center;margin:0;
+}
+.dm-solo-layout .dm-tool-button{
+  min-width:0;min-height:88px;display:flex;flex-direction:column;
+  justify-content:center;gap:3px;padding:5px 2px;
+  color:#573419;background:linear-gradient(#fff0c9,#e9c781);
+  border:2px solid #a16b35;box-shadow:inset 0 -3px #b77b3655;
+  font-size:clamp(9px,2.3vw,12px);text-align:center;
+}
+.dm-solo-layout .dm-tool-button span{overflow-wrap:anywhere}
+.dm-solo-layout .dm-tool-selected{border-color:#ffe36a;box-shadow:0 0 0 2px #ffdd5c,inset 0 -3px #b77b3655}
+.dm-solo-layout>.dm-side-panel>.dm-primary-button{order:4}
+.dm-solo-layout>.dm-side-panel>.dm-danger-button{order:5}
+.dm-solo-layout>.dm-side-panel>.dm-secondary-button{order:6}
+.dm-solo-layout>.dm-side-panel>h3{order:7}
+.dm-solo-layout>.dm-side-panel>p{order:8}
+.dm-match-shell:has(.dm-solo-layout) .dm-primary-button{background:linear-gradient(#7dbe35,#43871f);border:2px solid #37661c}
+.dm-match-shell:has(.dm-solo-layout) .dm-secondary-button{background:var(--dm-parchment);color:#573419;border:2px solid var(--dm-wood)}
+.dm-match-shell:has(.dm-solo-layout) .dm-danger-button{background:linear-gradient(#e65b43,#a42c1e);border:2px solid #832719}
+.dm-match-shell:has(.dm-solo-layout) .dm-message{
+  max-width:650px;color:#6a3719;background:#f8e5b5;border:2px solid #a66b32;
+}
+.dm-match-shell:has(.dm-solo-layout) .dm-toast{
+  color:#59361c;background:#f8e5b5;border:3px solid #a66b32;
+}
+@media(max-width:520px){
+  .dm-match-shell:has(.dm-solo-layout){padding:8px 4px}
+  .dm-match-shell:has(.dm-solo-layout) .dm-header{gap:5px}
+  .dm-match-shell:has(.dm-solo-layout) .dm-header h1{font-size:17px}
+  .dm-solo-layout .dm-stats small{font-size:8px;letter-spacing:0}
+  .dm-solo-layout .dm-stats div{padding:6px 2px}
+}
+@media(prefers-reduced-motion:reduce){
+  .dm-solo-layout .dm-cell{animation:none!important;transition:none!important}
+}
+
+/* V2 parchment dialogs, results and calm entry effects (solo only). */
+.dm-match-shell:has(.dm-solo-layout) .dm-modal-backdrop,
+.dm-solo-screen:has(.dm-results) .dm-modal-backdrop{
+  background:rgba(35,24,13,.73);
+  backdrop-filter:blur(2px);
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-modal,.dm-confirm-modal,.dm-settings-modal),
+.dm-solo-screen:has(.dm-results) :is(.dm-shop-modal,.dm-confirm-modal,.dm-settings-modal){
+  background:linear-gradient(150deg,#fff0c9,#edce90);
+  color:#573419;
+  border:8px ridge #a96c32;
+  border-radius:16px;
+  box-shadow:0 8px 0 #4b2b14,0 20px 45px #24120888;
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-modal,.dm-confirm-modal,.dm-settings-modal) h2,
+.dm-solo-screen:has(.dm-results) :is(.dm-shop-modal,.dm-confirm-modal,.dm-settings-modal) h2{
+  color:#6c3b1b;
+  text-align:center;
+  text-shadow:0 1px #fff9e6;
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-modal,.dm-settings-modal) header button,
+.dm-solo-screen:has(.dm-results) .dm-shop-modal header button{
+  color:#573419;
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-row,.dm-settings-toggle,.dm-settings-field),
+.dm-solo-screen:has(.dm-results) .dm-shop-row{
+  border-bottom-color:#c9a56c;
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-row,.dm-confirm-modal) button,
+.dm-solo-screen:has(.dm-results) :is(.dm-shop-row,.dm-confirm-modal) button{
+  background:#8a542a;
+  color:#fff1d0;
+  border:2px solid #633918;
+}
+.dm-match-shell:has(.dm-solo-layout) :is(.dm-shop-row,.dm-confirm-modal) button:disabled{
+  opacity:.45;
+}
+.dm-match-shell:has(.dm-solo-layout) .dm-settings-field select{
+  background:#f8e5b5;color:#573419;border-color:#a96c32;
+}
+.dm-solo-screen:has(.dm-results){
+  color:#573419;
+  min-height:100dvh;
+  max-width:none;
+  background:linear-gradient(180deg,#91d5f0,#c7e6a1 42%,#70ae3d);
+}
+.dm-solo-screen:has(.dm-results) .dm-results{
+  max-width:540px;
+  padding:clamp(14px,4vw,26px);
+  background:linear-gradient(145deg,#fff0c9,#edce90);
+  color:#573419;
+  border:9px ridge #a96c32;
+  box-shadow:0 8px 0 #4b2b14,0 18px 40px #24120866;
+}
+.dm-solo-screen:has(.dm-results) .dm-results h2{
+  color:#74401b;
+  font-size:clamp(21px,5vw,30px);
+}
+.dm-solo-screen:has(.dm-results) :is(.dm-personal-result,.dm-solo-stats div){
+  background:#f8e5b5;
+  color:#573419;
+  border:2px solid #c69b58;
+}
+.dm-solo-screen:has(.dm-results) .dm-primary-button{
+  background:linear-gradient(#80bc3b,#478c24);
+  border:2px solid #376b1c;
+}
+.dm-solo-screen:has(.dm-results) .dm-secondary-button{
+  background:#f8e5b5;
+  color:#573419;
+  border:2px solid #8a542a;
+}
+.dm-match-shell:has(.dm-solo-layout) .dm-cell-placed{
+  animation:dm-v2-place .38s cubic-bezier(.22,1.5,.55,1);
+}
+.dm-match-shell:has(.dm-solo-layout) .dm-cell-obstacle{
+  animation:dm-v2-obstacle .38s ease-out;
+}
+@keyframes dm-v2-place{
+  from{transform:scale(.7);opacity:.55}
+  75%{transform:scale(1.06);opacity:1}
+  to{transform:scale(1);opacity:1}
+}
+@keyframes dm-v2-obstacle{
+  from{transform:scale(.82);opacity:.4;filter:sepia(.6)}
+  to{transform:scale(1);opacity:1;filter:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .dm-match-shell:has(.dm-solo-layout) :is(.dm-cell-placed,.dm-cell-obstacle){animation:none!important}
+}
+
+/* Solo character portraits: PNGs are optional until the approved art is uploaded. */
+.dm-character-portrait{position:relative;display:grid;place-items:center;width:100%;height:100%;min-width:0;min-height:0}
+.dm-character-portrait .dm-character-fallback{display:grid;place-items:center;width:100%;height:100%}
+.dm-character-portrait .dm-character-art{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:contain;object-position:center;z-index:1;
+}
+.dm-solo-layout .dm-character{
+  width:94%;height:94%;border-radius:0;
+  background:transparent;box-shadow:none;
+}
+.dm-solo-layout .dm-current-card strong:has(.dm-character-art){
+  width:58px;height:58px;
+  background:transparent;border:0;box-shadow:none;
+}
+.dm-solo-layout .dm-current-card span:has(>.dm-character-portrait){
+  display:inline-flex;align-items:center;gap:4px;
+}
+.dm-solo-layout .dm-current-card span>.dm-character-portrait{
+  width:32px;height:36px;display:inline-grid;vertical-align:middle;
+}
+
+.dm-character-portrait:has(.dm-character-art) .dm-character-fallback{visibility:hidden}
+
+/* Real prices from TOOL_PRICES; no hard-coded illustrative values. */
+.dm-solo-layout .dm-tool-button .dm-tool-icon{
+  font-size:clamp(22px,6vw,34px);
+  line-height:1.15;
+}
+.dm-solo-layout .dm-tool-button .dm-tool-label{
+  font-size:clamp(9px,2.5vw,12px);
+  font-weight:800;
+}
+.dm-solo-layout .dm-tool-button strong{
+  font-size:clamp(9px,2.4vw,12px);
+  font-variant-numeric:tabular-nums;
+  white-space:normal;
+}
+.dm-solo-layout .dm-tool-button:disabled{filter:saturate(.5);opacity:.55}
+
+/* Illustrated solo obstacles preserve the three existing obstacle types. */
+.dm-solo-layout .dm-obstacle-icon{display:grid;place-items:center;width:94%;height:94%}
+.dm-solo-layout .dm-obstacle-icon img{width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;filter:drop-shadow(0 3px 2px #254a2355)}
+
+/* V2 solo illustrated tool icons. */
+.dm-solo-layout .dm-tool-icon{display:grid;place-items:center;width:100%;height:40px}
+.dm-solo-layout .dm-tool-icon img{display:block;width:42px;max-width:85%;height:40px;object-fit:contain;filter:drop-shadow(0 2px 1px #58341444)}
+@media(max-width:380px){.dm-solo-layout .dm-tool-icon{height:32px}.dm-solo-layout .dm-tool-icon img{height:32px}}
+
+/* Honor in-game animation preferences on the active solo screen. */
+.dm-solo-screen.dm-animations-off :is(.dm-cell-placed,.dm-cell-obstacle,.dm-cell-merge){
+  animation:none!important;
+  transition:none!important;
+}
+.dm-solo-screen.dm-animation-fast :is(.dm-cell-placed,.dm-cell-obstacle){
+  animation-duration:.2s;
+}
+@media(prefers-reduced-motion:reduce){
+  .dm-solo-screen :is(.dm-cell-placed,.dm-cell-obstacle,.dm-cell-merge){
+    animation:none!important;
+    transition:none!important;
+  }
+}
+
+/* Clarify shop price versus owned inventory on the solo toolbar. */
+.dm-solo-layout .dm-tool-price{display:block;color:#76512e;font-size:clamp(8px,2vw,10px);font-weight:700;line-height:1.15;text-align:center;overflow-wrap:anywhere}
+.dm-solo-layout .dm-tool-button strong{line-height:1.1}

@@ -22,6 +22,7 @@ import type { MergeEvent } from './logic/gameEngine'
 import { assertBoard } from './logic/gameEngine'
 import { TOOL_PRICES } from './logic/events'
 import { useDemocracyMergeSettings } from './settings'
+import CharacterPortrait from './CharacterPortrait'
 import './DemocracyMerge.css'
 
 type StoredSoloData = {
@@ -50,7 +51,6 @@ const toolDescriptions: Record<ToolType, string> = {
   swap: 'Меняет местами двух обычных персонажей. Препятствия выбирать нельзя.',
   replace: 'Заменяет текущего персонажа случайным персонажем того же уровня.',
 }
-const obstacleIcons = { barricade: '🧱', police: '👮', rock: '🪨' }
 const obstacleLabels = { barricade: 'Заграждение', police: 'Полицейский', rock: 'Камень' }
 
 function formatTime(milliseconds: number): string {
@@ -333,24 +333,24 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     try {
       const next = applySoloTool(game, tool, options, Date.now())
       if (next.result) saveResult(next)
-      else setGame(next)
+      else saveCheckpoint(next)
       setSelectedTool(null)
       setSwapFirstCell(null)
       setMessage('')
     } catch (error) {
       setMessage(errorMessage(error))
     }
-  }, [game, loading, now, saveResult])
+  }, [game, loading, now, saveResult, saveCheckpoint])
 
   const handleBuy = useCallback((tool: ToolType) => {
     if (!game || game.status !== 'active' || loading || now >= Date.parse(game.deadlineAt)) return
     try {
-      setGame(buySoloTool(game, tool, Date.now()))
+      saveCheckpoint(buySoloTool(game, tool, Date.now()))
       setMessage('')
     } catch (error) {
       setMessage(errorMessage(error))
     }
-  }, [game, loading, now])
+  }, [game, loading, now, saveCheckpoint])
 
   function clickCell(index: number) {
     if (!game || game.status !== 'active') return
@@ -372,9 +372,16 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     } else if (selectedTool === 'storage') {
       handleTool('storage', { cellIndex: index, storageAction: game.storage ? 'return' : 'store' })
     } else if (selectedTool === 'swap') {
+      if (game.board[index]?.kind !== 'character') {
+        setMessage('Переставлять можно только двух персонажей. Выберите клетку с персонажем.')
+        return
+      }
       if (swapFirstCell === null) {
         setSwapFirstCell(index)
-        setMessage('Выберите вторую клетку для перестановки.')
+        setMessage('Выберите вторую клетку с персонажем для перестановки.')
+      } else if (swapFirstCell === index) {
+        setSwapFirstCell(null)
+        setMessage('Выбор первой клетки отменён. Выберите персонажа заново.')
       } else {
         handleTool('swap', { firstCellIndex: swapFirstCell, secondCellIndex: index })
       }
@@ -391,7 +398,13 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       handleTool('replace')
       return
     }
-    setSelectedTool((previous) => previous === tool ? null : tool)
+    if (selectedTool === tool) {
+      setSelectedTool(null)
+      setSwapFirstCell(null)
+      setMessage('Инструмент отменён. Выберите свободную клетку для размещения персонажа.')
+      return
+    }
+    setSelectedTool(tool)
     setSwapFirstCell(null)
     setMessage(`${toolDescriptions[tool]} ${tool === 'storage' && game.storage
       ? 'Выберите свободную клетку, чтобы вернуть персонажа из хранилища.'
@@ -491,12 +504,12 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
 
 
   if (loading) {
-    return <main className={`app dm-match-shell ${animationClasses}`}><div className="dm-waiting">Загружаем одиночную игру…</div></main>
+    return <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}><div className="dm-waiting">Загружаем одиночную игру…</div></main>
   }
 
   if (!game && resumePrompt && checkpoint) {
     return (
-      <main className="app dm-match-shell">
+      <main className="app dm-match-shell dm-solo-screen">
         <section className="dm-confirm-modal">
           <h2>Продолжить партию?</h2>
           <p>У тебя есть незавершённая партия. Таймер продолжает идти, даже когда игра закрыта.</p>
@@ -512,7 +525,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
 
   if (!game) {
     return (
-      <main className="app dm-match-shell">
+      <main className="app dm-match-shell dm-solo-screen">
         <header className="topbar">
           <button className="dm-secondary-button" onClick={onBack}>← НАЗАД</button>
           <div className="logo">DEMOCRACY <span>MERGE</span></div>
@@ -570,7 +583,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const isComplete = game.status !== 'active'
 
   return (
-    <main className="app dm-match-shell">
+    <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}>
       <header className="dm-header">
         <button className="dm-secondary-button" onClick={() => setLeaveConfirm(true)}>В ГЛАВНОЕ МЕНЮ</button>
         <div><div className="dm-eyebrow">ОДИНОЧНАЯ ИГРА</div><h1>DEMOCRACY <span>MERGE</span></h1><button className="dm-secondary-button dm-settings-trigger" onClick={() => setSettingsOpen(true)}>НАСТРОЙКИ</button></div>
@@ -598,14 +611,13 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <div><small>ЛУЧШИЙ РЕЗУЛЬТАТ</small><strong>{profile.bestScore}</strong></div>
             <div><small>МАКС. УРОВЕНЬ</small><strong>{profile.maxLevel}</strong></div>
           </div>
-          <button className="dm-primary-button" onClick={startNewGame}>НОВАЯ ИГРА</button>
           <button className="dm-secondary-button" onClick={() => setHistoryOpen(true)}>ИСТОРИЯ ПАРТИЙ</button>
           <button className="dm-secondary-button" onClick={leaveToMenu}>В ГЛАВНОЕ МЕНЮ</button>
         </section>
       ) : (
         <div className="dm-layout dm-solo-layout">
           <aside className="dm-side-panel">
-            <div className="dm-current-card"><small>ТЕКУЩИЙ ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small><strong>{current ?? '—'}</strong><span>Следующий: {next ?? '—'}</span></div>
+            <div className="dm-current-card"><small>ТЕКУЩИЙ ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small><strong>{current !== null ? <CharacterPortrait level={current} /> : '—'}</strong><span>Следующий: {next !== null ? <CharacterPortrait level={next} /> : '—'}</span></div>
             <div className="dm-stats">
               <div><small>ОЧКИ</small><strong>{game.score}</strong></div>
               <div><small>МАКС. УРОВЕНЬ</small><strong>{game.maxLevel}</strong></div>
@@ -617,8 +629,8 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               <h3>ИНСТРУМЕНТЫ</h3>
               {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
                 <button key={tool} title={toolDescriptions[tool]} className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
-                  onClick={() => selectTool(tool)} disabled={!canAct || game.inventory[tool] < 1}>
-                  <span>{toolIcons[tool]} {toolLabels[tool]}</span><strong>{game.inventory[tool]}/3</strong>
+                  onClick={() => selectTool(tool)} aria-pressed={selectedTool === tool} aria-label={`${toolLabels[tool]}. В инвентаре ${game.inventory[tool]} из 3. Цена покупки ${TOOL_PRICES[tool]} монет. ${toolDescriptions[tool]}`} disabled={!canAct || game.inventory[tool] < 1}>
+                  <span className="dm-tool-icon" aria-hidden="true"><img src={`/democracy-merge/tools/${tool}.svg`} alt="" draggable={false} /></span><span className="dm-tool-label">{toolLabels[tool]}</span><strong>{game.inventory[tool]}/3</strong><small className="dm-tool-price">В магазине: 🪙 {TOOL_PRICES[tool]}</small>
                 </button>
               ))}
               <p className="dm-storage-note">{game.storage ? `В хранилище: уровень ${game.storage.level}` : 'Хранилище пусто'}</p>
@@ -632,22 +644,23 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               <button onClick={() => setBoardZoom((zoom) => Math.max(0.7, Math.round((zoom - 0.1) * 10) / 10))} aria-label="Уменьшить поле">−</button>
               <span>{Math.round(boardZoom * 100)}%</span>
               <button onClick={() => setBoardZoom((zoom) => Math.min(1.6, Math.round((zoom + 0.1) * 10) / 10))} aria-label="Увеличить поле">+</button>
-              <button onClick={() => setBoardZoom(1)}>СБРОС</button>
+              <button onClick={() => setBoardZoom(1)} aria-label="Сбросить масштаб поля до 100 процентов">СБРОС</button>
             </div>
             <div className="dm-board-viewport" style={{ cursor: boardZoom > 1 ? 'grab' : 'auto' }} onTouchStart={handleBoardTouchStart} onTouchMove={handleBoardTouchMove} onTouchEnd={handleBoardTouchEnd} onMouseDown={handleBoardMouseDown} onMouseMove={handleBoardMouseMove} onMouseUp={handleBoardMouseUp} onMouseLeave={handleBoardMouseUp} onClickCapture={handleBoardClickCapture}>
             <div className="dm-board" style={{ transform: `scale(${boardZoom})` }} aria-label="Игровое поле 6 на 6">
               {game.board.map((cell, index) => (
-                <button key={index} className={`dm-cell ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
-                  aria-label={cell === null ? `Свободная клетка ${index + 1}` : cell.kind === 'character'
-                    ? `Персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}>
+                <button key={index} className={`dm-cell ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''} ${selectedTool === 'swap' && swapFirstCell === index ? 'dm-cell-selected' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
+                  aria-pressed={selectedTool === 'swap' ? swapFirstCell === index : undefined}
+                  aria-label={`${selectedTool === 'swap' && swapFirstCell === index ? 'Первая клетка перестановки. ' : ''}Клетка ${index + 1}: ${cell === null ? 'свободна' : cell.kind === 'character'
+                    ? `персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}`}>
                   {cell === null ? '' : cell.kind === 'character'
-                    ? <span className={`dm-character dm-level-${cell.level}`}>{cell.level}</span>
-                    : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}>{obstacleIcons[cell.obstacleType]}</span>}
+                    ? <span className={`dm-character dm-level-${cell.level}`}><CharacterPortrait level={cell.level} /></span>
+                    : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}><img src={`/democracy-merge/obstacles/${cell.obstacleType}.svg`} alt="" aria-hidden="true" draggable={false} /></span>}
                 </button>
               ))}
             </div>
             </div>
-            <div className="dm-board-footer">{selectedTool ? `Выбран инструмент: ${toolLabels[selectedTool]}` : 'Выбери свободную клетку для размещения персонажа.'}</div>
+            <div className="dm-board-footer" role="status" aria-live="polite">{selectedTool === 'swap' && swapFirstCell !== null ? `Выбрана клетка ${swapFirstCell + 1}. Выберите вторую клетку для перестановки.` : selectedTool ? `Выбран инструмент: ${toolLabels[selectedTool]}` : 'Выбери свободную клетку для размещения персонажа.'}</div>
           </section>
           <aside className="dm-side-panel">
             <h3>СТАТИСТИКА</h3>
