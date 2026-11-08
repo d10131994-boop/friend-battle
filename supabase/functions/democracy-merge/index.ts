@@ -183,9 +183,11 @@ Deno.serve(async (req: Request) => {
     }
 
     if (["place_character", "use_tool", "buy_tool", "surrender"].includes(body.action)) {
-      const actionStartedAt = new Date().toISOString();
       if (typeof body.actionId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.actionId)) {
         return fail("A valid actionId is required", 400);
+      }
+      if (body.action === "buy_tool" || body.action === "use_tool") {
+        if (!["saw", "storage", "swap", "replace"].includes(body.tool)) return fail("Неизвестный инструмент", 400);
       }
       const { data: snapshot, error: snapshotError } = await db.rpc("democracy_merge_match_snapshot", {
         p_room_id: roomId,
@@ -194,7 +196,23 @@ Deno.serve(async (req: Request) => {
       if (snapshotError) return fail("Не удалось получить состояние матча", 409);
       const match = snapshot?.match;
       const me = match?.me;
-      if (match?.status !== "playing" || me?.status !== "active") {
+      if (!match?.matchId || !me) return fail("Состояние матча недоступно", 409);
+
+      const actionType = body.action === "place_character" ? "place_character"
+        : body.action === "buy_tool" ? "buy_tool"
+        : body.action === "use_tool" ? "use_tool" : "surrender";
+      const { data: reservation, error: reservationError } = await db.rpc("democracy_merge_reserve_action", {
+        p_room_id: roomId,
+        p_user_id: userId,
+        p_action_id: body.actionId,
+        p_action_type: actionType,
+      });
+      if (reservationError) return fail("Ход уже нельзя начать: время матча истекло или партия завершена.", 409);
+      if (reservation?.replayed === true) return respond(reservation.response);
+      if (match.status !== "playing" || me.status !== "active") {
+        await db.rpc("democracy_merge_release_action", {
+          p_match_id: match.matchId, p_user_id: userId, p_action_id: body.actionId,
+        });
         return fail("Матч или ваша партия уже завершены", 409);
       }
 
@@ -217,7 +235,7 @@ Deno.serve(async (req: Request) => {
       try {
       if (body.action === "place_character") {
         if (!Number.isInteger(body.cellIndex) || !match.currentCharacter) {
-          return fail("Выберите свободную клетку для текущего персонажа", 400);
+          throw new Error("Выберите свободную клетку для текущего персонажа");
         }
         const placement = placeCharacter(board, body.cellIndex, match.currentCharacter, level6MergeCount);
         nextBoard = placement.board;
@@ -248,12 +266,10 @@ Deno.serve(async (req: Request) => {
           status = "completed";
         }
       } else if (body.action === "buy_tool") {
-        if (!["saw", "storage", "swap", "replace"].includes(body.tool)) return fail("Неизвестный инструмент", 400);
         const purchase = buyTool(inventory, body.tool as ToolType, coins);
         inventory = purchase.inventory;
         coins = purchase.coins;
       } else if (body.action === "use_tool") {
-        if (!["saw", "storage", "swap", "replace"].includes(body.tool)) return fail("Неизвестный инструмент", 400);
         if (body.tool === "saw") {
           const used = applySaw(board, body.cellIndex, inventory, coins);
           nextBoard = used.board;
@@ -273,7 +289,7 @@ Deno.serve(async (req: Request) => {
             inventory = returned.inventory;
             toolsUsed += 1;
           } else {
-            return fail("Укажите действие хранилища", 400);
+            throw new Error("Укажите действие хранилища");
           }
         } else if (body.tool === "swap") {
           const swapped = swapCharacters(board, body.firstCellIndex, body.secondCellIndex, inventory);
@@ -281,7 +297,7 @@ Deno.serve(async (req: Request) => {
           inventory = swapped.inventory;
           toolsUsed += 1;
         } else {
-          if (!match.currentCharacter) return fail("Нет текущего персонажа для замены", 409);
+          if (!match.currentCharacter) throw new Error("Нет текущего персонажа для замены");
           const replaced = replaceCurrentCharacter(match.currentCharacter, inventory);
           inventory = replaced.inventory;
           toolsUsed += 1;
@@ -294,6 +310,9 @@ Deno.serve(async (req: Request) => {
       }
 
       } catch (actionError) {
+        await db.rpc("democracy_merge_release_action", {
+          p_match_id: match.matchId, p_user_id: userId, p_action_id: body.actionId,
+        });
         return fail(actionError instanceof Error ? actionError.message : "Некорректное действие", 400);
       }
 
@@ -327,13 +346,14 @@ Deno.serve(async (req: Request) => {
         p_match_id: match.matchId,
         p_user_id: userId,
         p_action_id: body.actionId,
-        p_action_type: body.action === "place_character" ? "place_character"
-          : body.action === "buy_tool" ? "buy_tool"
-          : body.action === "use_tool" ? "use_tool" : "surrender",
+        p_action_type: actionType,
         p_expected_revision: me.revision,
         p_state: state,
       });
       if (error) {
+        await db.rpc("democracy_merge_release_action", {
+          p_match_id: match.matchId, p_user_id: userId, p_action_id: body.actionId,
+        });
         const statusCode = error.code === "40001" ? 409 : 400;
         return fail(error.code === "40001" ? "Состояние изменилось. Обновите матч и повторите действие." : "Не удалось сохранить действие", statusCode);
       }
