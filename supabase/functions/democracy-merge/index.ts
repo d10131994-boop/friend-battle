@@ -189,15 +189,6 @@ Deno.serve(async (req: Request) => {
       if (body.action === "buy_tool" || body.action === "use_tool") {
         if (!["saw", "storage", "swap", "replace"].includes(body.tool)) return fail("Неизвестный инструмент", 400);
       }
-      const { data: snapshot, error: snapshotError } = await db.rpc("democracy_merge_match_snapshot", {
-        p_room_id: roomId,
-        p_user_id: userId,
-      });
-      if (snapshotError) return fail("Не удалось получить состояние матча", 409);
-      const match = snapshot?.match;
-      const me = match?.me;
-      if (!match?.matchId || !me) return fail("Состояние матча недоступно", 409);
-
       const actionType = body.action === "place_character" ? "place_character"
         : body.action === "buy_tool" ? "buy_tool"
         : body.action === "use_tool" ? "use_tool" : "surrender";
@@ -209,6 +200,29 @@ Deno.serve(async (req: Request) => {
       });
       if (reservationError) return fail("Ход уже нельзя начать: время матча истекло или партия завершена.", 409);
       if (reservation?.replayed === true) return respond(reservation.response);
+      const reservedMatchId = reservation?.matchId;
+      if (typeof reservedMatchId !== "string" || !/^[0-9a-f-]{36}$/i.test(reservedMatchId)) {
+        return fail("Не удалось зарезервировать действие матча", 409);
+      }
+
+      const { data: snapshot, error: snapshotError } = await db.rpc("democracy_merge_match_snapshot", {
+        p_room_id: roomId,
+        p_user_id: userId,
+      });
+      if (snapshotError) {
+        await db.rpc("democracy_merge_release_action", {
+          p_match_id: reservedMatchId, p_user_id: userId, p_action_id: body.actionId,
+        });
+        return fail("Не удалось получить состояние матча", 409);
+      }
+      const match = snapshot?.match;
+      const me = match?.me;
+      if (!match?.matchId || !me || match.matchId !== reservedMatchId) {
+        await db.rpc("democracy_merge_release_action", {
+          p_match_id: reservedMatchId, p_user_id: userId, p_action_id: body.actionId,
+        });
+        return fail("Состояние матча недоступно", 409);
+      }
       if (match.status !== "playing" || me.status !== "active") {
         await db.rpc("democracy_merge_release_action", {
           p_match_id: match.matchId, p_user_id: userId, p_action_id: body.actionId,
