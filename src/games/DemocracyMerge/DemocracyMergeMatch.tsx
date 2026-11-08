@@ -17,6 +17,7 @@ import {
   type DemocracyMergeSnapshot,
 } from './api'
 import type { ToolType } from './logic/tools'
+import { useDemocracyMergeSettings } from './settings'
 import './DemocracyMerge.css'
 
 type Props = {
@@ -92,6 +93,8 @@ export default function DemocracyMergeMatch({
   const [historyMessage, setHistoryMessage] = useState('')
   const [selectedHistoryRecord, setSelectedHistoryRecord] = useState<DemocracyMergeHistoryResponse['history'][number] | null>(null)
   const [deleteHistoryId, setDeleteHistoryId] = useState<string | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const { settings, updateSettings } = useDemocracyMergeSettings()
   const [oneMinuteNotice, setOneMinuteNotice] = useState(false)
   const startAttemptRef = useRef(false)
   const oneMinuteNoticeRef = useRef<string | null>(null)
@@ -337,7 +340,7 @@ export default function DemocracyMergeMatch({
 
   if (!match || !me) {
     return (
-      <main className="app dm-match-shell">
+      <main className={`app dm-match-shell ${animationClasses}`}>
         <header className="topbar"><div className="logo">DEMOCRACY <span>MERGE</span></div></header>
         <section className="dm-waiting">
           <h1>DEMOCRACY MERGE</h1>
@@ -349,6 +352,7 @@ export default function DemocracyMergeMatch({
     )
   }
 
+  const animationClasses = `${settings.animationsEnabled ? '' : 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
   const ownRank = match.finalResults?.find((player) => player.userId === telegramId)?.rank ?? null
   const board = me.board
 
@@ -356,7 +360,7 @@ export default function DemocracyMergeMatch({
     <main className="app dm-match-shell">
       <header className="dm-header">
         <button className="dm-secondary-button" onClick={() => setLeaveConfirm(true)} disabled={!canAct}>ВЫЙТИ ИЗ МАТЧА</button>
-        <div><div className="dm-eyebrow">FRIEND BATTLE</div><h1>DEMOCRACY <span>MERGE</span></h1></div>
+        <div><div className="dm-eyebrow">FRIEND BATTLE</div><h1>DEMOCRACY <span>MERGE</span></h1><button className="dm-secondary-button dm-settings-trigger" onClick={() => setSettingsOpen(true)}>НАСТРОЙКИ</button></div>
         <div className={`dm-timer ${remaining <= 300_000 ? 'dm-timer-warning' : ''}`}>
           <small>ОСТАЛОСЬ</small><strong>{timerLabel}</strong>
         </div>
@@ -516,6 +520,27 @@ export default function DemocracyMergeMatch({
         </div>
       )}
 
+
+      {settingsOpen && (
+        <div className="dm-modal-backdrop" role="presentation" onClick={() => setSettingsOpen(false)}>
+          <section className="dm-settings-modal" role="dialog" aria-modal="true" aria-label="Настройки Democracy Merge" onClick={(event) => event.stopPropagation()}>
+            <header><h2>НАСТРОЙКИ</h2><button onClick={() => setSettingsOpen(false)}>✕</button></header>
+            <label className="dm-settings-toggle">
+              <input type="checkbox" checked={settings.animationsEnabled} onChange={(event) => updateSettings({ animationsEnabled: event.target.checked })} />
+              <span>Анимации</span>
+            </label>
+            <label className="dm-settings-field">
+              <span>Скорость анимаций</span>
+              <select value={settings.animationSpeed} onChange={(event) => updateSettings({ animationSpeed: event.target.value === 'fast' ? 'fast' : 'normal' })} disabled={!settings.animationsEnabled}>
+                <option value="normal">Обычная</option>
+                <option value="fast">Быстрая</option>
+              </select>
+            </label>
+            <p>Настройки общие для одиночного и многопользовательского режимов.</p>
+            <button className="dm-primary-button" onClick={() => setSettingsOpen(false)}>ГОТОВО</button>
+          </section>
+        </div>
+      )}
 
       {historyOpen && (
         <div className="dm-modal-backdrop" role="presentation" onClick={() => setHistoryOpen(false)}>
