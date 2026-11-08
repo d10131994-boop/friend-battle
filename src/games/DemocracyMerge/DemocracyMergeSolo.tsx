@@ -124,6 +124,10 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const { settings, updateSettings } = useDemocracyMergeSettings()
   const notificationTimeoutRef = useRef<number | null>(null)
+  const animationTimeoutRef = useRef<number | null>(null)
+  const [lastPlacedCell, setLastPlacedCell] = useState<number | null>(null)
+  const [mergeCells, setMergeCells] = useState<number[]>([])
+  const [obstacleCell, setObstacleCell] = useState<number | null>(null)
 
   const persist = useCallback((nextCheckpoint: SoloGameState | null, nextProfile: SoloProfile) => {
     const payload: StoredSoloData = { version: 1, checkpoint: nextCheckpoint, profile: nextProfile }
@@ -206,6 +210,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
 
   useEffect(() => () => {
     if (notificationTimeoutRef.current !== null) window.clearTimeout(notificationTimeoutRef.current)
+    if (animationTimeoutRef.current !== null) window.clearTimeout(animationTimeoutRef.current)
   }, [])
 
   const startNewGame = useCallback(() => {
@@ -266,6 +271,21 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     if (!game || game.status !== 'active' || loading || now >= Date.parse(game.deadlineAt)) return
     try {
       const placed = placeSoloCharacter(game, cellIndex, Date.now())
+      if (settings.animationsEnabled) {
+        setLastPlacedCell(placed.placementCellIndex)
+        setMergeCells(placed.merges.flatMap((merge) => merge.cells))
+        setObstacleCell(placed.obstacleCellIndex)
+        if (animationTimeoutRef.current !== null) window.clearTimeout(animationTimeoutRef.current)
+        animationTimeoutRef.current = window.setTimeout(() => {
+          setLastPlacedCell(null)
+          setMergeCells([])
+          setObstacleCell(null)
+        }, settings.animationSpeed === 'fast' ? 500 : 1000)
+      } else {
+        setLastPlacedCell(null)
+        setMergeCells([])
+        setObstacleCell(null)
+      }
       if (placed.state.score > profile.bestScore && !recordBroken) {
         setRecordBroken(true)
         setNewRecordToast(true)
@@ -287,7 +307,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     } catch (error) {
       setMessage(errorMessage(error))
     }
-  }, [game, loading, now, profile.bestScore, recordBroken, saveResult, saveCheckpoint])
+  }, [game, loading, now, profile.bestScore, recordBroken, saveResult, saveCheckpoint, settings.animationsEnabled, settings.animationSpeed])
 
   const handleTool = useCallback((tool: ToolType, options: {
     cellIndex?: number
@@ -529,7 +549,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
           <section className="dm-board-section">
             <div className="dm-board" aria-label="Игровое поле 6 на 6">
               {game.board.map((cell, index) => (
-                <button key={index} className="dm-cell" onClick={() => clickCell(index)} disabled={!canAct}
+                <button key={index} className={`dm-cell ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeCells.includes(index) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''}`} onClick={() => clickCell(index)} disabled={!canAct}
                   aria-label={cell === null ? `Свободная клетка ${index + 1}` : cell.kind === 'character'
                     ? `Персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}>
                   {cell === null ? '' : cell.kind === 'character'
