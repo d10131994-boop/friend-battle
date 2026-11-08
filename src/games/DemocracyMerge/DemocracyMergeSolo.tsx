@@ -491,12 +491,12 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
 
 
   if (loading) {
-    return <main className={`app dm-match-shell ${animationClasses}`}><div className="dm-waiting">Загружаем одиночную игру…</div></main>
+    return <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}><div className="dm-waiting">Загружаем одиночную игру…</div></main>
   }
 
   if (!game && resumePrompt && checkpoint) {
     return (
-      <main className="app dm-match-shell">
+      <main className="app dm-match-shell dm-solo-screen">
         <section className="dm-confirm-modal">
           <h2>Продолжить партию?</h2>
           <p>У тебя есть незавершённая партия. Таймер продолжает идти, даже когда игра закрыта.</p>
@@ -512,7 +512,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
 
   if (!game) {
     return (
-      <main className="app dm-match-shell">
+      <main className="app dm-match-shell dm-solo-screen">
         <header className="topbar">
           <button className="dm-secondary-button" onClick={onBack}>← НАЗАД</button>
           <div className="logo">DEMOCRACY <span>MERGE</span></div>
@@ -570,7 +570,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const isComplete = game.status !== 'active'
 
   return (
-    <main className="app dm-match-shell">
+    <main className="app dm-match-shell dm-solo-screen">
       <header className="dm-header">
         <button className="dm-secondary-button" onClick={() => setLeaveConfirm(true)}>В ГЛАВНОЕ МЕНЮ</button>
         <div><div className="dm-eyebrow">ОДИНОЧНАЯ ИГРА</div><h1>DEMOCRACY <span>MERGE</span></h1><button className="dm-secondary-button dm-settings-trigger" onClick={() => setSettingsOpen(true)}>НАСТРОЙКИ</button></div>
