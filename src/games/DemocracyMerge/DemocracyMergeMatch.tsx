@@ -473,7 +473,7 @@ export default function DemocracyMergeMatch({
         <div className="dm-layout">
           <aside className="dm-side-panel">
             <div className="dm-current-card">
-              <small>ТЕКУЩИЙ ПЕРСОНАЖ</small>
+              <small>ТЕКУЩИЙ ПЕРСОНАЖ · ХОД {me.turnNumber + 1}</small>
               <strong>{match.currentCharacter ?? '—'}</strong>
               <span>Следующий: {match.nextCharacter ?? '—'}</span>
             </div>
@@ -488,6 +488,7 @@ export default function DemocracyMergeMatch({
               {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
                 <button
                   key={tool}
+                  title={toolDescriptions[tool]}
                   className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
                   onClick={() => selectTool(tool)}
                   disabled={!canAct || me.inventory[tool] < 1}
