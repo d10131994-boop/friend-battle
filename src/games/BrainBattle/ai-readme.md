@@ -144,7 +144,7 @@ The removal migration `20261107090000_remove_multiplayer_rematch.sql` drops the 
 
 ## 9. Verification
 
-Test solo mode separately from multiplayer. Multiplayer verification should cover create/join/select, 2–4 players, readiness, host start, question snapshots, answer validation, duplicate answers, deadlines, unanswered skips, score calculation, tie/winner, common stats, finish, results return/timeout, leave during match, disconnect/reconnect and concurrent answer/advance requests.
+Test solo mode separately from multiplayer. Multiplayer verification should cover create/join/select, exactly 2 players (catalog min/max are both 2), readiness, host start, question snapshots, answer validation, duplicate answers, deadlines, unanswered skips, score calculation, tie/winner, common stats, finish, results return/timeout, leave during match, disconnect/reconnect and concurrent answer/advance requests.
 
 A successful build does not prove that the Edge Function, SQL, Realtime policies or live multi-device flow are deployed and working. Report these checks separately.
 
