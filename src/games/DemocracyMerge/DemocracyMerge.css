@@ -394,3 +394,147 @@
 /* Clarify shop price versus owned inventory on the solo toolbar. */
 .dm-solo-layout .dm-tool-price{display:block;color:#76512e;font-size:clamp(8px,2vw,10px);font-weight:700;line-height:1.15;text-align:center;overflow-wrap:anywhere}
 .dm-solo-layout .dm-tool-button strong{line-height:1.1}
+
+
+/* Democracy Merge V3 — solo-only countryside art direction.
+   Approved art is served from public/democracy-merge/picture/v3/.
+   Keep CSS colors as fallbacks for missing imagery. */
+.dm-solo-screen {
+  --dm-v3-wood: #875024;
+  --dm-v3-ink: #4c301c;
+  --dm-v3-cream: #fff1ca;
+  color: var(--dm-v3-ink);
+  background:
+    url('/democracy-merge/picture/v3/landscape-foreground.png') center bottom / 100% auto no-repeat,
+    url('/democracy-merge/picture/v3/castle.png') right 8% bottom 16% / clamp(130px, 22vw, 320px) auto no-repeat,
+    url('/democracy-merge/picture/v3/houses-village-alternative.png') left 6% bottom 13% / clamp(140px, 24vw, 340px) auto no-repeat,
+    url('/democracy-merge/picture/v3/sky-clouds.png') center top / cover no-repeat,
+    linear-gradient(180deg, #8cd9ff 0%, #c6edff 23%, #a9d872 52%, #6fae49 100%);
+  background-attachment: scroll;
+}
+.dm-solo-screen .dm-header,
+.dm-solo-screen .dm-side-panel,
+.dm-solo-screen .dm-current-card,
+.dm-solo-screen .dm-stats > div {
+  color: var(--dm-v3-ink);
+  border: 3px solid #6c391b;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #f7d995, #c98b47 65%, #a45b2b);
+  box-shadow: inset 0 3px #ffe8ad, 0 5px 0 #63391d, 0 8px 15px #44260f33;
+}
+.dm-solo-screen .dm-header {
+  padding: 12px;
+  background-image: url('/democracy-merge/picture/v3/info-panel.webp'), linear-gradient(145deg, #f7d995, #c98b47 65%, #a45b2b);
+  background-size: 100% 100%;
+}
+.dm-solo-screen .dm-header h1 span { color: #78451d; }
+.dm-solo-screen .dm-current-card strong {
+  width: 84px;
+  height: 84px;
+  background: #f4dfad;
+  border: 3px solid #8e582e;
+  box-shadow: inset 0 3px 7px #60330f33;
+}
+.dm-solo-screen .dm-board {
+  position: relative;
+  max-width: 680px;
+  gap: 2px;
+  padding: 17px;
+  border: 0;
+  border-radius: 12px;
+  background: #7ba640;
+  box-shadow: 0 7px 18px #3d4d2066;
+}
+.dm-solo-screen .dm-board::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/democracy-merge/picture/v3/wooden-frame.webp') center / 100% 100% no-repeat;
+  pointer-events: none;
+  z-index: 2;
+}
+.dm-solo-screen .dm-cell {
+  border: 0;
+  border-radius: 12%;
+  background: #9bcf40 url('/democracy-merge/picture/v3/grass-01.webp') center / 100% 100% no-repeat;
+  box-shadow: inset 0 2px 4px #fff6, inset 0 -3px 5px #426c2755;
+}
+.dm-solo-screen .dm-cell:nth-child(6n + 2) { background-image: url('/democracy-merge/picture/v3/grass-02.webp'); background-color: #79ad38; }
+.dm-solo-screen .dm-cell:nth-child(6n + 3) { background-image: url('/democracy-merge/picture/v3/grass-03.webp'); background-color: #8fbf45; }
+.dm-solo-screen .dm-cell:nth-child(6n + 4) { background-image: url('/democracy-merge/picture/v3/grass-04.webp'); background-color: #9ecb4e; }
+.dm-solo-screen .dm-cell:nth-child(6n + 5) { background-image: url('/democracy-merge/picture/v3/grass-05.webp'); background-color: #83b84c; }
+.dm-solo-screen .dm-cell:nth-child(6n) { background-image: url('/democracy-merge/picture/v3/grass-06.webp'); background-color: #a5d34f; }
+.dm-solo-screen .dm-tool-button,
+.dm-solo-screen .dm-primary-button,
+.dm-solo-screen .dm-secondary-button {
+  color: #563119;
+  border: 2px solid #7e451e;
+  border-radius: 12px;
+  background: linear-gradient(#ffe8a4, #d69c51);
+  box-shadow: inset 0 2px #fff4, 0 3px #75411e;
+}
+.dm-solo-screen .dm-tool-selected { outline: 3px solid #f8d75a; }
+.dm-solo-screen .dm-danger-button {
+  color: #fff8df;
+  border: 2px solid #8c3a25;
+  background: linear-gradient(#ef8461, #bd4634);
+}
+@media (max-width: 600px) {
+  .dm-solo-screen { padding: 8px; }
+  .dm-solo-screen .dm-board { padding: 10px; gap: 1px; }
+  .dm-solo-screen .dm-current-card strong { width: 68px; height: 68px; }
+}
+
+
+/* V3 artwork placement: keep controls functional while assets are staged. */
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame {
+  display: grid;
+  place-items: center;
+  width: clamp(70px, 13vw, 108px);
+  height: clamp(70px, 13vw, 108px);
+  padding: 14%;
+  border: 0;
+  border-radius: 0;
+  background: url('/democracy-merge/picture/v3/next-character-frame.webp') center / contain no-repeat;
+  box-shadow: none;
+}
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame:has(.dm-character-art) {
+  width: clamp(70px, 13vw, 108px);
+  height: clamp(70px, 13vw, 108px);
+  background: url('/democracy-merge/picture/v3/next-character-frame.webp') center / contain no-repeat;
+}
+.dm-solo-screen .dm-solo-layout .dm-tools {
+  background-image: url('/democracy-merge/picture/v3/tools-panel.webp'), linear-gradient(#b87b39, #77421f);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+.dm-solo-screen .dm-solo-layout .dm-tool-icon img {
+  width: 48px;
+  height: 42px;
+  max-width: 90%;
+  object-fit: contain;
+}
+.dm-solo-screen .dm-v3-shop-tool-icon {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+.dm-solo-screen .dm-shop-row > span { display: inline-flex; align-items: center; gap: 6px; }
+.dm-solo-screen .dm-cell:focus-visible { outline: 3px solid #fff3aa; outline-offset: -3px; }
+.dm-solo-screen .dm-cell-selected { outline: 3px solid #ffdc59; outline-offset: -3px; }
+@media (max-width: 420px) {
+  .dm-solo-screen .dm-solo-layout .dm-tools { padding: 7px 4px; gap: 3px; }
+  .dm-solo-screen .dm-solo-layout .dm-tool-icon img { width: 36px; height: 34px; }
+}
+
+/* V3 scenery: retain playable contrast on narrow screens. */
+@media (max-width: 700px) {
+  .dm-solo-screen {
+    background:
+      url('/democracy-merge/picture/v3/landscape-foreground.png') center bottom / 100% auto no-repeat,
+      url('/democracy-merge/picture/v3/sky-clouds.png') center top / cover no-repeat,
+      linear-gradient(180deg, #8cd9ff, #c6edff 28%, #6fae49);
+  }
+}

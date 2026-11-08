@@ -11,6 +11,8 @@ on:
       - 'friend-battle-03/**'
       - friend-battle-04-release
       - 'friend-battle-04/**'
+      - friend-battle-05-release
+      - 'friend-battle-05/**'
   workflow_dispatch:
 
 permissions:
