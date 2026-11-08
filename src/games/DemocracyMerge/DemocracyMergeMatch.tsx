@@ -695,7 +695,7 @@ export default function DemocracyMergeMatch({
                         <button className="dm-history-entry-main" onClick={() => setSelectedHistoryRecord(record)}>
                           <strong>{new Date(record.completedAt).toLocaleString()}</strong>
                           <small>{record.playerCount} игрока · {record.opponents.map((opponent) => opponent.displayName).join(', ') || 'без соперников'}</small>
-                          <small>{record.status === 'surrendered' ? 'Сдача' : 'Завершён'} · место {record.rank} · {record.score} очков · ур. {record.maxLevel}</small>
+                          <small>{record.status === 'surrendered' ? 'Сдача' : record.status === 'left' ? 'Вышел' : 'Завершён'} · место {record.rank} · {record.score} очков · ур. {record.maxLevel}</small>
                         </button>
                         <button className="dm-danger-button" onClick={() => setDeleteHistoryId(record.id)} disabled={historyLoading}>УДАЛИТЬ</button>
                       </article>
