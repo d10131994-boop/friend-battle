@@ -342,6 +342,15 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   function clickCell(index: number) {
     if (!game || game.status !== 'active') return
     if (!selectedTool) {
+      const target = game.board[index]
+      if (target?.kind === 'obstacle') {
+        setMessage(`${obstacleLabels[target.obstacleType]}. ${target.obstacleType === 'rock' ? 'Удаляется пилой за 50 монет.' : 'Удаляется пилой бесплатно.'}`)
+        return
+      }
+      if (target?.kind === 'character') {
+        setMessage('Клетка занята. Выберите свободную клетку.')
+        return
+      }
       handlePlacement(index)
       return
     }
@@ -371,9 +380,13 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     }
     setSelectedTool((previous) => previous === tool ? null : tool)
     setSwapFirstCell(null)
-    setMessage(tool === 'storage' && game.storage
+    setMessage(`${toolDescriptions[tool]} ${tool === 'storage' && game.storage
       ? 'Выберите свободную клетку, чтобы вернуть персонажа из хранилища.'
-      : `Выберите клетку для инструмента «${toolLabels[tool]}».`)
+      : tool === 'storage'
+        ? 'Выберите персонажа, которого нужно сохранить.'
+        : tool === 'swap'
+          ? 'Выберите первую клетку, затем вторую.'
+          : 'Выберите клетку для удаления.'}`)
   }
 
   function handleSurrender() {
@@ -525,7 +538,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       ) : (
         <div className="dm-layout dm-solo-layout">
           <aside className="dm-side-panel">
-            <div className="dm-current-card"><small>ТЕКУЩИЙ ПЕРСОНАЖ</small><strong>{current ?? '—'}</strong><span>Следующий: {next ?? '—'}</span></div>
+            <div className="dm-current-card"><small>ТЕКУЩИЙ ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small><strong>{current ?? '—'}</strong><span>Следующий: {next ?? '—'}</span></div>
             <div className="dm-stats">
               <div><small>ОЧКИ</small><strong>{game.score}</strong></div>
               <div><small>МАКС. УРОВЕНЬ</small><strong>{game.maxLevel}</strong></div>
@@ -536,7 +549,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <div className="dm-tools">
               <h3>ИНСТРУМЕНТЫ</h3>
               {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
-                <button key={tool} className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
+                <button key={tool} title={toolDescriptions[tool]} className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
                   onClick={() => selectTool(tool)} disabled={!canAct || game.inventory[tool] < 1}>
                   <span>{toolIcons[tool]} {toolLabels[tool]}</span><strong>{game.inventory[tool]}/3</strong>
                 </button>
@@ -600,6 +613,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
               <div className="dm-shop-row" key={tool}>
                 <span>{toolIcons[tool]} {toolLabels[tool]}</span><small>{game.inventory[tool]}/3 · 🪙 {TOOL_PRICES[tool]}</small>
+                {(game.inventory[tool] >= 3 || game.coins < TOOL_PRICES[tool]) && <small className="dm-purchase-reason">{game.inventory[tool] >= 3 ? 'Инвентарь заполнен' : 'Недостаточно монет'}</small>}
                 <button onClick={() => handleBuy(tool)} disabled={!canAct || game.inventory[tool] >= 3 || game.coins < TOOL_PRICES[tool]}>КУПИТЬ</button>
               </div>
             ))}
