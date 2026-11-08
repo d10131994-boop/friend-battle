@@ -61,7 +61,7 @@ Democracy Merge therefore requires a narrowly scoped, server-authoritative leave
 
 Do not implement this by direct browser writes or by letting the browser choose a trusted leave policy. Determine the policy from trusted server-side game configuration/authorization. Preserve the project lock order: shared room first, then game match/player rows. Keep membership changes and game-specific departure processing atomic or otherwise protected against races.
 
-The five-minute disconnect expiry is game-specific. The existing shared room heartbeat is sent while the room is active and the app is in the foreground; the common idle-room cleanup cancels a room only when all members have been inactive for ten minutes. Neither behavior by itself implements Democracy Merge's per-player five-minute return window. Implement and test an authoritative per-player expiry path; do not rely only on a browser timer.
+The five-minute disconnect expiry is game-specific. The pending Multiplayer migration checks the previous heartbeat before updating presence: a late heartbeat for an active Democracy Merge player invokes the trusted final-departure action rather than extending the return window. Completed/surrendered players keep their membership and immutable result. A 30-second server Cron independently removes stale active players if they do not return. The common ten-minute idle-room cleanup remains unchanged.
 
 ## 5. Server authority and persistence
 
