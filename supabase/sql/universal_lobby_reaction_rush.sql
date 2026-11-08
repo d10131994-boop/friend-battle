@@ -356,6 +356,9 @@ BEGIN
     RETURN public.multiplayer_room_snapshot(v_room_id);
   ELSIF p_action = 'close_room' THEN
     IF NOT v_is_host THEN RAISE EXCEPTION 'Only the host can close the room' USING ERRCODE = '42501'; END IF;
+    IF v_room.game_id = 'democracy-merge' AND v_room.status = 'playing' THEN
+      RAISE EXCEPTION 'An active Democracy Merge match must end through player completion or final departure' USING ERRCODE = '55000';
+    END IF;
     UPDATE public.common_multiplayer_rooms SET status = 'cancelled' WHERE id = v_room_id;
     RETURN public.multiplayer_room_snapshot(v_room_id);
   ELSIF p_action = 'heartbeat' THEN
