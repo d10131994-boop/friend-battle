@@ -230,6 +230,8 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   }
 
   const leaveDemocracyMerge = useCallback(() => {
+    void sessionRef.current?.stop()
+    sessionRef.current = null
     setRoom(null)
     setActiveGameId(null)
     setGameScreen(false)
