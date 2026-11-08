@@ -232,9 +232,48 @@ BEGIN
     IF v_room.status NOT IN ('waiting', 'starting', 'playing', 'finished') THEN
       RAISE EXCEPTION 'Room is not active' USING ERRCODE = '55000';
     END IF;
+
+    SELECT COALESCE(last_seen_at, joined_at) INTO v_last_seen
+    FROM public.common_multiplayer_players
+    WHERE room_id = v_room_id AND user_id = p_user_id
+    FOR UPDATE;
+
+    -- A returning active Democracy Merge player cannot extend the five-minute
+    -- return window by sending a heartbeat after the deadline has elapsed.
+    -- Completed/surrendered players keep their immutable result and membership.
+    IF v_room.game_id = 'democracy-merge'
+       AND v_room.status = 'playing'
+       AND v_last_seen <= pg_catalog.clock_timestamp() - interval '5 minutes'
+       AND EXISTS (
+         SELECT 1
+         FROM public.games_democracy_merge_match_players mp
+         JOIN public.games_democracy_merge_matches dm ON dm.id = mp.match_id
+         WHERE mp.room_id = v_room_id
+           AND mp.user_id = p_user_id
+           AND mp.status = 'active'
+           AND dm.status = 'playing'
+           AND dm.deadline_at > pg_catalog.clock_timestamp()
+       ) THEN
+      PERFORM public.multiplayer_execute_action(
+        'leave_active_match',
+        '__game_server__',
+        'Game server',
+        pg_catalog.jsonb_build_object(
+          'roomId', v_room_id,
+          'gameId', 'democracy-merge',
+          'playerUserId', p_user_id
+        )
+      );
+      RETURN pg_catalog.jsonb_build_object(
+        'roomId', v_room_id,
+        'lastSeenAt', v_last_seen,
+        'expired', true
+      );
+    END IF;
+
     UPDATE public.common_multiplayer_players SET last_seen_at = pg_catalog.clock_timestamp()
     WHERE room_id = v_room_id AND user_id = p_user_id RETURNING last_seen_at INTO v_last_seen;
-    RETURN pg_catalog.jsonb_build_object('roomId', v_room_id, 'lastSeenAt', v_last_seen);
+    RETURN pg_catalog.jsonb_build_object('roomId', v_room_id, 'lastSeenAt', v_last_seen, 'expired', false);
   ELSIF p_action = 'get_room_token' THEN
     IF v_room.status NOT IN ('waiting', 'starting', 'playing', 'finished') THEN
       RAISE EXCEPTION 'Room is not active' USING ERRCODE = '55000';
