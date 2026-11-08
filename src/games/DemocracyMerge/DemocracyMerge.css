@@ -546,3 +546,95 @@
   object-fit: contain;
   opacity: 1;
 }
+
+/* Issue 005: the scenery is viewport-sized, not scaled to the height of the entire game. */
+.dm-solo-screen {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+}
+.dm-solo-screen::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    url('/democracy-merge/picture/v3/landscape-foreground.png') center bottom / 100% auto no-repeat,
+    url('/democracy-merge/picture/v3/sky-clouds.png') center top / cover no-repeat,
+    linear-gradient(#5cbbf6, #a9e4fc 55%, #9bcf66);
+}
+.dm-solo-screen::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    url('/democracy-merge/picture/v3/castle.png') right 3% bottom 18% / clamp(100px, 16vw, 250px) auto no-repeat,
+    url('/democracy-merge/picture/v3/houses-village-alternative.png') left 3% bottom 13% / clamp(110px, 18vw, 270px) auto no-repeat,
+    url('/democracy-merge/picture/v3/windmill.png') right 25% bottom 14% / clamp(80px, 12vw, 180px) auto no-repeat;
+}
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame {
+  box-sizing: border-box;
+  padding: 10px;
+  overflow: visible;
+}
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame > .dm-character-portrait {
+  z-index: 1;
+  width: 70%;
+  height: 70%;
+  min-width: 0;
+  min-height: 0;
+  opacity: 1;
+}
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame .dm-character-art {
+  z-index: 2;
+  visibility: visible;
+}
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame .dm-character-fallback {
+  color: #563119;
+  font-size: 22px;
+}
+.dm-solo-screen .dm-solo-layout .dm-tools {
+  box-sizing: border-box;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(3px, 1vw, 8px);
+  padding: 35px clamp(12px, 4vw, 30px) 30px;
+  background-size: 100% 100%;
+  min-height: 210px;
+}
+.dm-solo-screen .dm-solo-layout .dm-tools h3,
+.dm-solo-screen .dm-solo-layout .dm-tools .dm-storage-note {
+  position: relative;
+  z-index: 1;
+}
+.dm-solo-screen .dm-solo-layout .dm-tool-button {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  width: 100%;
+  min-height: 92px;
+  padding: 5px 2px;
+  box-sizing: border-box;
+  background: linear-gradient(#ffe7ae, #dfae67);
+  border: 1px solid #9b622c;
+  border-radius: 10px;
+  box-shadow: inset 0 1px #fff9;
+}
+@media (max-width: 600px) {
+  .dm-solo-screen .dm-solo-layout .dm-tools {
+    padding: 30px 18px 24px;
+    gap: 4px;
+  }
+  .dm-solo-screen .dm-solo-layout .dm-tool-button {
+    min-height: 85px;
+    font-size: 9px;
+  }
+  .dm-solo-screen::after {
+    background:
+      url('/democracy-merge/picture/v3/castle.png') right 1% bottom 19% / 100px auto no-repeat,
+      url('/democracy-merge/picture/v3/houses-village-alternative.png') left 1% bottom 14% / 110px auto no-repeat,
+      url('/democracy-merge/picture/v3/windmill.png') right 24% bottom 13% / 75px auto no-repeat;
+  }
+}
