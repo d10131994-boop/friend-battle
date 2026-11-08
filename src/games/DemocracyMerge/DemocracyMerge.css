@@ -101,7 +101,7 @@
 .dm-settings-field select{padding:8px;border-radius:8px;background:#252a3c;color:#fff;border:1px solid #424962}
 .dm-settings-modal>p{font-size:11px;opacity:.7;line-height:1.5}
 .dm-animations-off *, .dm-animations-off *::before, .dm-animations-off *::after{animation:none!important;transition:none!important}
-.dm-animation-fast *, .dm-animation-fast *::before, .dm-animation-fast *::after{animation-duration:50%!important;transition-duration:50%!important}
+.dm-animation-fast *, .dm-animation-fast *::before, .dm-animation-fast *::after{animation-duration:.5s!important;transition-duration:.25s!important}
 .dm-cell{transition:transform .5s ease,filter .5s ease,box-shadow .5s ease}
 .dm-cell:active:not(:disabled){transform:scale(.94)}
 .dm-cell-placed{animation:dm-place .5s ease-out}
