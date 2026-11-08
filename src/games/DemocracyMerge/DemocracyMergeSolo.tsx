@@ -333,24 +333,24 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     try {
       const next = applySoloTool(game, tool, options, Date.now())
       if (next.result) saveResult(next)
-      else setGame(next)
+      else saveCheckpoint(next)
       setSelectedTool(null)
       setSwapFirstCell(null)
       setMessage('')
     } catch (error) {
       setMessage(errorMessage(error))
     }
-  }, [game, loading, now, saveResult])
+  }, [game, loading, now, saveResult, saveCheckpoint])
 
   const handleBuy = useCallback((tool: ToolType) => {
     if (!game || game.status !== 'active' || loading || now >= Date.parse(game.deadlineAt)) return
     try {
-      setGame(buySoloTool(game, tool, Date.now()))
+      saveCheckpoint(buySoloTool(game, tool, Date.now()))
       setMessage('')
     } catch (error) {
       setMessage(errorMessage(error))
     }
-  }, [game, loading, now])
+  }, [game, loading, now, saveCheckpoint])
 
   function clickCell(index: number) {
     if (!game || game.status !== 'active') return
