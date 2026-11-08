@@ -43,6 +43,13 @@ const toolIcons: Record<ToolType, string> = {
   swap: '🔀',
   replace: '🔄',
 }
+const toolDescriptions: Record<ToolType, string> = {
+  saw: 'Удаляет персонажа, заграждение или полицейского бесплатно; камень — за 50 монет.',
+  storage: 'Переносит персонажа в хранилище. Инструмент расходуется только при возврате персонажа.',
+  swap: 'Меняет местами двух обычных персонажей. Препятствия выбирать нельзя.',
+  replace: 'Заменяет текущего персонажа случайным персонажем того же уровня.',
+}
+
 const toolPrices: Record<ToolType, number> = {
   saw: 45,
   storage: 60,
@@ -248,6 +255,15 @@ export default function DemocracyMergeMatch({
   async function clickCell(index: number) {
     if (!canAct || !me || !match) return
     if (!selectedTool) {
+      const target = me.board[index]
+      if (target?.kind === 'obstacle') {
+        setMessage(`${obstacleLabels[target.obstacleType]}. ${target.obstacleType === 'rock' ? 'Удаляется пилой за 50 монет.' : 'Удаляется пилой бесплатно.'}`)
+        return
+      }
+      if (target?.kind === 'character') {
+        setMessage('Клетка занята. Выберите свободную клетку.')
+        return
+      }
       await submitAction(() => placeDemocracyMergeCharacter(initData, room.roomId, index, createActionId()))
       return
     }
@@ -288,9 +304,13 @@ export default function DemocracyMergeMatch({
     }
     setSelectedTool((previous) => previous === tool ? null : tool)
     setSwapFirstCell(null)
-    setMessage(tool === 'storage' && me.storage
+    setMessage(`${toolDescriptions[tool]} ${tool === 'storage' && me.storage
       ? 'Выберите свободную клетку, чтобы вернуть персонажа из хранилища.'
-      : `Выберите клетку для инструмента «${toolLabels[tool]}».`)
+      : tool === 'storage'
+        ? 'Выберите персонажа, которого нужно сохранить.'
+        : tool === 'swap'
+          ? 'Выберите первую клетку, затем вторую.'
+          : 'Выберите клетку для удаления.'}`)
   }
 
   async function buy(tool: ToolType) {
@@ -545,6 +565,9 @@ export default function DemocracyMergeMatch({
               <div className="dm-shop-row" key={tool}>
                 <span>{toolIcons[tool]} {toolLabels[tool]}</span>
                 <small>{me.inventory[tool]}/3 · 🪙 {toolPrices[tool]}</small>
+                {(me.inventory[tool] >= 3 || me.coins < toolPrices[tool]) && (
+                  <small className="dm-purchase-reason">{me.inventory[tool] >= 3 ? 'Инвентарь заполнен' : 'Недостаточно монет'}</small>
+                )}
                 <button
                   onClick={() => void buy(tool)}
                   disabled={!canAct || me.inventory[tool] >= 3 || me.coins < toolPrices[tool] || loading}
