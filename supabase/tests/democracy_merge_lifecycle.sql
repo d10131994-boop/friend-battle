@@ -21,6 +21,13 @@ DECLARE
   v_expired integer;
   v_board jsonb;
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_game_rules
+    WHERE game_id='democracy-merge' AND min_players=2 AND max_players=4 AND is_enabled
+  ) THEN
+    RAISE EXCEPTION 'Democracy Merge must be registered for 2-4 multiplayer participants';
+  END IF;
+
   INSERT INTO public.common_multiplayer_game_rules(game_id, min_players, max_players, is_enabled)
   VALUES ('democracy-merge', 2, 4, true)
   ON CONFLICT (game_id) DO UPDATE
