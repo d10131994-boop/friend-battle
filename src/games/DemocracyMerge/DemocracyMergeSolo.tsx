@@ -637,8 +637,9 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <div className="dm-board" style={{ transform: `scale(${boardZoom})` }} aria-label="Игровое поле 6 на 6">
               {game.board.map((cell, index) => (
                 <button key={index} className={`dm-cell ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''} ${selectedTool === 'swap' && swapFirstCell === index ? 'dm-cell-selected' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
-                  aria-label={cell === null ? `Свободная клетка ${index + 1}` : cell.kind === 'character'
-                    ? `Персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}>
+                  aria-pressed={selectedTool === 'swap' ? swapFirstCell === index : undefined}
+                  aria-label={`${selectedTool === 'swap' && swapFirstCell === index ? 'Первая клетка перестановки. ' : ''}Клетка ${index + 1}: ${cell === null ? 'свободна' : cell.kind === 'character'
+                    ? `персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}`}>
                   {cell === null ? '' : cell.kind === 'character'
                     ? <span className={`dm-character dm-level-${cell.level}`}><CharacterPortrait level={cell.level} /></span>
                     : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}><img src={`/democracy-merge/obstacles/${cell.obstacleType}.svg`} alt="" aria-hidden="true" draggable={false} /></span>}
