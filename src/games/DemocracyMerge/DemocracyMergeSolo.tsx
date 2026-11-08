@@ -429,7 +429,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const isNewRecord = recordBroken
   const animationClasses = `${settings.animationsEnabled ? '' : 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
 
-  const touchDistance = (touches: React.TouchList) => Math.hypot(
+  const touchDistance = (touches: TouchList) => Math.hypot(
     touches[0].clientX - touches[1].clientX,
     touches[0].clientY - touches[1].clientY,
   )
