@@ -35,3 +35,45 @@ The Mini App uses Telegram's `t.me/share/url` share sheet. Telegram does not ret
 - Do not change live Supabase functions, SQL, RLS, or secrets in this module.
 - Do not claim the room lifecycle works end-to-end against the live database without testing the deployed RPC. The checked-in Multiplayer SQL definitions have known conflicts around no-game room creation, `select_game`, capacity enforcement and leaving during a match.
 - A finished match does not destroy the room. Return to the room menu and reuse the same room for a rematch.
+
+
+## Game availability catalog
+
+Both room menus read their available games from
+`public.common_game_availability` through the public `src/database`
+facade. Do not add another hard-coded list of enabled games to either menu.
+
+The menus filter rows by:
+- `is_enabled = true` for the global switch;
+- `is_solo_enabled = true` in `SoloRoomMenu`;
+- `is_multiplayer_enabled = true` in `MultiplayerRoomMenu`.
+
+Rows are ordered by `sort_order`. Multiplayer start-button guidance uses
+the selected row's `min_players` and `max_players`; the trusted SQL RPC and
+room-capacity trigger enforce those limits independently.
+
+The catalog controls availability, but it does not contain executable
+components. `src/menus/gameAvailability.ts` maps stable game IDs to display
+metadata and is the frontend presentation registry. A new game must be added
+to the catalog and to this registry, then routed to its solo/multiplayer
+components as applicable. Do not show an unknown catalog ID if the current
+frontend build has no implementation for it.
+
+If the catalog read fails, show an error and a retry action. Do not silently
+fall back to a hard-coded game list: doing so would bypass the single source
+of truth. An empty filtered result is a valid state and should be explained
+to the player.
+
+### Adding a game
+
+Before enabling a new game, add its row to
+`public.common_game_availability` using the approved SQL workflow. Set
+`game_id` to the exact stable ID used by the game, then configure
+`is_enabled`, both mode flags, `min_players`, `max_players` and
+`sort_order`. Player limits must satisfy
+`2 <= min_players <= max_players <= 4`. Set equal min/max values for games
+that require an exact player count.
+
+Keep the menu registry and app routing in sync with the catalog row. A game
+is not ready for users merely because its database row exists; its required
+frontend and trusted server implementation must also be deployed.
