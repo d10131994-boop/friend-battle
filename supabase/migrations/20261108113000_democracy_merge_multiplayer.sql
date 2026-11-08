@@ -887,3 +887,229 @@ BEGIN
   );
 END;
 $cron$;
+
+
+-- Per-player match history is separate from immutable match/player results.
+-- Deleting a history row never changes match results or aggregate statistics.
+CREATE TABLE IF NOT EXISTS public.games_democracy_merge_player_history (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  match_id uuid NOT NULL REFERENCES public.games_democracy_merge_matches(id) ON DELETE CASCADE,
+  user_id text NOT NULL,
+  completed_at timestamptz NOT NULL,
+  player_count integer NOT NULL CHECK (player_count >= 1),
+  opponents jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(opponents) = 'array'),
+  status text NOT NULL CHECK (status IN ('completed', 'surrendered')),
+  score bigint NOT NULL CHECK (score >= 0),
+  max_level smallint NOT NULL CHECK (max_level BETWEEN 1 AND 6),
+  merge_count integer NOT NULL CHECK (merge_count >= 0),
+  chain_reactions integer NOT NULL CHECK (chain_reactions >= 0),
+  tools_used integer NOT NULL CHECK (tools_used >= 0),
+  coins integer NOT NULL CHECK (coins >= 0),
+  player_rank integer NOT NULL CHECK (player_rank >= 1),
+  UNIQUE (match_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS games_democracy_merge_history_user_date_idx
+  ON public.games_democracy_merge_player_history(user_id, completed_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.games_democracy_merge_player_stats (
+  user_id text PRIMARY KEY,
+  total_games integer NOT NULL DEFAULT 0 CHECK (total_games >= 0),
+  wins integer NOT NULL DEFAULT 0 CHECK (wins >= 0),
+  losses integer NOT NULL DEFAULT 0 CHECK (losses >= 0),
+  draws integer NOT NULL DEFAULT 0 CHECK (draws >= 0),
+  total_points bigint NOT NULL DEFAULT 0 CHECK (total_points >= 0),
+  best_score bigint NOT NULL DEFAULT 0 CHECK (best_score >= 0),
+  max_level smallint NOT NULL DEFAULT 1 CHECK (max_level BETWEEN 1 AND 6),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.games_democracy_merge_player_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.games_democracy_merge_player_stats ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.games_democracy_merge_player_history,
+  public.games_democracy_merge_player_stats FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.games_democracy_merge_player_history,
+  public.games_democracy_merge_player_stats TO service_role;
+
+CREATE OR REPLACE FUNCTION public.democracy_merge_record_completed_match(p_match_id uuid)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_inserted integer := 0;
+BEGIN
+  WITH participants AS (
+    SELECT p.*,
+      pg_catalog.rank() OVER (ORDER BY p.score DESC, p.max_level DESC) AS player_rank,
+      pg_catalog.count(*) FILTER (
+        WHERE p.status IN ('completed', 'surrendered')
+          AND pg_catalog.rank() OVER (ORDER BY p.score DESC, p.max_level DESC) = 1
+      ) OVER () AS first_place_count
+    FROM public.games_democracy_merge_match_players p
+    WHERE p.match_id = p_match_id
+      AND p.status IN ('completed', 'surrendered')
+  ),
+  inserted AS (
+    INSERT INTO public.games_democracy_merge_player_history(
+      match_id, user_id, completed_at, player_count, opponents, status,
+      score, max_level, merge_count, chain_reactions, tools_used, coins, player_rank
+    )
+    SELECT
+      p.match_id,
+      p.user_id,
+      COALESCE(m.completed_at, pg_catalog.clock_timestamp()),
+      (SELECT count(*)::integer FROM public.games_democracy_merge_match_players allp WHERE allp.match_id = p.match_id),
+      COALESCE((
+        SELECT pg_catalog.jsonb_agg(
+          pg_catalog.jsonb_build_object('displayName', other.display_name, 'status', other.status)
+          ORDER BY other.joined_at, other.user_id
+        )
+        FROM public.games_democracy_merge_match_players other
+        WHERE other.match_id = p.match_id AND other.user_id <> p.user_id
+      ), '[]'::jsonb),
+      p.status, p.score, p.max_level, p.merge_count, p.chain_reactions, p.tools_used, p.coins,
+      p.player_rank::integer
+    FROM participants p
+    JOIN public.games_democracy_merge_matches m ON m.id = p.match_id
+    ON CONFLICT (match_id, user_id) DO NOTHING
+    RETURNING user_id, score, max_level, player_rank
+  ),
+  deltas AS (
+    SELECT
+      i.user_id,
+      count(*)::integer AS games,
+      count(*) FILTER (WHERE i.player_rank = 1 AND firsts.first_place_count = 1)::integer AS wins,
+      count(*) FILTER (WHERE i.player_rank > 1)::integer AS losses,
+      count(*) FILTER (WHERE i.player_rank = 1 AND firsts.first_place_count > 1)::integer AS draws,
+      sum(i.score)::bigint AS points,
+      max(i.score)::bigint AS best_score,
+      max(i.max_level)::smallint AS max_level
+    FROM inserted i
+    CROSS JOIN LATERAL (
+      SELECT count(*)::integer AS first_place_count
+      FROM participants firsts
+      WHERE firsts.player_rank = 1
+    ) firsts
+    GROUP BY i.user_id
+  ),
+  updated AS (
+    INSERT INTO public.games_democracy_merge_player_stats(
+      user_id, total_games, wins, losses, draws, total_points, best_score, max_level, updated_at
+    )
+    SELECT user_id, games, wins, losses, draws, points, best_score, max_level, pg_catalog.clock_timestamp()
+    FROM deltas
+    ON CONFLICT (user_id) DO UPDATE SET
+      total_games = public.games_democracy_merge_player_stats.total_games + EXCLUDED.total_games,
+      wins = public.games_democracy_merge_player_stats.wins + EXCLUDED.wins,
+      losses = public.games_democracy_merge_player_stats.losses + EXCLUDED.losses,
+      draws = public.games_democracy_merge_player_stats.draws + EXCLUDED.draws,
+      total_points = public.games_democracy_merge_player_stats.total_points + EXCLUDED.total_points,
+      best_score = GREATEST(public.games_democracy_merge_player_stats.best_score, EXCLUDED.best_score),
+      max_level = GREATEST(public.games_democracy_merge_player_stats.max_level, EXCLUDED.max_level),
+      updated_at = EXCLUDED.updated_at
+    RETURNING user_id
+  )
+  SELECT count(*)::integer INTO v_inserted FROM inserted;
+
+  DELETE FROM public.games_democracy_merge_player_history h
+  WHERE h.user_id IN (
+    SELECT p.user_id FROM public.games_democracy_merge_match_players p WHERE p.match_id = p_match_id
+  )
+  AND h.id IN (
+    SELECT id FROM (
+      SELECT id, pg_catalog.row_number() OVER (
+        PARTITION BY user_id ORDER BY completed_at DESC, id DESC
+      ) AS position
+      FROM public.games_democracy_merge_player_history
+      WHERE user_id IN (
+        SELECT p.user_id FROM public.games_democracy_merge_match_players p WHERE p.match_id = p_match_id
+      )
+    ) recent
+    WHERE recent.position > 50
+  );
+
+  RETURN v_inserted;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.democracy_merge_get_personal_history(p_user_id text)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_history jsonb;
+  v_stats jsonb;
+BEGIN
+  IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = '' THEN
+    RAISE EXCEPTION 'A valid player is required' USING ERRCODE = '22023';
+  END IF;
+  SELECT COALESCE(pg_catalog.jsonb_agg(
+    pg_catalog.jsonb_build_object(
+      'id', h.id, 'matchId', h.match_id, 'completedAt', h.completed_at,
+      'playerCount', h.player_count, 'opponents', h.opponents, 'status', h.status,
+      'score', h.score, 'maxLevel', h.max_level, 'mergeCount', h.merge_count,
+      'chainReactions', h.chain_reactions, 'toolsUsed', h.tools_used,
+      'coins', h.coins, 'rank', h.player_rank
+    ) ORDER BY h.completed_at DESC, h.id DESC
+  ), '[]'::jsonb)
+  INTO v_history
+  FROM (
+    SELECT * FROM public.games_democracy_merge_player_history
+    WHERE user_id = p_user_id
+    ORDER BY completed_at DESC, id DESC
+    LIMIT 50
+  ) h;
+
+  SELECT pg_catalog.jsonb_build_object(
+    'totalGames', COALESCE(s.total_games, 0),
+    'wins', COALESCE(s.wins, 0),
+    'losses', COALESCE(s.losses, 0),
+    'draws', COALESCE(s.draws, 0),
+    'totalPoints', COALESCE(s.total_points, 0),
+    'bestScore', COALESCE(s.best_score, 0),
+    'maxLevel', COALESCE(s.max_level, 1)
+  )
+  INTO v_stats
+  FROM (SELECT 1) seed
+  LEFT JOIN public.games_democracy_merge_player_stats s ON s.user_id = p_user_id;
+
+  RETURN pg_catalog.jsonb_build_object('history', v_history, 'stats', v_stats);
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.democracy_merge_delete_history_record(
+  p_user_id text,
+  p_record_id uuid
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_deleted integer;
+BEGIN
+  DELETE FROM public.games_democracy_merge_player_history
+  WHERE user_id = p_user_id AND id = p_record_id;
+  GET DIAGNOSTICS v_deleted = ROW_COUNT;
+  RETURN v_deleted > 0;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.democracy_merge_record_completed_match(uuid)
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.democracy_merge_get_personal_history(text)
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.democracy_merge_delete_history_record(text, uuid)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.democracy_merge_record_completed_match(uuid)
+  TO service_role;
+GRANT EXECUTE ON FUNCTION public.democracy_merge_get_personal_history(text)
+  TO service_role;
+GRANT EXECUTE ON FUNCTION public.democracy_merge_delete_history_record(text, uuid)
+  TO service_role;
+
