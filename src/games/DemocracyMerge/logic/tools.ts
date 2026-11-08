@@ -37,7 +37,7 @@ function validIndex(index: number): boolean {
   return Number.isInteger(index) && index >= 0 && index < 36
 }
 
-export function useSaw(
+export function applySaw(
   source: Board,
   index: number,
   inventory: ToolInventory,
