@@ -51,7 +51,6 @@ const toolDescriptions: Record<ToolType, string> = {
   swap: 'Меняет местами двух обычных персонажей. Препятствия выбирать нельзя.',
   replace: 'Заменяет текущего персонажа случайным персонажем того же уровня.',
 }
-const obstacleIcons = { barricade: '🧱', police: '👮', rock: '🪨' }
 const obstacleLabels = { barricade: 'Заграждение', police: 'Полицейский', rock: 'Камень' }
 
 function formatTime(milliseconds: number): string {
