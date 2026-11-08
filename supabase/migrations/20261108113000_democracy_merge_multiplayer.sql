@@ -1111,3 +1111,152 @@ GRANT EXECUTE ON FUNCTION public.democracy_merge_get_personal_history(text)
 GRANT EXECUTE ON FUNCTION public.democracy_merge_delete_history_record(text, uuid)
   TO service_role;
 
+
+
+-- Reservations serialize a turn/action that began before the match deadline.
+-- The deadline finalizer waits for these short-lived server-side reservations.
+CREATE TABLE IF NOT EXISTS public.games_democracy_merge_pending_actions (
+  match_id uuid NOT NULL REFERENCES public.games_democracy_merge_matches(id) ON DELETE CASCADE,
+  user_id text NOT NULL,
+  action_id uuid NOT NULL,
+  action_type text NOT NULL CHECK (action_type IN ('place_character', 'use_tool', 'buy_tool', 'surrender')),
+  started_at timestamptz NOT NULL,
+  expires_at timestamptz NOT NULL,
+  PRIMARY KEY (match_id, user_id, action_id),
+  CHECK (expires_at > started_at)
+);
+CREATE INDEX IF NOT EXISTS games_democracy_merge_pending_actions_expiry_idx
+  ON public.games_democracy_merge_pending_actions(match_id, expires_at);
+
+ALTER TABLE public.games_democracy_merge_pending_actions ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.games_democracy_merge_pending_actions FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.games_democracy_merge_pending_actions TO service_role;
+
+CREATE OR REPLACE FUNCTION public.democracy_merge_reserve_action(
+  p_room_id uuid,
+  p_user_id text,
+  p_action_id uuid,
+  p_action_type text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
+  v_match public.games_democracy_merge_matches%ROWTYPE;
+  v_player public.games_democracy_merge_match_players%ROWTYPE;
+  v_receipt public.games_democracy_merge_action_receipts%ROWTYPE;
+  v_pending public.games_democracy_merge_pending_actions%ROWTYPE;
+  v_now timestamptz := pg_catalog.clock_timestamp();
+BEGIN
+  IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = ''
+     OR p_action_id IS NULL
+     OR p_action_type NOT IN ('place_character', 'use_tool', 'buy_tool', 'surrender') THEN
+    RAISE EXCEPTION 'Invalid action reservation' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO v_room
+  FROM public.common_multiplayer_rooms
+  WHERE id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_room.game_id IS DISTINCT FROM 'democracy-merge' THEN
+    RAISE EXCEPTION 'Democracy Merge is not selected' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_match
+  FROM public.games_democracy_merge_matches
+  WHERE room_id = p_room_id
+  ORDER BY created_at DESC
+  LIMIT 1
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Match not found' USING ERRCODE = 'P0002'; END IF;
+
+  SELECT * INTO v_player
+  FROM public.games_democracy_merge_match_players
+  WHERE match_id = v_match.id AND user_id = p_user_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Player has no record in this match' USING ERRCODE = '42501'; END IF;
+
+  SELECT * INTO v_receipt
+  FROM public.games_democracy_merge_action_receipts
+  WHERE match_id = v_match.id AND user_id = p_user_id AND action_id = p_action_id;
+  IF FOUND THEN
+    IF v_receipt.action_type <> p_action_type THEN
+      RAISE EXCEPTION 'Action id was already used for another action' USING ERRCODE = '22023';
+    END IF;
+    RETURN pg_catalog.jsonb_build_object('replayed', true, 'response', v_receipt.response);
+  END IF;
+
+  IF v_room.status <> 'playing' OR v_match.status <> 'playing'
+     OR v_player.status <> 'active'
+     OR NOT EXISTS (
+       SELECT 1 FROM public.common_multiplayer_players
+       WHERE room_id = p_room_id AND user_id = p_user_id
+     ) THEN
+    RAISE EXCEPTION 'Player or match is no longer active' USING ERRCODE = '55000';
+  END IF;
+  IF v_match.deadline_at <= v_now THEN
+    RAISE EXCEPTION 'Match deadline has passed' USING ERRCODE = '55000';
+  END IF;
+
+  SELECT * INTO v_pending
+  FROM public.games_democracy_merge_pending_actions
+  WHERE match_id = v_match.id AND user_id = p_user_id AND action_id = p_action_id
+  FOR UPDATE;
+  IF FOUND THEN
+    IF v_pending.action_type <> p_action_type THEN
+      RAISE EXCEPTION 'Action id was already reserved for another action' USING ERRCODE = '22023';
+    END IF;
+    RETURN pg_catalog.jsonb_build_object(
+      'replayed', false,
+      'startedAt', v_pending.started_at,
+      'expiresAt', v_pending.expires_at
+    );
+  END IF;
+
+  INSERT INTO public.games_democracy_merge_pending_actions(
+    match_id, user_id, action_id, action_type, started_at, expires_at
+  ) VALUES (
+    v_match.id, p_user_id, p_action_id, p_action_type, v_now, v_now + interval '3 minutes'
+  );
+
+  RETURN pg_catalog.jsonb_build_object(
+    'replayed', false,
+    'startedAt', v_now,
+    'expiresAt', v_now + interval '3 minutes'
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.democracy_merge_release_action(
+  p_match_id uuid,
+  p_user_id text,
+  p_action_id uuid
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  v_deleted integer;
+BEGIN
+  DELETE FROM public.games_democracy_merge_pending_actions
+  WHERE match_id = p_match_id AND user_id = p_user_id AND action_id = p_action_id;
+  GET DIAGNOSTICS v_deleted = ROW_COUNT;
+  RETURN v_deleted > 0;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.democracy_merge_reserve_action(uuid, text, uuid, text)
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.democracy_merge_release_action(uuid, text, uuid)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.democracy_merge_reserve_action(uuid, text, uuid, text)
+  TO service_role;
+GRANT EXECUTE ON FUNCTION public.democracy_merge_release_action(uuid, text, uuid)
+  TO service_role;
+
