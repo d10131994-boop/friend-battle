@@ -570,7 +570,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const isComplete = game.status !== 'active'
 
   return (
-    <main className="app dm-match-shell dm-solo-screen">
+    <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}>
       <header className="dm-header">
         <button className="dm-secondary-button" onClick={() => setLeaveConfirm(true)}>В ГЛАВНОЕ МЕНЮ</button>
         <div><div className="dm-eyebrow">ОДИНОЧНАЯ ИГРА</div><h1>DEMOCRACY <span>MERGE</span></h1><button className="dm-secondary-button dm-settings-trigger" onClick={() => setSettingsOpen(true)}>НАСТРОЙКИ</button></div>
