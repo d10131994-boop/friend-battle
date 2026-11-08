@@ -418,7 +418,7 @@
 }
 .dm-solo-screen .dm-header {
   padding: 12px;
-  background-image: url('/info-panel.webp'), linear-gradient(145deg, #f7d995, #c98b47 65%, #a45b2b);
+  background-image: url('/democracy-merge/picture/v3/info-panel.webp'), linear-gradient(145deg, #f7d995, #c98b47 65%, #a45b2b);
   background-size: 100% 100%;
 }
 .dm-solo-screen .dm-header h1 span { color: #78451d; }
@@ -443,21 +443,21 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: url('/wooden-frame.webp') center / 100% 100% no-repeat;
+  background: url('/democracy-merge/picture/v3/wooden-frame.webp') center / 100% 100% no-repeat;
   pointer-events: none;
   z-index: 2;
 }
 .dm-solo-screen .dm-cell {
   border: 0;
   border-radius: 12%;
-  background: url('/democracy-merge/v3/grass-light.webp') center / 100% 100% no-repeat, #9bcf40;
+  background: none center / 100% 100% no-repeat, #9bcf40;
   box-shadow: inset 0 2px 4px #fff6, inset 0 -3px 5px #426c2755;
 }
-.dm-solo-screen .dm-cell:nth-child(6n + 2) { background-image: url('/democracy-merge/v3/grass-dark.webp'); background-color: #79ad38; }
-.dm-solo-screen .dm-cell:nth-child(6n + 3) { background-image: url('/democracy-merge/v3/grass-medium.webp'); background-color: #8fbf45; }
-.dm-solo-screen .dm-cell:nth-child(6n + 4) { background-image: url('/democracy-merge/v3/grass-flowers.webp'); background-color: #9ecb4e; }
-.dm-solo-screen .dm-cell:nth-child(6n + 5) { background-image: url('/democracy-merge/v3/grass-leaves.webp'); background-color: #83b84c; }
-.dm-solo-screen .dm-cell:nth-child(6n) { background-image: url('/democracy-merge/v3/grass-striped.webp'); background-color: #a5d34f; }
+.dm-solo-screen .dm-cell:nth-child(6n + 2) { background-image: none; background-color: #79ad38; }
+.dm-solo-screen .dm-cell:nth-child(6n + 3) { background-image: none; background-color: #8fbf45; }
+.dm-solo-screen .dm-cell:nth-child(6n + 4) { background-image: none; background-color: #9ecb4e; }
+.dm-solo-screen .dm-cell:nth-child(6n + 5) { background-image: none; background-color: #83b84c; }
+.dm-solo-screen .dm-cell:nth-child(6n) { background-image: none; background-color: #a5d34f; }
 .dm-solo-screen .dm-tool-button,
 .dm-solo-screen .dm-primary-button,
 .dm-solo-screen .dm-secondary-button {
@@ -489,16 +489,16 @@
   padding: 14%;
   border: 0;
   border-radius: 0;
-  background: url('/next-character-frame.webp') center / contain no-repeat;
+  background: url('/democracy-merge/picture/v3/next-character-frame.webp') center / contain no-repeat;
   box-shadow: none;
 }
 .dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame:has(.dm-character-art) {
   width: clamp(70px, 13vw, 108px);
   height: clamp(70px, 13vw, 108px);
-  background: url('/next-character-frame.webp') center / contain no-repeat;
+  background: url('/democracy-merge/picture/v3/next-character-frame.webp') center / contain no-repeat;
 }
 .dm-solo-screen .dm-solo-layout .dm-tools {
-  background-image: url('/tools-panel.webp'), linear-gradient(#b87b39, #77421f);
+  background-image: url('/democracy-merge/picture/v3/tools-panel.webp'), linear-gradient(#b87b39, #77421f);
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
