@@ -8,7 +8,6 @@ import {
   currentSoloCharacter,
   deleteSoloHistoryRecord,
   finalizeSoloDeadline,
-  nextSoloCharacter,
   placeSoloCharacter,
   recordSoloResult,
   surrenderSoloGame,
@@ -38,12 +37,6 @@ const toolLabels: Record<ToolType, string> = {
   storage: 'Хранилище',
   swap: 'Перестановка',
   replace: 'Замена',
-}
-const toolIcons: Record<ToolType, string> = {
-  saw: '🪚',
-  storage: '📦',
-  swap: '🔀',
-  replace: '🔄',
 }
 const toolDescriptions: Record<ToolType, string> = {
   saw: 'Удаляет персонажа, заграждение или полицейского бесплатно; камень — за 50 монет.',
@@ -443,7 +436,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   }
 
   const current = game ? currentSoloCharacter(game) : null
-  const next = game ? nextSoloCharacter(game) : null
   const remaining = game ? Date.parse(game.deadlineAt) - now : 0
   const canAct = Boolean(game?.status === 'active' && now < Date.parse(game.deadlineAt) && !loading)
   const isNewRecord = recordBroken
@@ -617,7 +609,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       ) : (
         <div className="dm-layout dm-solo-layout">
           <aside className="dm-side-panel">
-            <div className="dm-current-card"><small>ТЕКУЩИЙ ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small><strong>{current !== null ? <CharacterPortrait level={current} /> : '—'}</strong><span>Следующий: {next !== null ? <CharacterPortrait level={next} /> : '—'}</span></div>
+            <div className="dm-current-card"><small>ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small><strong className="dm-v3-next-character-frame">{current !== null ? <CharacterPortrait level={current} /> : '—'}</strong></div>
             <div className="dm-stats">
               <div><small>ОЧКИ</small><strong>{game.score}</strong></div>
               <div><small>МАКС. УРОВЕНЬ</small><strong>{game.maxLevel}</strong></div>
@@ -630,7 +622,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
                 <button key={tool} title={toolDescriptions[tool]} className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
                   onClick={() => selectTool(tool)} aria-pressed={selectedTool === tool} aria-label={`${toolLabels[tool]}. В инвентаре ${game.inventory[tool]} из 3. Цена покупки ${TOOL_PRICES[tool]} монет. ${toolDescriptions[tool]}`} disabled={!canAct || game.inventory[tool] < 1}>
-                  <span className="dm-tool-icon" aria-hidden="true"><img src={`/democracy-merge/tools/${tool}.svg`} alt="" draggable={false} /></span><span className="dm-tool-label">{toolLabels[tool]}</span><strong>{game.inventory[tool]}/3</strong><small className="dm-tool-price">В магазине: 🪙 {TOOL_PRICES[tool]}</small>
+                  <span className="dm-tool-icon" aria-hidden="true"><img src={`/democracy-merge/picture/v3/tool-${tool}.webp`} alt="" draggable={false} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = `/democracy-merge/tools/${tool}.svg` }} /></span><span className="dm-tool-label">{toolLabels[tool]}</span><strong>{game.inventory[tool]}/3</strong><small className="dm-tool-price">В магазине: 🪙 {TOOL_PRICES[tool]}</small>
                 </button>
               ))}
               <p className="dm-storage-note">{game.storage ? `В хранилище: уровень ${game.storage.level}` : 'Хранилище пусто'}</p>
@@ -700,7 +692,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <p>Баланс: 🪙 {game.coins}</p>
             {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
               <div className="dm-shop-row" key={tool}>
-                <span>{toolIcons[tool]} {toolLabels[tool]}</span><small>{game.inventory[tool]}/3 · 🪙 {TOOL_PRICES[tool]}</small>
+                <span><img className="dm-v3-shop-tool-icon" src={`/democracy-merge/picture/v3/tool-${tool}.webp`} alt="" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = `/democracy-merge/tools/${tool}.svg` }} /> {toolLabels[tool]}</span><small>{game.inventory[tool]}/3 · 🪙 {TOOL_PRICES[tool]}</small>
                 {(game.inventory[tool] >= 3 || game.coins < TOOL_PRICES[tool]) && <small className="dm-purchase-reason">{game.inventory[tool] >= 3 ? 'Инвентарь заполнен' : 'Недостаточно монет'}</small>}
                 <button onClick={() => handleBuy(tool)} disabled={!canAct || game.inventory[tool] >= 3 || game.coins < TOOL_PRICES[tool]}>КУПИТЬ</button>
               </div>
