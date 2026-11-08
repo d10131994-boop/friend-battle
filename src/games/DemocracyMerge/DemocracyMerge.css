@@ -404,7 +404,13 @@
   --dm-v3-ink: #4c301c;
   --dm-v3-cream: #fff1ca;
   color: var(--dm-v3-ink);
-  background: url('/democracy-merge/picture/v3/sky-clouds.png') center top / cover no-repeat, linear-gradient(180deg, #8cd9ff 0%, #c6edff 23%, #a9d872 52%, #6fae49 100%);
+  background:
+    url('/democracy-merge/picture/v3/landscape-foreground.png') center bottom / 100% auto no-repeat,
+    url('/democracy-merge/picture/v3/castle.png') right 8% bottom 16% / clamp(130px, 22vw, 320px) auto no-repeat,
+    url('/democracy-merge/picture/v3/houses-village-alternative.png') left 6% bottom 13% / clamp(140px, 24vw, 340px) auto no-repeat,
+    url('/democracy-merge/picture/v3/sky-clouds.png') center top / cover no-repeat,
+    linear-gradient(180deg, #8cd9ff 0%, #c6edff 23%, #a9d872 52%, #6fae49 100%);
+  background-attachment: scroll;
 }
 .dm-solo-screen .dm-header,
 .dm-solo-screen .dm-side-panel,
@@ -521,4 +527,14 @@
 @media (max-width: 420px) {
   .dm-solo-screen .dm-solo-layout .dm-tools { padding: 7px 4px; gap: 3px; }
   .dm-solo-screen .dm-solo-layout .dm-tool-icon img { width: 36px; height: 34px; }
+}
+
+/* V3 scenery: retain playable contrast on narrow screens. */
+@media (max-width: 700px) {
+  .dm-solo-screen {
+    background:
+      url('/democracy-merge/picture/v3/landscape-foreground.png') center bottom / 100% auto no-repeat,
+      url('/democracy-merge/picture/v3/sky-clouds.png') center top / cover no-repeat,
+      linear-gradient(180deg, #8cd9ff, #c6edff 28%, #6fae49);
+  }
 }
