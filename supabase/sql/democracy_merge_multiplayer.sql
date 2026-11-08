@@ -223,6 +223,13 @@ BEGIN
       AND m.deadline_at > pg_catalog.clock_timestamp()
       AND mp.status = 'active'
       AND COALESCE(p.last_seen_at, p.joined_at) <= pg_catalog.clock_timestamp() - interval '5 minutes'
+      AND NOT EXISTS (
+        SELECT 1 FROM public.games_democracy_merge_pending_actions pending
+        WHERE pending.match_id = m.id
+          AND pending.user_id = p.user_id
+          AND pending.started_at <= COALESCE(p.last_seen_at, p.joined_at) + interval '5 minutes'
+          AND pending.expires_at > pg_catalog.clock_timestamp()
+      )
     ORDER BY r.id
   LOOP
     SELECT * INTO v_room
@@ -245,6 +252,13 @@ BEGIN
         AND m.deadline_at > v_now
         AND mp.status = 'active'
         AND COALESCE(p.last_seen_at, p.joined_at) <= v_now - interval '5 minutes'
+        AND NOT EXISTS (
+          SELECT 1 FROM public.games_democracy_merge_pending_actions pending
+          WHERE pending.match_id = m.id
+            AND pending.user_id = p.user_id
+            AND pending.started_at <= COALESCE(p.last_seen_at, p.joined_at) + interval '5 minutes'
+            AND pending.expires_at > v_now
+        )
       ORDER BY p.joined_at, p.id
       FOR UPDATE OF p
     LOOP
@@ -1185,6 +1199,7 @@ DECLARE
   v_player public.games_democracy_merge_match_players%ROWTYPE;
   v_receipt public.games_democracy_merge_action_receipts%ROWTYPE;
   v_pending public.games_democracy_merge_pending_actions%ROWTYPE;
+  v_last_seen timestamptz;
   v_now timestamptz := pg_catalog.clock_timestamp();
 BEGIN
   IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = ''
@@ -1227,12 +1242,18 @@ BEGIN
   END IF;
 
   IF v_room.status <> 'playing' OR v_match.status <> 'playing'
-     OR v_player.status <> 'active'
-     OR NOT EXISTS (
-       SELECT 1 FROM public.common_multiplayer_players
-       WHERE room_id = p_room_id AND user_id = p_user_id
-     ) THEN
+     OR v_player.status <> 'active' THEN
     RAISE EXCEPTION 'Player or match is no longer active' USING ERRCODE = '55000';
+  END IF;
+  SELECT COALESCE(last_seen_at, joined_at) INTO v_last_seen
+  FROM public.common_multiplayer_players
+  WHERE room_id = p_room_id AND user_id = p_user_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Player is no longer a room member' USING ERRCODE = '42501';
+  END IF;
+  IF v_last_seen <= v_now - interval '5 minutes' THEN
+    RAISE EXCEPTION 'The five-minute reconnect window has expired' USING ERRCODE = '55000';
   END IF;
   IF v_match.deadline_at <= v_now THEN
     RAISE EXCEPTION 'Match deadline has passed' USING ERRCODE = '55000';
