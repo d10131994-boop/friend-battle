@@ -296,34 +296,7 @@ BEGIN
   WHERE match_id = v_match.id AND status = 'active';
 
   IF v_active_count <= 1 THEN
-    SELECT COALESCE(
-      jsonb_agg(
-        jsonb_build_object(
-          'userId', ranked.user_id,
-          'displayName', ranked.display_name,
-          'status', ranked.status,
-          'score', ranked.score,
-          'maxLevel', ranked.max_level,
-          'rank', ranked.place
-        )
-        ORDER BY ranked.place NULLS LAST, ranked.joined_at, ranked.user_id
-      ),
-      '[]'::jsonb
-    )
-    INTO v_results
-    FROM (
-      SELECT p.user_id, p.display_name, p.status, p.score, p.max_level,
-             rank() OVER (ORDER BY p.score DESC, p.max_level DESC) AS place,
-             p.joined_at
-      FROM public.games_democracy_merge_match_players p
-      WHERE p.match_id = v_match.id
-        AND p.status IN ('completed', 'surrendered')
-      UNION ALL
-      SELECT p.user_id, p.display_name, p.status, p.score, p.max_level,
-             NULL::bigint AS place, p.joined_at
-      FROM public.games_democracy_merge_match_players p
-      WHERE p.match_id = v_match.id AND p.status = 'left'
-    ) ranked;
+    v_results := public.democracy_merge_build_final_results(v_match.id);
 
     UPDATE public.games_democracy_merge_matches
     SET status = 'completed', completed_at = v_now, final_results = v_results
@@ -331,10 +304,9 @@ BEGIN
     PERFORM public.democracy_merge_record_completed_match(v_match.id);
     DELETE FROM public.games_democracy_merge_pending_actions WHERE match_id = v_match.id;
 
-    -- A match with no active participants is over. Preserve completed results,
-    -- but close the shared room so no new participant can enter this session.
+    -- Keep the shared room lifecycle consistent with the existing return-to-room flow.
     UPDATE public.common_multiplayer_rooms
-    SET status = 'cancelled', finished_at = COALESCE(finished_at, v_now)
+    SET status = 'finished', finished_at = COALESCE(finished_at, v_now)
     WHERE id = OLD.room_id AND status = 'playing';
   END IF;
 
