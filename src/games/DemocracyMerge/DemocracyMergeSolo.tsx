@@ -372,9 +372,16 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     } else if (selectedTool === 'storage') {
       handleTool('storage', { cellIndex: index, storageAction: game.storage ? 'return' : 'store' })
     } else if (selectedTool === 'swap') {
+      if (game.board[index]?.kind !== 'character') {
+        setMessage('Переставлять можно только двух персонажей. Выберите клетку с персонажем.')
+        return
+      }
       if (swapFirstCell === null) {
         setSwapFirstCell(index)
-        setMessage('Выберите вторую клетку для перестановки.')
+        setMessage('Выберите вторую клетку с персонажем для перестановки.')
+      } else if (swapFirstCell === index) {
+        setSwapFirstCell(null)
+        setMessage('Выбор первой клетки отменён. Выберите персонажа заново.')
       } else {
         handleTool('swap', { firstCellIndex: swapFirstCell, secondCellIndex: index })
       }
@@ -391,7 +398,13 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       handleTool('replace')
       return
     }
-    setSelectedTool((previous) => previous === tool ? null : tool)
+    if (selectedTool === tool) {
+      setSelectedTool(null)
+      setSwapFirstCell(null)
+      setMessage('Инструмент отменён. Выберите свободную клетку для размещения персонажа.')
+      return
+    }
+    setSelectedTool(tool)
     setSwapFirstCell(null)
     setMessage(`${toolDescriptions[tool]} ${tool === 'storage' && game.storage
       ? 'Выберите свободную клетку, чтобы вернуть персонажа из хранилища.'
