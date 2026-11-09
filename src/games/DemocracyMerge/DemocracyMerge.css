@@ -638,3 +638,96 @@
       url('/democracy-merge/picture/v3/windmill.png') right 24% bottom 13% / 75px auto no-repeat;
   }
 }
+
+
+/* Issue 006 — reference-led solo visual refresh. No changes to multiplayer. */
+.dm-solo-screen::before {
+  background:
+    url('/democracy-merge/picture/v3/landscape-foreground.png') center bottom / auto 100% no-repeat,
+    url('/democracy-merge/picture/v3/sky-clouds.png') center top / cover no-repeat,
+    linear-gradient(#5cbbf6,#a9e4fc 40%,#9bcf66);
+}
+.dm-solo-screen::after {
+  background:
+    url('/democracy-merge/picture/v3/castle.png') right 1% top 12% / clamp(95px,20vw,220px) auto no-repeat,
+    url('/democracy-merge/picture/v3/houses-village-alternative.png') left 1% top 24% / clamp(100px,22vw,240px) auto no-repeat,
+    url('/democracy-merge/picture/v3/windmill.png') left 1% top 10% / clamp(85px,18vw,200px) auto no-repeat;
+}
+.dm-solo-screen .dm-board-section,
+.dm-solo-screen .dm-board-viewport { background:transparent; border:0; box-shadow:none; }
+.dm-solo-screen .dm-board-viewport { overflow:visible; touch-action:manipulation; }
+.dm-solo-screen .dm-board {
+  box-sizing:border-box;
+  width:100%;
+  max-width:680px;
+  aspect-ratio:1;
+  padding:clamp(16px,4vw,34px);
+  gap:0;
+  background-color:transparent;
+  background-image:url('/democracy-merge/picture/v3/wooden-frame.webp');
+  background-size:100% 100%;
+  background-position:center;
+  box-shadow:none;
+}
+.dm-solo-screen .dm-solo-layout .dm-cell {
+  min-width:0; min-height:0;
+  border:0; border-radius:5%;
+  background-color:transparent;
+  background-size:100% 100%;
+  background-repeat:no-repeat;
+  box-shadow:none;
+}
+.dm-solo-screen .dm-solo-layout .dm-cell.dm-grass-1 {background-image:url('/democracy-merge/picture/v3/grass-01.webp')}
+.dm-solo-screen .dm-solo-layout .dm-cell.dm-grass-2 {background-image:url('/democracy-merge/picture/v3/grass-02.webp')}
+.dm-solo-screen .dm-solo-layout .dm-cell.dm-grass-3 {background-image:url('/democracy-merge/picture/v3/grass-03.webp')}
+.dm-solo-screen .dm-solo-layout .dm-cell.dm-grass-4 {background-image:url('/democracy-merge/picture/v3/grass-04.webp')}
+.dm-solo-screen .dm-solo-layout .dm-cell.dm-grass-5 {background-image:url('/democracy-merge/picture/v3/grass-05.webp')}
+.dm-solo-screen .dm-solo-layout .dm-cell.dm-grass-6 {background-image:url('/democracy-merge/picture/v3/grass-06.webp')}
+.dm-solo-screen .dm-solo-layout .dm-current-card {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:transparent;border:0;box-shadow:none;padding:0;
+}
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame,
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame:has(.dm-character-art) {
+  width:clamp(100px,22vw,155px);height:clamp(100px,22vw,155px);
+  padding:0;background:none;border:0;box-shadow:none;
+}
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame > .dm-character-portrait {
+  width:100%;height:100%;
+}
+.dm-solo-screen .dm-solo-layout .dm-current-card small {
+  display:block;position:static;margin-top:2px;
+  font-family:'Baloo 2','Nunito',sans-serif;
+  font-size:clamp(14px,3.4vw,22px);font-weight:800;
+  color:#573119;text-align:center;text-shadow:0 2px #fff3cf;
+}
+.dm-solo-screen .dm-solo-layout .dm-tools {
+  border:0;box-shadow:none;border-radius:0;
+  background: url('/democracy-merge/picture/v3/tools-panel.webp') center/100% 100% no-repeat;
+  min-height:0;
+  padding:clamp(14px,3vw,24px) clamp(16px,5vw,36px);
+  gap:clamp(5px,1vw,12px);
+  align-items:center;
+}
+.dm-solo-screen .dm-solo-layout .dm-tool-button {
+  min-height:0;aspect-ratio:1;
+  padding:2px;border:0;border-radius:0;
+  background:none;box-shadow:none;
+}
+.dm-solo-screen .dm-solo-layout .dm-tool-button:focus-visible {outline:3px solid #ffe16a;outline-offset:-3px}
+.dm-solo-screen .dm-solo-layout .dm-tool-icon {height:100%}
+.dm-solo-screen .dm-solo-layout .dm-tool-icon img {width:100%;height:100%;max-width:100%;object-fit:contain}
+.dm-solo-screen .dm-solo-layout .dm-tools .dm-storage-note {grid-column:1/-1;margin:0;text-align:center;font-size:11px}
+@media(max-width:700px){
+  .dm-solo-screen::before {
+    background:
+      url('/democracy-merge/picture/v3/landscape-foreground.png') center bottom / auto 100% no-repeat,
+      url('/democracy-merge/picture/v3/sky-clouds.png') center top / cover no-repeat,
+      linear-gradient(#5cbbf6,#a9e4fc 40%,#9bcf66);
+  }
+}
+@media(max-width:600px){
+  .dm-solo-screen .dm-board {padding:clamp(14px,4vw,23px);gap:0}
+  .dm-solo-screen .dm-solo-layout .dm-tools {padding:16px 18px;gap:5px}
+  .dm-solo-screen .dm-solo-layout .dm-tool-button {min-height:0}
+}
