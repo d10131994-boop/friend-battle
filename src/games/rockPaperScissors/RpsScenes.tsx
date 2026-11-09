@@ -24,17 +24,77 @@ const props = [
 ]
 
 function CampObject({ kind }: { kind: number }) {
-  const stroke = '#514139'
-  const fill = ['#9b927d', '#b6a17d', '#819078', '#b17e64', '#a69b83', '#8e9b83', '#b18b70', '#9b8c79'][kind]
+  const outline = '#514139'
+  const common = { stroke: outline, strokeWidth: 3, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const }
+
   switch (kind) {
-    case 0: return <path d="M-18 2 L-5 -15 L8 -8 L18 8 L4 18 L-12 12Z" fill={fill} stroke={stroke} strokeWidth="3" strokeLinejoin="round"/>
-    case 1: return <g stroke={stroke} strokeWidth="3" strokeLinecap="round"><path d="M-19 5 Q-5 -8 18 4 L11 13 Q-5 8 -19 5Z" fill={fill}/><path d="M-9 -10 L10 14 M4 -14 L-12 12" fill="none"/></g>
-    case 2: return <g stroke={stroke} strokeWidth="3" strokeLinejoin="round"><path d="M-16 12 L-12 -10 L4 -18 L17 -5 L11 14Z" fill={fill}/><path d="M-12 -10 L11 14 M4 -18 L-2 5" fill="none"/></g>
-    case 3: return <g stroke={stroke} strokeWidth="3" strokeLinecap="round"><path d="M-17 9 Q-4 -17 17 -7 L10 13 Q-1 5 -17 9Z" fill={fill}/><path d="M-5 -2 L12 6" fill="none"/></g>
-    case 4: return <g stroke={stroke} strokeWidth="3" strokeLinejoin="round"><path d="M-18 12 L-12 -12 L2 -3 L17 -17 L12 14Z" fill={fill}/><path d="M-12 -12 L12 14" fill="none"/></g>
-    case 5: return <g stroke={stroke} strokeWidth="3" strokeLinecap="round"><path d="M-18 7 Q-6 -15 2 -3 Q15 -20 19 7 L8 15 L-12 13Z" fill={fill}/><path d="M-4 -3 L-9 13 M8 -4 L12 12" fill="none"/></g>
-    case 6: return <g stroke={stroke} strokeWidth="3" strokeLinejoin="round"><path d="M-18 8 L-9 -13 L5 -8 L18 10 L3 16Z" fill={fill}/><path d="M-9 -13 L3 16 M5 -8 L-18 8" fill="none"/></g>
-    default: return <g stroke={stroke} strokeWidth="3" strokeLinecap="round"><path d="M-18 8 L-4 -10 L17 -5 L10 13Z" fill={fill}/><path d="M-12 -2 L14 5 M-2 -11 L2 15" fill="none"/></g>
+    // A metal camping bottle: cap, narrow neck, shoulders and rounded body.
+    case 0:
+      return <g {...common}>
+        <path d="M-7 -22 H7 V-15 L11 -10 Q17 -5 17 3 V17 Q17 23 10 23 H-10 Q-17 23 -17 17 V3 Q-17 -5 -11 -10 L-7 -15Z" fill="#78929a"/>
+        <path d="M-7 -22 V-27 H7 V-22Z" fill="#b9a17d"/>
+        <path d="M-6 -15 H6 M-12 3 Q0 8 12 3" fill="none" stroke="#d4c5a6" strokeWidth="2"/>
+        <path d="M-12 13 Q0 17 12 13" fill="none" stroke="#526e76" strokeWidth="2"/>
+      </g>
+    // A cowboy hat with a broad brim and a pinched crown.
+    case 1:
+      return <g {...common}>
+        <path d="M-25 9 Q-17 2 -8 5 L-5 -12 Q0 -20 6 -12 L11 4 Q19 0 26 8 Q15 16 0 15 Q-15 16 -25 9Z" fill="#b58b5c"/>
+        <path d="M-8 4 Q0 8 11 4 L6 -12 Q0 -18 -5 -12Z" fill="#c7a071"/>
+        <path d="M-8 2 Q1 7 10 2" fill="none" stroke="#6d503d" strokeWidth="3"/>
+        <path d="M-20 9 Q0 14 21 9" fill="none" stroke="#e0bd86" strokeWidth="2"/>
+      </g>
+    // An axe: long wooden handle and a distinct metal blade.
+    case 2:
+      return <g {...common}>
+        <path d="M-3 -20 L4 -18 L8 19 Q5 24 0 21 L-7 -16Z" fill="#9a704c"/>
+        <path d="M-3 -18 Q-13 -24 -21 -17 L-24 -5 Q-13 -7 -7 1 L1 -5 L5 -15Z" fill="#aeb5ad"/>
+        <path d="M-18 -16 L-22 -8 M-4 -15 L1 -10" fill="none" stroke="#e0e0d3" strokeWidth="2"/>
+      </g>
+    // A cut tree stump with bark and visible growth rings.
+    case 3:
+      return <g {...common}>
+        <path d="M-18 -12 L18 -12 L15 17 Q0 23 -15 17Z" fill="#916747"/>
+        <path d="M-18 -12 Q-9 -20 2 -17 Q13 -20 18 -12 Q12 -4 0 -5 Q-11 -4 -18 -12Z" fill="#c5a77c"/>
+        <path d="M-8 -12 Q-2 -16 5 -12 Q9 -9 2 -8 Q-5 -7 -5 -11" fill="none" stroke="#8b6848" strokeWidth="2"/>
+        <path d="M-11 -3 L-8 14 M11 -4 L8 15" fill="none" stroke="#684b38" strokeWidth="2"/>
+      </g>
+    // A sturdy leather boot with a tall shaft, ankle and toe.
+    case 4:
+      return <g {...common}>
+        <path d="M-12 -22 L4 -22 L5 -2 Q7 5 17 8 Q25 11 23 19 Q20 23 10 22 L-20 22 Q-25 19 -21 13 L-12 5Z" fill="#a66f4d"/>
+        <path d="M-12 -15 L3 -15 M-11 -8 L4 -8 M-10 -1 L5 -1" fill="none" stroke="#e0b38a" strokeWidth="2"/>
+        <path d="M-20 15 Q-2 18 22 15" fill="none" stroke="#594638" strokeWidth="3"/>
+        <path d="M7 7 L13 11" fill="none" stroke="#594638" strokeWidth="2"/>
+      </g>
+    // A camping lantern with a handle, cap, glass chamber and base.
+    case 5:
+      return <g {...common}>
+        <path d="M-10 -17 Q-10 -29 0 -29 Q10 -29 10 -17" fill="none" strokeWidth="3"/>
+        <path d="M-13 -17 H13 L17 -10 L13 15 H-13 L-17 -10Z" fill="#9b7955"/>
+        <path d="M-11 -10 H11 L9 11 H-9Z" fill="#e3c27b"/>
+        <path d="M0 -7 Q-7 1 0 8 Q7 1 0 -7Z" fill="#d98d4e" stroke="#9b6542" strokeWidth="1.5"/>
+        <path d="M-17 -10 H17 M-13 15 H13 L16 20 H-16Z" fill="#88715a"/>
+        <path d="M-10 -15 V14 M10 -15 V14" fill="none" stroke="#514139" strokeWidth="2"/>
+      </g>
+    // A hiking backpack with shoulder straps, flap and front pocket.
+    case 6:
+      return <g {...common}>
+        <path d="M-13 -14 Q-13 -24 0 -24 Q13 -24 13 -14 L19 -7 L18 18 Q0 25 -18 18 L-19 -7Z" fill="#71836c"/>
+        <path d="M-13 -13 Q0 -21 13 -13 L15 -4 H-15Z" fill="#9ba889"/>
+        <path d="M-13 1 Q0 -3 13 1 L13 15 Q0 19 -13 15Z" fill="#899b7d"/>
+        <path d="M-19 -5 Q-27 2 -20 15 M19 -5 Q27 2 20 15" fill="none" stroke="#514139" strokeWidth="3"/>
+        <path d="M-5 -3 V4 H5 V-3 M-5 4 Q0 8 5 4" fill="none" stroke="#514139" strokeWidth="2"/>
+      </g>
+    // A large recognizable boulder, with a lit upper face and cracks.
+    default:
+      return <g {...common}>
+        <path d="M-22 12 L-19 -5 L-8 -19 L8 -22 L20 -9 L23 8 L11 19 L-10 20Z" fill="#8c9280"/>
+        <path d="M-19 -5 L-8 -19 L8 -22 L2 -7 L-8 2Z" fill="#b3b49d"/>
+        <path d="M2 -7 L20 -9 L23 8 L9 13Z" fill="#777f70"/>
+        <path d="M-8 2 L2 -7 L9 13 L-10 20Z" fill="#9da18a"/>
+        <path d="M-8 -19 L-5 -5 L-13 3 M2 -7 L-1 4 L9 13" fill="none" stroke="#626b5d" strokeWidth="2"/>
+      </g>
   }
 }
 
