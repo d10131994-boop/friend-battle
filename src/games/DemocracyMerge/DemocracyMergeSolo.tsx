@@ -289,7 +289,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
           setLastPlacedCell(null)
           setMergeEvents([])
           setObstacleCell(null)
-        }, settings.animationSpeed === 'fast' ? 500 : 1000)
+        }, 1000)
       } else {
         setLastPlacedCell(null)
         setMergeEvents([])
@@ -441,7 +441,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const remaining = game ? Date.parse(game.deadlineAt) - now : 0
   const canAct = Boolean(game?.status === 'active' && now < Date.parse(game.deadlineAt) && !loading)
   const isNewRecord = recordBroken
-  const animationClasses = `${settings.animationsEnabled ? '' : 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
+  const animationClasses = `${settings.animationsEnabled ? '' : 'dm-animations-off'} ${''}`
 
   if (loading) {
     return <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}><div className="dm-waiting">Загружаем одиночную игру…</div></main>
@@ -528,6 +528,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
         <button className="dm-secondary-button" onClick={() => setLeaveConfirm(true)}>В ГЛАВНОЕ МЕНЮ</button>
       </header>
 
+      {message && <span className="dm-visually-hidden" role="status" aria-live="polite">{message}</span>}
       {newRecordToast && <div className="dm-toast">Новый рекорд!</div>}
       {rewardToast.length > 0 && <div className="dm-toast dm-reward-toast">{rewardToast.join(' · ')}</div>}
 
@@ -578,7 +579,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <div className="dm-board-viewport">
             <div className="dm-board" aria-label="Игровое поле 6 на 6">
               {game.board.map((cell, index) => (
-                <button key={index} className={`dm-cell dm-grass-${GRASS_VARIANTS[index]} ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''} ${selectedTool === 'swap' && swapFirstCell === index ? 'dm-cell-selected' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
+                <button key={index} className={`dm-cell dm-grass-${GRASS_VARIANTS[index]} ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''} ${selectedTool === 'swap' && swapFirstCell === index ? 'dm-cell-selected' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
                   aria-pressed={selectedTool === 'swap' ? swapFirstCell === index : undefined}
                   aria-label={`${selectedTool === 'swap' && swapFirstCell === index ? 'Первая клетка перестановки. ' : ''}Клетка ${index + 1}: ${cell === null ? 'свободна' : cell.kind === 'character'
                     ? `персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}`}>
