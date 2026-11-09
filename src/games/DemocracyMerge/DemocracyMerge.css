@@ -788,3 +788,5 @@
   .dm-solo-screen .dm-solo-layout .dm-stats strong {font-size:18px}
   .dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer {min-width:78px;padding:6px 8px}
 }
+
+.dm-solo-screen .dm-visually-hidden {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
