@@ -13,14 +13,14 @@ function seededNumber(seed: string, index: number) {
 }
 
 const props = [
-  { x: 34, y: 31, rotate: -18, kind: 0 },
-  { x: 66, y: 30, rotate: 24, kind: 1 },
-  { x: 29, y: 49, rotate: 13, kind: 2 },
-  { x: 71, y: 51, rotate: -28, kind: 3 },
-  { x: 36, y: 69, rotate: 8, kind: 4 },
-  { x: 64, y: 70, rotate: -9, kind: 5 },
-  { x: 50, y: 20, rotate: 32, kind: 6 },
-  { x: 51, y: 81, rotate: -14, kind: 7 },
+  { x: 34, y: 31, rotate: -18, kind: 0, size: 0.78 },
+  { x: 66, y: 30, rotate: 24, kind: 1, size: 1.12 },
+  { x: 29, y: 49, rotate: 13, kind: 2, size: 0.94 },
+  { x: 71, y: 51, rotate: -28, kind: 3, size: 1.16 },
+  { x: 36, y: 69, rotate: 8, kind: 4, size: 0.98 },
+  { x: 64, y: 70, rotate: -9, kind: 5, size: 1.04 },
+  { x: 50, y: 20, rotate: 32, kind: 6, size: 1.08 },
+  { x: 51, y: 81, rotate: -14, kind: 7, size: 1.24 },
 ]
 
 function CampObject({ kind }: { kind: number }) {
@@ -28,46 +28,46 @@ function CampObject({ kind }: { kind: number }) {
   const common = { stroke: outline, strokeWidth: 3, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const }
 
   switch (kind) {
-    // A metal camping bottle: cap, narrow neck, shoulders and rounded body.
     case 0:
       return <g {...common}>
         <path d="M-7 -22 H7 V-15 L11 -10 Q17 -5 17 3 V17 Q17 23 10 23 H-10 Q-17 23 -17 17 V3 Q-17 -5 -11 -10 L-7 -15Z" fill="#78929a"/>
         <path d="M-7 -22 V-27 H7 V-22Z" fill="#b9a17d"/>
         <path d="M-6 -15 H6 M-12 3 Q0 8 12 3" fill="none" stroke="#d4c5a6" strokeWidth="2"/>
         <path d="M-12 13 Q0 17 12 13" fill="none" stroke="#526e76" strokeWidth="2"/>
+        <path d="M-10 -5 Q-13 0 -11 6" fill="none" stroke="#d7e0dc" strokeWidth="2"/>
       </g>
-    // A cowboy hat with a broad brim and a pinched crown.
     case 1:
       return <g {...common}>
         <path d="M-25 9 Q-17 2 -8 5 L-5 -12 Q0 -20 6 -12 L11 4 Q19 0 26 8 Q15 16 0 15 Q-15 16 -25 9Z" fill="#b58b5c"/>
         <path d="M-8 4 Q0 8 11 4 L6 -12 Q0 -18 -5 -12Z" fill="#c7a071"/>
         <path d="M-8 2 Q1 7 10 2" fill="none" stroke="#6d503d" strokeWidth="3"/>
         <path d="M-20 9 Q0 14 21 9" fill="none" stroke="#e0bd86" strokeWidth="2"/>
+        <path d="M-3 -14 Q1 -17 4 -13" fill="none" stroke="#e0bd86" strokeWidth="2"/>
       </g>
-    // An axe: long wooden handle and a distinct metal blade.
     case 2:
       return <g {...common}>
         <path d="M-3 -20 L4 -18 L8 19 Q5 24 0 21 L-7 -16Z" fill="#9a704c"/>
         <path d="M-3 -18 Q-13 -24 -21 -17 L-24 -5 Q-13 -7 -7 1 L1 -5 L5 -15Z" fill="#aeb5ad"/>
         <path d="M-18 -16 L-22 -8 M-4 -15 L1 -10" fill="none" stroke="#e0e0d3" strokeWidth="2"/>
+        <path d="M1 -13 L5 16" fill="none" stroke="#c09265" strokeWidth="1.5"/>
+        <path d="M-20 -7 Q-13 -10 -7 -3" fill="none" stroke="#747e78" strokeWidth="1.5"/>
       </g>
-    // A cut tree stump with bark and visible growth rings.
     case 3:
       return <g {...common}>
         <path d="M-18 -12 L18 -12 L15 17 Q0 23 -15 17Z" fill="#916747"/>
         <path d="M-18 -12 Q-9 -20 2 -17 Q13 -20 18 -12 Q12 -4 0 -5 Q-11 -4 -18 -12Z" fill="#c5a77c"/>
         <path d="M-8 -12 Q-2 -16 5 -12 Q9 -9 2 -8 Q-5 -7 -5 -11" fill="none" stroke="#8b6848" strokeWidth="2"/>
         <path d="M-11 -3 L-8 14 M11 -4 L8 15" fill="none" stroke="#684b38" strokeWidth="2"/>
+        <path d="M-15 7 L-11 9 M12 4 L10 11" fill="none" stroke="#c18d61" strokeWidth="2"/>
       </g>
-    // A sturdy leather boot with a tall shaft, ankle and toe.
     case 4:
       return <g {...common}>
         <path d="M-12 -22 L4 -22 L5 -2 Q7 5 17 8 Q25 11 23 19 Q20 23 10 22 L-20 22 Q-25 19 -21 13 L-12 5Z" fill="#a66f4d"/>
         <path d="M-12 -15 L3 -15 M-11 -8 L4 -8 M-10 -1 L5 -1" fill="none" stroke="#e0b38a" strokeWidth="2"/>
         <path d="M-20 15 Q-2 18 22 15" fill="none" stroke="#594638" strokeWidth="3"/>
         <path d="M7 7 L13 11" fill="none" stroke="#594638" strokeWidth="2"/>
+        <path d="M-7 -19 L-5 -4" fill="none" stroke="#d29b70" strokeWidth="1.5"/>
       </g>
-    // A camping lantern with a handle, cap, glass chamber and base.
     case 5:
       return <g {...common}>
         <path d="M-10 -17 Q-10 -29 0 -29 Q10 -29 10 -17" fill="none" strokeWidth="3"/>
@@ -76,8 +76,8 @@ function CampObject({ kind }: { kind: number }) {
         <path d="M0 -7 Q-7 1 0 8 Q7 1 0 -7Z" fill="#d98d4e" stroke="#9b6542" strokeWidth="1.5"/>
         <path d="M-17 -10 H17 M-13 15 H13 L16 20 H-16Z" fill="#88715a"/>
         <path d="M-10 -15 V14 M10 -15 V14" fill="none" stroke="#514139" strokeWidth="2"/>
+        <path d="M-7 -7 L-7 8 M7 -7 L7 8" fill="none" stroke="#f0dca9" strokeWidth="1.5"/>
       </g>
-    // A hiking backpack with shoulder straps, flap and front pocket.
     case 6:
       return <g {...common}>
         <path d="M-13 -14 Q-13 -24 0 -24 Q13 -24 13 -14 L19 -7 L18 18 Q0 25 -18 18 L-19 -7Z" fill="#71836c"/>
@@ -85,8 +85,8 @@ function CampObject({ kind }: { kind: number }) {
         <path d="M-13 1 Q0 -3 13 1 L13 15 Q0 19 -13 15Z" fill="#899b7d"/>
         <path d="M-19 -5 Q-27 2 -20 15 M19 -5 Q27 2 20 15" fill="none" stroke="#514139" strokeWidth="3"/>
         <path d="M-5 -3 V4 H5 V-3 M-5 4 Q0 8 5 4" fill="none" stroke="#514139" strokeWidth="2"/>
+        <path d="M-8 9 Q0 6 8 9" fill="none" stroke="#b8c0a2" strokeWidth="1.5"/>
       </g>
-    // A large recognizable boulder, with a lit upper face and cracks.
     default:
       return <g {...common}>
         <path d="M-22 12 L-19 -5 L-8 -19 L8 -22 L20 -9 L23 8 L11 19 L-10 20Z" fill="#8c9280"/>
@@ -94,13 +94,20 @@ function CampObject({ kind }: { kind: number }) {
         <path d="M2 -7 L20 -9 L23 8 L9 13Z" fill="#777f70"/>
         <path d="M-8 2 L2 -7 L9 13 L-10 20Z" fill="#9da18a"/>
         <path d="M-8 -19 L-5 -5 L-13 3 M2 -7 L-1 4 L9 13" fill="none" stroke="#626b5d" strokeWidth="2"/>
+        <path d="M-16 8 L-10 10 M12 -5 L17 -3" fill="none" stroke="#c5c4aa" strokeWidth="2"/>
       </g>
   }
 }
 
 export function RoundScene({ seed }: SceneProps) {
   const objects = useMemo(() => props
-    .map((item, index) => ({ ...item, x: item.x + (seededNumber(seed, index) - .5) * 7, y: item.y + (seededNumber(seed, index + 20) - .5) * 6, rotate: item.rotate + (seededNumber(seed, index + 40) - .5) * 30 }))
+    .map((item, index) => ({
+      ...item,
+      x: item.x + (seededNumber(seed, index) - .5) * 7,
+      y: item.y + (seededNumber(seed, index + 20) - .5) * 6,
+      rotate: item.rotate + (seededNumber(seed, index + 40) - .5) * 30,
+      scale: item.size * (0.9 + seededNumber(seed, index + 80) * 0.2),
+    }))
     .sort((a, b) => seededNumber(seed, a.kind + 60) - seededNumber(seed, b.kind + 60))
     .slice(0, 6), [seed])
 
@@ -109,7 +116,10 @@ export function RoundScene({ seed }: SceneProps) {
       <path d="M0 0 H360 V700 H0Z" fill="#e6e5d8"/>
       <path d="M0 0 Q75 40 140 18 T360 24 V700 Q265 670 180 690 T0 675Z" fill="#d8dfcf"/>
       <g opacity=".42" fill="none" stroke="#a6ad98" strokeWidth="2"><path d="M10 120 Q70 90 110 130 T210 112 M240 90 Q285 65 345 105 M12 570 Q80 540 130 575 T245 560 M240 620 Q290 590 350 620"/></g>
-      {objects.map((item) => <g key={item.kind} transform={`translate(${item.x * 3.6} ${item.y * 7}) rotate(${item.rotate}) scale(.8)`}><CampObject kind={item.kind}/></g>)}
+      {objects.map((item) => <g key={item.kind} transform={`translate(${item.x * 3.6} ${item.y * 7}) rotate(${item.rotate}) scale(${item.scale})`}>
+        <ellipse cx="0" cy="19" rx="23" ry="5" fill="#66705e" opacity=".13"/>
+        <CampObject kind={item.kind}/>
+      </g>)}
       <g transform="translate(180 350)" stroke="#594237" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
         <path d="M-52 12 L-30 -8 L8 8 L44 -7 L59 14 L17 27 L-28 23Z" fill="#8e7358"/>
         <path d="M-43 -4 L35 17 M-32 20 L42 -4" fill="none" stroke="#6b4b39" strokeWidth="9"/>
