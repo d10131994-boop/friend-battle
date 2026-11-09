@@ -125,35 +125,91 @@ function CampfireLayer() {
   </g>
 }
 
+const objectAssetModules = import.meta.glob('./assets/objects/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+const campfireAssetModules = import.meta.glob('./assets/objectsCamps/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+const backgroundAssetModules = import.meta.glob('./assets/background/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+
+type ImageAsset = { name: string; src: string }
+const objectAssets: ImageAsset[] = Object.entries(objectAssetModules)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([path, src]) => ({ name: path.split('/').pop() ?? path, src }))
+const campfireAssets: ImageAsset[] = Object.entries(campfireAssetModules)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([path, src]) => ({ name: path.split('/').pop() ?? path, src }))
+const backgroundAsset = Object.entries(backgroundAssetModules)
+  .sort(([a], [b]) => a.localeCompare(b))[0]?.[1]
+
+const objectLayouts: LayoutSlot[][] = [
+  [{x:30,y:25,rotate:-12,scale:.78},{x:70,y:25,rotate:18,scale:1.12},{x:23,y:47,rotate:8,scale:.92},{x:77,y:48,rotate:-20,scale:1.16},{x:32,y:76,rotate:12,scale:1.02},{x:68,y:76,rotate:-8,scale:1.24}],
+  [{x:23,y:21,rotate:-20,scale:1.08},{x:74,y:30,rotate:16,scale:.76},{x:29,y:43,rotate:10,scale:1.2},{x:78,y:59,rotate:-15,scale:.92},{x:26,y:77,rotate:18,scale:.84},{x:72,y:82,rotate:-8,scale:1.1}],
+  [{x:20,y:25,rotate:-14,scale:1.16},{x:80,y:24,rotate:20,scale:.78},{x:20,y:49,rotate:12,scale:.94},{x:80,y:52,rotate:-22,scale:1.12},{x:20,y:77,rotate:8,scale:1.04},{x:80,y:78,rotate:-12,scale:.88}],
+  [{x:27,y:21,rotate:15,scale:.78},{x:73,y:29,rotate:-12,scale:1.24},{x:19,y:48,rotate:-18,scale:1.04},{x:74,y:57,rotate:22,scale:.84},{x:35,y:79,rotate:8,scale:1.18},{x:81,y:81,rotate:-10,scale:.94}],
+  [{x:15,y:23,rotate:-12,scale:1.26},{x:85,y:23,rotate:14,scale:1.2},{x:14,y:53,rotate:18,scale:1.04},{x:86,y:54,rotate:-16,scale:1.12},{x:20,y:83,rotate:-8,scale:1.22},{x:80,y:83,rotate:12,scale:1.16}],
+  [{x:20,y:30,rotate:-16,scale:.86},{x:43,y:19,rotate:10,scale:1.08},{x:75,y:28,rotate:18,scale:1.18},{x:22,y:75,rotate:12,scale:1.14},{x:52,y:84,rotate:-10,scale:.82},{x:80,y:72,rotate:-18,scale:1.04}],
+]
+
+function pickSeeded<T>(items: T[], seed: string, offset: number): T | undefined {
+  if (!items.length) return undefined
+  return items[Math.floor(seededNumber(seed, offset) * items.length)]
+}
+
+function SceneBackground() {
+  return <div
+    data-scene-layer="background"
+    className="rps-scene-background"
+    style={backgroundAsset ? { backgroundImage: `url("${backgroundAsset}")` } : undefined}
+  />
+}
+
+function CampfireLayer({ seed }: SceneProps) {
+  const campfire = pickSeeded(campfireAssets, seed, 501)
+  if (campfire) {
+    return <div data-scene-layer="campfires" className="rps-scene-campfire">
+      <img src={campfire.src} alt="" draggable={false}/>
+    </div>
+  }
+  return <svg data-scene-layer="campfires" className="rps-scene-campfire-fallback" viewBox="0 0 120 100" aria-hidden="true">
+    <g transform="translate(60 55)" stroke="#594237" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M-52 12 L-30 -8 L8 8 L44 -7 L59 14 L17 27 L-28 23Z" fill="#8e7358"/>
+      <path d="M-43 -4 L35 17 M-32 20 L42 -4" fill="none" stroke="#6b4b39" strokeWidth="9"/>
+      <path d="M-17 8 Q-38 -20 -18 -43 Q-22 -16 0 -38 Q-4 -13 17 -35 Q11 -10 30 3 Q8 -3 4 20Z" fill="#d28b54"/>
+      <path d="M-5 5 Q-17 -12 -5 -27 Q-5 -10 8 -23 Q7 -7 19 4 Q5 -1 5 13Z" fill="#e2b56e"/>
+    </g>
+  </svg>
+}
+
 export function RoundScene({ seed }: SceneProps) {
   const composition = useMemo(() => {
-    const layoutIndex = Math.floor(seededNumber(seed, 100) * layouts.length)
-    const shuffledKinds = ([0,1,2,3,4,5,6,7] as CampObjectKind[])
-      .map((kind, index) => ({kind, order: seededNumber(seed, 200 + index)}))
-      .sort((a,b) => a.order - b.order)
-      .slice(0, 6)
-    return {
-      layoutIndex,
-      objects: layouts[layoutIndex].map((slot, index) => ({
-        ...slot,
-        kind: shuffledKinds[index].kind,
-        rotate: slot.rotate + (seededNumber(seed, 300 + index) - .5) * 16,
-        scale: slot.scale * (.94 + seededNumber(seed, 400 + index) * .12),
-      })),
-    }
+    const layoutIndex = Math.floor(seededNumber(seed, 100) * objectLayouts.length)
+    const shuffled = objectAssets
+      .map((asset, index) => ({ asset, order: seededNumber(seed, 200 + index) }))
+      .sort((a, b) => a.order - b.order)
+      .slice(0, Math.min(6, objectAssets.length))
+    return objectLayouts[layoutIndex].slice(0, shuffled.length).map((slot, index) => ({
+      ...slot,
+      asset: shuffled[index].asset,
+      rotate: slot.rotate + (seededNumber(seed, 300 + index) - .5) * 16,
+      scale: slot.scale * (.94 + seededNumber(seed, 400 + index) * .12),
+    }))
   }, [seed])
 
   return <div className="rps-round-scene" aria-hidden="true">
-    <svg viewBox="0 0 360 700" preserveAspectRatio="xMidYMid slice">
-      <SceneBackground />
-      <g data-scene-layer="environment-objects">
-        {composition.objects.map((item) => <g key={item.kind} transform={`translate(${item.x * 3.6} ${item.y * 7}) rotate(${item.rotate}) scale(${item.scale})`}>
-          <ellipse cx="0" cy="19" rx="23" ry="5" fill="#66705e" opacity=".13"/>
-          <CampObject kind={item.kind}/>
-        </g>)}
-      </g>
-      <CampfireLayer />
-    </svg>
+    <SceneBackground />
+    <div data-scene-layer="environment-objects" className="rps-scene-objects">
+      {composition.map((item) => <img
+        key={item.asset.name}
+        className="rps-scene-object"
+        src={item.asset.src}
+        alt=""
+        draggable={false}
+        style={{
+          left: `${item.x}%`,
+          top: `${item.y}%`,
+          transform: `translate(-50%, -50%) rotate(${item.rotate}deg) scale(${item.scale})`,
+        }}
+      />)}
+    </div>
+    <CampfireLayer seed={seed}/>
   </div>
 }
 
