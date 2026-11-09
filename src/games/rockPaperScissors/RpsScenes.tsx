@@ -12,17 +12,23 @@ function seededNumber(seed: string, index: number) {
   return (value >>> 0) / 4294967295
 }
 
-const props = [
-  { x: 34, y: 31, rotate: -18, kind: 0, size: 0.78 },
-  { x: 66, y: 30, rotate: 24, kind: 1, size: 1.12 },
-  { x: 29, y: 49, rotate: 13, kind: 2, size: 0.94 },
-  { x: 71, y: 51, rotate: -28, kind: 3, size: 1.16 },
-  { x: 36, y: 69, rotate: 8, kind: 4, size: 0.98 },
-  { x: 64, y: 70, rotate: -9, kind: 5, size: 1.04 },
-  { x: 50, y: 20, rotate: 32, kind: 6, size: 1.08 },
-  { x: 51, y: 81, rotate: -14, kind: 7, size: 1.24 },
-]
+type CampObjectKind = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 
+type LayoutSlot = { x: number; y: number; rotate: number; scale: number }
+const layouts: LayoutSlot[][] = [
+  // 1. Loose ring around the campfire.
+  [{x:30,y:29,rotate:-12,scale:.72},{x:70,y:29,rotate:18,scale:1.14},{x:25,y:48,rotate:8,scale:.92},{x:75,y:49,rotate:-20,scale:1.18},{x:34,y:72,rotate:12,scale:1.02},{x:66,y:72,rotate:-8,scale:1.28}],
+  // 2. Diagonal flow.
+  [{x:25,y:23,rotate:-20,scale:1.12},{x:72,y:32,rotate:16,scale:.76},{x:31,y:43,rotate:10,scale:1.26},{x:76,y:58,rotate:-15,scale:.92},{x:29,y:73,rotate:18,scale:.82},{x:70,y:80,rotate:-8,scale:1.14}],
+  // 3. Objects distributed along the two sides.
+  [{x:23,y:27,rotate:-14,scale:1.22},{x:77,y:25,rotate:20,scale:.78},{x:24,y:47,rotate:12,scale:.94},{x:76,y:51,rotate:-22,scale:1.16},{x:23,y:74,rotate:8,scale:1.08},{x:77,y:76,rotate:-12,scale:.88}],
+  // 4. Asymmetric, with visual weight on one side.
+  [{x:28,y:24,rotate:15,scale:.78},{x:72,y:30,rotate:-12,scale:1.3},{x:22,y:48,rotate:-18,scale:1.08},{x:72,y:55,rotate:22,scale:.84},{x:36,y:76,rotate:8,scale:1.24},{x:78,y:80,rotate:-10,scale:.94}],
+  // 5. Larger silhouettes near the outer edges.
+  [{x:18,y:25,rotate:-12,scale:1.3},{x:82,y:25,rotate:14,scale:1.24},{x:17,y:52,rotate:18,scale:1.08},{x:83,y:53,rotate:-16,scale:1.16},{x:22,y:80,rotate:-8,scale:1.28},{x:78,y:81,rotate:12,scale:1.2}],
+  // 6. A loose arc above and below the campfire.
+  [{x:22,y:31,rotate:-16,scale:.86},{x:43,y:21,rotate:10,scale:1.12},{x:72,y:29,rotate:18,scale:1.22},{x:25,y:72,rotate:12,scale:1.18},{x:52,y:82,rotate:-10,scale:.82},{x:78,y:70,rotate:-18,scale:1.08}],
+]
 function CampObject({ kind }: { kind: number }) {
   const outline = '#514139'
   const common = { stroke: outline, strokeWidth: 3, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const }
@@ -99,34 +105,54 @@ function CampObject({ kind }: { kind: number }) {
   }
 }
 
+function SceneBackground() {
+  return <g data-scene-layer="background">
+    <path d="M0 0 H360 V700 H0Z" fill="#e6e5d8"/>
+    <path d="M0 0 Q75 40 140 18 T360 24 V700 Q265 670 180 690 T0 675Z" fill="#d8dfcf"/>
+    <g opacity=".42" fill="none" stroke="#a6ad98" strokeWidth="2">
+      <path d="M10 120 Q70 90 110 130 T210 112 M240 90 Q285 65 345 105 M12 570 Q80 540 130 575 T245 560 M240 620 Q290 590 350 620"/>
+    </g>
+  </g>
+}
+
+function CampfireLayer() {
+  return <g data-scene-layer="foreground-anchor" transform="translate(180 350)" stroke="#594237" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M-52 12 L-30 -8 L8 8 L44 -7 L59 14 L17 27 L-28 23Z" fill="#8e7358"/>
+    <path d="M-43 -4 L35 17 M-32 20 L42 -4" fill="none" stroke="#6b4b39" strokeWidth="9"/>
+    <path d="M-17 8 Q-38 -20 -18 -43 Q-22 -16 0 -38 Q-4 -13 17 -35 Q11 -10 30 3 Q8 -3 4 20Z" fill="#d28b54"/>
+    <path d="M-5 5 Q-17 -12 -5 -27 Q-5 -10 8 -23 Q7 -7 19 4 Q5 -1 5 13Z" fill="#e2b56e"/>
+    <path d="M-5 -7 Q-10 -16 -3 -22" fill="none" stroke="#f0d59a" strokeWidth="4"/>
+  </g>
+}
+
 export function RoundScene({ seed }: SceneProps) {
-  const objects = useMemo(() => props
-    .map((item, index) => ({
-      ...item,
-      x: item.x + (seededNumber(seed, index) - .5) * 7,
-      y: item.y + (seededNumber(seed, index + 20) - .5) * 6,
-      rotate: item.rotate + (seededNumber(seed, index + 40) - .5) * 30,
-      scale: item.size * (0.9 + seededNumber(seed, index + 80) * 0.2),
-    }))
-    .sort((a, b) => seededNumber(seed, a.kind + 60) - seededNumber(seed, b.kind + 60))
-    .slice(0, 6), [seed])
+  const composition = useMemo(() => {
+    const layoutIndex = Math.floor(seededNumber(seed, 100) * layouts.length)
+    const shuffledKinds = ([0,1,2,3,4,5,6,7] as CampObjectKind[])
+      .map((kind, index) => ({kind, order: seededNumber(seed, 200 + index)}))
+      .sort((a,b) => a.order - b.order)
+      .slice(0, 6)
+    return {
+      layoutIndex,
+      objects: layouts[layoutIndex].map((slot, index) => ({
+        ...slot,
+        kind: shuffledKinds[index].kind,
+        rotate: slot.rotate + (seededNumber(seed, 300 + index) - .5) * 16,
+        scale: slot.scale * (.94 + seededNumber(seed, 400 + index) * .12),
+      })),
+    }
+  }, [seed])
 
   return <div className="rps-round-scene" aria-hidden="true">
     <svg viewBox="0 0 360 700" preserveAspectRatio="xMidYMid slice">
-      <path d="M0 0 H360 V700 H0Z" fill="#e6e5d8"/>
-      <path d="M0 0 Q75 40 140 18 T360 24 V700 Q265 670 180 690 T0 675Z" fill="#d8dfcf"/>
-      <g opacity=".42" fill="none" stroke="#a6ad98" strokeWidth="2"><path d="M10 120 Q70 90 110 130 T210 112 M240 90 Q285 65 345 105 M12 570 Q80 540 130 575 T245 560 M240 620 Q290 590 350 620"/></g>
-      {objects.map((item) => <g key={item.kind} transform={`translate(${item.x * 3.6} ${item.y * 7}) rotate(${item.rotate}) scale(${item.scale})`}>
-        <ellipse cx="0" cy="19" rx="23" ry="5" fill="#66705e" opacity=".13"/>
-        <CampObject kind={item.kind}/>
-      </g>)}
-      <g transform="translate(180 350)" stroke="#594237" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M-52 12 L-30 -8 L8 8 L44 -7 L59 14 L17 27 L-28 23Z" fill="#8e7358"/>
-        <path d="M-43 -4 L35 17 M-32 20 L42 -4" fill="none" stroke="#6b4b39" strokeWidth="9"/>
-        <path d="M-17 8 Q-38 -20 -18 -43 Q-22 -16 0 -38 Q-4 -13 17 -35 Q11 -10 30 3 Q8 -3 4 20Z" fill="#d28b54"/>
-        <path d="M-5 5 Q-17 -12 -5 -27 Q-5 -10 8 -23 Q7 -7 19 4 Q5 -1 5 13Z" fill="#e2b56e"/>
-        <path d="M-5 -7 Q-10 -16 -3 -22" fill="none" stroke="#f0d59a" strokeWidth="4"/>
+      <SceneBackground />
+      <g data-scene-layer="environment-objects">
+        {composition.objects.map((item) => <g key={item.kind} transform={`translate(${item.x * 3.6} ${item.y * 7}) rotate(${item.rotate}) scale(${item.scale})`}>
+          <ellipse cx="0" cy="19" rx="23" ry="5" fill="#66705e" opacity=".13"/>
+          <CampObject kind={item.kind}/>
+        </g>)}
       </g>
+      <CampfireLayer />
     </svg>
   </div>
 }
