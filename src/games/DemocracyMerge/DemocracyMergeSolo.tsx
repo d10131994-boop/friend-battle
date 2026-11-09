@@ -19,7 +19,6 @@ import type { ToolType } from './logic/tools'
 import type { MergeEvent } from './logic/gameEngine'
 import { assertBoard } from './logic/gameEngine'
 import { TOOL_PRICES } from './logic/events'
-import { useDemocracyMergeSettings } from './settings'
 import CharacterPortrait from './CharacterPortrait'
 import './DemocracyMerge.css'
 
@@ -123,8 +122,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const [recordBroken, setRecordBroken] = useState(false)
   const [rewardToast, setRewardToast] = useState<string[]>([])
   const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const { settings, updateSettings } = useDemocracyMergeSettings()
+  const settings = { animationsEnabled: true, animationSpeed: 'normal' as const }
   const notificationTimeoutRef = useRef<number | null>(null)
   const animationTimeoutRef = useRef<number | null>(null)
   const [lastPlacedCell, setLastPlacedCell] = useState<number | null>(null)
@@ -528,11 +526,8 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}>
       <header className="dm-header">
         <button className="dm-secondary-button" onClick={() => setLeaveConfirm(true)}>В ГЛАВНОЕ МЕНЮ</button>
-        <div><div className="dm-eyebrow">ОДИНОЧНАЯ ИГРА</div><h1>DEMOCRACY <span>MERGE</span></h1><button className="dm-secondary-button dm-settings-trigger" onClick={() => setSettingsOpen(true)}>НАСТРОЙКИ</button></div>
-        <div className={`dm-timer ${remaining <= 300000 ? 'dm-timer-warning' : ''}`}><small>ОСТАЛОСЬ</small><strong>{formatTime(remaining)}</strong></div>
       </header>
 
-      {message && <div className="dm-message">{message}</div>}
       {newRecordToast && <div className="dm-toast">Новый рекорд!</div>}
       {rewardToast.length > 0 && <div className="dm-toast dm-reward-toast">{rewardToast.join(' · ')}</div>}
 
@@ -560,10 +555,9 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       ) : (
         <div className="dm-layout dm-solo-layout">
           <aside className="dm-side-panel">
-            <div className="dm-current-card"><strong className="dm-v3-next-character-frame">{current !== null ? <CharacterPortrait level={current} /> : '—'}</strong><small>ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small></div>
+            <div className="dm-current-card"><div className="dm-next-character"><strong className="dm-v3-next-character-frame">{current !== null ? <CharacterPortrait level={current} /> : '—'}</strong><div className={`dm-timer ${remaining <= 300000 ? 'dm-timer-warning' : ''}`}><small>ОСТАЛОСЬ</small><strong>{formatTime(remaining)}</strong></div></div><small>ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small></div>
             <div className="dm-stats">
               <div><small>ОЧКИ</small><strong>{game.score}</strong></div>
-              <div><small>МАКС. УРОВЕНЬ</small><strong>{game.maxLevel}</strong></div>
               <div><small>МОНЕТЫ</small><strong>🪙 {game.coins}</strong></div>
               <div className={game.score > profile.bestScore ? 'dm-record-highlight' : ''}><small>РЕКОРД</small><strong>{Math.max(profile.bestScore, game.score)}</strong></div>
             </div>
@@ -575,7 +569,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
                   <span className="dm-tool-icon" aria-hidden="true"><img src={`/democracy-merge/picture/v3/tool-${tool}.webp`} alt="" draggable={false} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = `/democracy-merge/tools/${tool}.svg` }} /></span>
                 </button>
               ))}
-              <p className="dm-storage-note">{game.storage ? `В хранилище: уровень ${game.storage.level}` : 'Хранилище пусто'}</p>
             </div>
             <button className="dm-danger-button" onClick={() => setSurrenderConfirm(true)} disabled={!canAct}>СДАТЬСЯ</button>
             <button className="dm-secondary-button" onClick={() => setHistoryOpen(true)}>ИСТОРИЯ</button>
@@ -596,36 +589,8 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               ))}
             </div>
             </div>
-            <div className="dm-board-footer" role="status" aria-live="polite">{selectedTool === 'swap' && swapFirstCell !== null ? `Выбрана клетка ${swapFirstCell + 1}. Выберите вторую клетку для перестановки.` : selectedTool ? `Выбран инструмент: ${toolLabels[selectedTool]}` : 'Выбери свободную клетку для размещения персонажа.'}</div>
           </section>
-          <aside className="dm-side-panel">
-            <h3>СТАТИСТИКА</h3>
-            <p>Объединений: <strong>{game.mergeCount}</strong></p>
-            <p>Цепных реакций: <strong>{game.chainReactions}</strong></p>
-            <p>Использовано инструментов: <strong>{game.toolsUsed}</strong></p>
-            <p>Лучший результат: <strong>{profile.bestScore}</strong></p>
-          </aside>
-        </div>
-      )}
 
-      {settingsOpen && (
-        <div className="dm-modal-backdrop" role="presentation" onClick={() => setSettingsOpen(false)}>
-          <section className="dm-settings-modal" role="dialog" aria-modal="true" aria-label="Настройки Democracy Merge" onClick={(event) => event.stopPropagation()}>
-            <header><h2>НАСТРОЙКИ</h2><button onClick={() => setSettingsOpen(false)}>✕</button></header>
-            <label className="dm-settings-toggle">
-              <input type="checkbox" checked={settings.animationsEnabled} onChange={(event) => updateSettings({ animationsEnabled: event.target.checked })} />
-              <span>Анимации</span>
-            </label>
-            <label className="dm-settings-field">
-              <span>Скорость анимаций</span>
-              <select value={settings.animationSpeed} onChange={(event) => updateSettings({ animationSpeed: event.target.value === 'fast' ? 'fast' : 'normal' })} disabled={!settings.animationsEnabled}>
-                <option value="normal">Обычная</option>
-                <option value="fast">Быстрая</option>
-              </select>
-            </label>
-            <p>Настройки общие для одиночного и многопользовательского режимов.</p>
-            <button className="dm-primary-button" onClick={() => setSettingsOpen(false)}>ГОТОВО</button>
-          </section>
         </div>
       )}
 
