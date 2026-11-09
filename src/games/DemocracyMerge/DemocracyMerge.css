@@ -731,3 +731,60 @@
   .dm-solo-screen .dm-solo-layout .dm-tools {padding:16px 18px;gap:5px}
   .dm-solo-screen .dm-solo-layout .dm-tool-button {min-height:0}
 }
+
+
+/* Issue 007 — compact HUD and decorative score strip. */
+.dm-solo-screen .dm-header {
+  background:none;border:0;border-radius:0;box-shadow:none;
+  padding:0;min-height:0;display:flex;justify-content:flex-start;
+}
+.dm-solo-screen .dm-header > .dm-secondary-button {
+  width:auto;max-width:100%;margin:0;
+}
+.dm-solo-screen .dm-solo-layout .dm-side-panel:first-child {
+  background:none;border:0;box-shadow:none;
+}
+.dm-solo-screen .dm-solo-layout .dm-stats {
+  order:-2;
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:center;gap:clamp(4px,1.8vw,14px);
+  width:100%;box-sizing:border-box;
+  padding:clamp(13px,3vw,30px) clamp(18px,6vw,60px);
+  background:url('/democracy-merge/picture/v3/info-panel.webp') center/100% 100% no-repeat;
+}
+.dm-solo-screen .dm-solo-layout .dm-stats > div {
+  min-width:0;padding:0;border:0;border-radius:0;
+  background:none;box-shadow:none;text-align:center;
+}
+.dm-solo-screen .dm-solo-layout .dm-stats small {
+  color:#59331a;font-family:'Baloo 2','Nunito',sans-serif;
+  font-weight:800;font-size:clamp(11px,2.6vw,18px);
+}
+.dm-solo-screen .dm-solo-layout .dm-stats strong {
+  color:#432513;font-family:'Baloo 2','Nunito',sans-serif;
+  font-weight:800;font-size:clamp(16px,4vw,29px);
+  text-shadow:0 1px #fff2cb;
+}
+.dm-solo-screen .dm-solo-layout .dm-current-card {order:-1}
+.dm-solo-screen .dm-solo-layout .dm-next-character {
+  display:flex;align-items:center;justify-content:center;
+  gap:clamp(8px,3vw,26px);width:100%;
+}
+.dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer {
+  position:static;flex:0 0 auto;min-width:90px;
+  padding:8px 12px;border:2px solid #8a5729;
+  border-radius:14px;background:linear-gradient(#fff0c6,#e3b774);
+  box-shadow:0 3px #76401d;text-align:center;
+}
+.dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer small {font-size:11px}
+.dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer strong {
+  display:block;font-size:clamp(22px,5vw,32px);font-variant-numeric:tabular-nums;
+}
+.dm-solo-screen .dm-message,.dm-solo-screen .dm-board-footer {display:none}
+.dm-solo-screen .dm-solo-layout .dm-tools .dm-storage-note {display:none}
+@media(max-width:600px) {
+  .dm-solo-screen .dm-solo-layout .dm-stats {padding:15px 19px;gap:3px}
+  .dm-solo-screen .dm-solo-layout .dm-stats small {font-size:10px}
+  .dm-solo-screen .dm-solo-layout .dm-stats strong {font-size:18px}
+  .dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer {min-width:78px;padding:6px 8px}
+}
