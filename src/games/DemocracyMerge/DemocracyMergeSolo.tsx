@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react'
 import { telegramUser } from '../../services/telegram'
 import {
   buySoloTool,
@@ -44,6 +43,8 @@ const toolDescriptions: Record<ToolType, string> = {
   swap: 'Меняет местами двух обычных персонажей. Препятствия выбирать нельзя.',
   replace: 'Заменяет текущего персонажа случайным персонажем того же уровня.',
 }
+const GRASS_VARIANTS = [1, 4, 2, 6, 3, 5, 3, 1, 5, 2, 6, 4, 6, 3, 4, 1, 5, 2, 2, 5, 1, 4, 3, 6, 4, 2, 6, 5, 1, 3, 5, 6, 3, 2, 4, 1] as const
+
 const obstacleLabels = { barricade: 'Заграждение', police: 'Полицейский', rock: 'Камень' }
 
 function formatTime(milliseconds: number): string {
@@ -123,12 +124,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const [rewardToast, setRewardToast] = useState<string[]>([])
   const [deleteHistoryConfirm, setDeleteHistoryConfirm] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [boardZoom, setBoardZoom] = useState(1)
-  const pinchStartDistanceRef = useRef<number | null>(null)
-  const pinchStartZoomRef = useRef(1)
-  const dragStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null)
-  const dragMovedRef = useRef(false)
-  const suppressClickRef = useRef(false)
   const { settings, updateSettings } = useDemocracyMergeSettings()
   const notificationTimeoutRef = useRef<number | null>(null)
   const animationTimeoutRef = useRef<number | null>(null)
@@ -232,7 +227,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     setHistoryOpen(false)
     setSurrenderConfirm(false)
     setLeaveConfirm(false)
-    setBoardZoom(1)
     setLastPlacedCell(null)
     setMergeEvents([])
     setObstacleCell(null)
@@ -451,60 +445,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const isNewRecord = recordBroken
   const animationClasses = `${settings.animationsEnabled ? '' : 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
 
-  const touchDistance = (touches: ReactTouchEvent<HTMLDivElement>['touches']) => Math.hypot(
-    touches[0].clientX - touches[1].clientX,
-    touches[0].clientY - touches[1].clientY,
-  )
-  const handleBoardTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
-    if (event.touches.length === 2) {
-      pinchStartDistanceRef.current = touchDistance(event.touches)
-      pinchStartZoomRef.current = boardZoom
-    }
-  }
-  const handleBoardTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
-    if (event.touches.length === 2 && pinchStartDistanceRef.current) {
-      event.preventDefault()
-      const factor = touchDistance(event.touches) / pinchStartDistanceRef.current
-      setBoardZoom(Math.min(1.6, Math.max(0.7, pinchStartZoomRef.current * factor)))
-    }
-  }
-  const handleBoardTouchEnd = () => { pinchStartDistanceRef.current = null }
-  const handleBoardMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (boardZoom <= 1 || event.button !== 0) return
-    dragStartRef.current = {
-      x: event.clientX, y: event.clientY,
-      scrollLeft: event.currentTarget.scrollLeft,
-      scrollTop: event.currentTarget.scrollTop,
-    }
-    dragMovedRef.current = false
-    event.currentTarget.style.cursor = 'grabbing'
-  }
-  const handleBoardMouseMove = (event: ReactMouseEvent<HTMLDivElement>) => {
-    const start = dragStartRef.current
-    if (!start) return
-    const dx = event.clientX - start.x
-    const dy = event.clientY - start.y
-    if (Math.abs(dx) + Math.abs(dy) > 3) {
-      dragMovedRef.current = true
-      event.preventDefault()
-      event.currentTarget.scrollLeft = start.scrollLeft - dx
-      event.currentTarget.scrollTop = start.scrollTop - dy
-    }
-  }
-  const handleBoardMouseUp = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (dragMovedRef.current) suppressClickRef.current = true
-    dragStartRef.current = null
-    event.currentTarget.style.cursor = boardZoom > 1 ? 'grab' : 'auto'
-  }
-  const handleBoardClickCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (!suppressClickRef.current) return
-    suppressClickRef.current = false
-    event.preventDefault()
-    event.stopPropagation()
-  }
-
-
-
   if (loading) {
     return <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}><div className="dm-waiting">Загружаем одиночную игру…</div></main>
   }
@@ -620,7 +560,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       ) : (
         <div className="dm-layout dm-solo-layout">
           <aside className="dm-side-panel">
-            <div className="dm-current-card"><small>ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small><strong className="dm-v3-next-character-frame">{current !== null ? <CharacterPortrait level={current} /> : '—'}</strong></div>
+            <div className="dm-current-card"><strong className="dm-v3-next-character-frame">{current !== null ? <CharacterPortrait level={current} /> : '—'}</strong><small>ПЕРСОНАЖ · ХОД {game.turnNumber + 1}</small></div>
             <div className="dm-stats">
               <div><small>ОЧКИ</small><strong>{game.score}</strong></div>
               <div><small>МАКС. УРОВЕНЬ</small><strong>{game.maxLevel}</strong></div>
@@ -629,11 +569,10 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             </div>
             <button className="dm-primary-button" onClick={() => setShopOpen(true)} disabled={!canAct}>МАГАЗИН</button>
             <div className="dm-tools">
-              <h3>ИНСТРУМЕНТЫ</h3>
               {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
                 <button key={tool} title={toolDescriptions[tool]} className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
                   onClick={() => selectTool(tool)} aria-pressed={selectedTool === tool} aria-label={`${toolLabels[tool]}. В инвентаре ${game.inventory[tool]} из 3. Цена покупки ${TOOL_PRICES[tool]} монет. ${toolDescriptions[tool]}`} disabled={!canAct || game.inventory[tool] < 1}>
-                  <span className="dm-tool-icon" aria-hidden="true"><img src={`/democracy-merge/picture/v3/tool-${tool}.webp`} alt="" draggable={false} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = `/democracy-merge/tools/${tool}.svg` }} /></span><span className="dm-tool-label">{toolLabels[tool]}</span><strong>{game.inventory[tool]}/3</strong><small className="dm-tool-price">В магазине: 🪙 {TOOL_PRICES[tool]}</small>
+                  <span className="dm-tool-icon" aria-hidden="true"><img src={`/democracy-merge/picture/v3/tool-${tool}.webp`} alt="" draggable={false} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = `/democracy-merge/tools/${tool}.svg` }} /></span>
                 </button>
               ))}
               <p className="dm-storage-note">{game.storage ? `В хранилище: уровень ${game.storage.level}` : 'Хранилище пусто'}</p>
@@ -643,16 +582,10 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
           </aside>
 
           <section className="dm-board-section">
-            <div className="dm-board-zoom-controls">
-              <button onClick={() => setBoardZoom((zoom) => Math.max(0.7, Math.round((zoom - 0.1) * 10) / 10))} aria-label="Уменьшить поле">−</button>
-              <span>{Math.round(boardZoom * 100)}%</span>
-              <button onClick={() => setBoardZoom((zoom) => Math.min(1.6, Math.round((zoom + 0.1) * 10) / 10))} aria-label="Увеличить поле">+</button>
-              <button onClick={() => setBoardZoom(1)} aria-label="Сбросить масштаб поля до 100 процентов">СБРОС</button>
-            </div>
-            <div className="dm-board-viewport" style={{ cursor: boardZoom > 1 ? 'grab' : 'auto' }} onTouchStart={handleBoardTouchStart} onTouchMove={handleBoardTouchMove} onTouchEnd={handleBoardTouchEnd} onMouseDown={handleBoardMouseDown} onMouseMove={handleBoardMouseMove} onMouseUp={handleBoardMouseUp} onMouseLeave={handleBoardMouseUp} onClickCapture={handleBoardClickCapture}>
-            <div className="dm-board" style={{ transform: `scale(${boardZoom})` }} aria-label="Игровое поле 6 на 6">
+            <div className="dm-board-viewport">
+            <div className="dm-board" aria-label="Игровое поле 6 на 6">
               {game.board.map((cell, index) => (
-                <button key={index} className={`dm-cell ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''} ${selectedTool === 'swap' && swapFirstCell === index ? 'dm-cell-selected' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
+                <button key={index} className={`dm-cell dm-grass-${GRASS_VARIANTS[index]} ${lastPlacedCell === index ? 'dm-cell-placed' : ''} ${mergeEvents.some((merge) => merge.cells.includes(index)) ? 'dm-cell-merge' : ''} ${obstacleCell === index ? 'dm-cell-obstacle' : ''} ${selectedTool === 'swap' && swapFirstCell === index ? 'dm-cell-selected' : ''}`} style={mergeEvents.findIndex((merge) => merge.cells.includes(index)) >= 0 ? { animationDelay: `${mergeEvents.findIndex((merge) => merge.cells.includes(index)) * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined} onClick={() => clickCell(index)} disabled={!canAct}
                   aria-pressed={selectedTool === 'swap' ? swapFirstCell === index : undefined}
                   aria-label={`${selectedTool === 'swap' && swapFirstCell === index ? 'Первая клетка перестановки. ' : ''}Клетка ${index + 1}: ${cell === null ? 'свободна' : cell.kind === 'character'
                     ? `персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}`}>
