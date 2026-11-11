@@ -8,6 +8,7 @@ export const NO_COUNT_IT_SERVER_TEXTS = {
   validRoomIdRequired: 'A valid roomId is required',
   matchStateUnavailable: 'Не удалось получить состояние матча',
   matchNotFinished: 'Матч ещё не завершён',
+  earlyExitFailed: 'Не удалось досрочно завершить матч. Обновите игру и попробуйте ещё раз.',
   roomCheckFailed: 'Не удалось проверить комнату',
   gameSelectionRequired: 'В комнате должна быть выбрана NoCountIt',
   hostOnlyStart: 'Начать матч может только ведущий комнаты',
