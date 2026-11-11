@@ -92,6 +92,7 @@ function positionPlayers() {
       + ratio * (lowerSpace - MARKER_CLEARANCE - OUTER_MARKER_MARGIN)
     const top = Math.max(desiredTop, previousLowerTop + RESULT_ROW_GAP)
     positioned.set(player.id, top)
+    previousLowerTop = top
   }
 
   const sideById = new Map(incorrectPlayers.map((player, index) => [
@@ -99,7 +100,7 @@ function positionPlayers() {
     index % 2 === 0 ? 'left' : 'right',
   ] as const))
 
-  const players: PositionedPlayer[] = incorrectPlayers.map((player, index) => ({
+  const players: PositionedPlayer[] = incorrectPlayers.map((player) => ({
     ...player,
     nameColor: PLAYER_NAME_COLORS[PLAYERS.indexOf(player) % PLAYER_NAME_COLORS.length].value,
     scoreColor: player.answer > CORRECT_ANSWER ? '#388b43' : '#d34e43',
