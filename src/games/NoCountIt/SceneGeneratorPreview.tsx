@@ -54,7 +54,7 @@ export default function SceneGeneratorPreview() {
             <input value={seed} onChange={(event) => setSeed(event.target.value)} style={{ minWidth: 0, padding: 10, border: '1px solid #c7ad86', borderRadius: 8 }} />
           </label>
           <button type="button" onClick={() => setRevision((value) => value + 1)} style={{ padding: '11px 18px', border: 0, borderRadius: 10, background: '#70452d', color: 'white', fontWeight: 800 }}>
-            Новая сцена
+            {NO_COUNT_IT_TEXTS.preview.newScene}
           </button>
         </section>
 
