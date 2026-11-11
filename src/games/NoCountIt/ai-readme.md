@@ -15,8 +15,8 @@ Browser database transport must use `src/database`. Do not create another Supaba
 - 2–4 players; no solo mode.
 - Three rounds per match.
 - One shared image and target-color prompt per round.
-- 30 seconds to prepare/load the image; 5 seconds to show it; 10 seconds to answer.
-- Answers are non-negative integers without a fixed upper bound. The in-game keypad replaces the system keyboard.
+- 30 seconds to prepare/load the image; 5 seconds to show it; 10 seconds to answer; 6 seconds to display round results before advancing.
+- Answers are non-negative integers without a fixed upper bound. The in-game keypad replaces the system keyboard; the client automatically submits a non-empty draft when the server-provided 10-second answer deadline expires.
 - An answer is immutable after successful submission.
 - A round completes when all active participants answer or the server deadline expires.
 - Error is `abs(answer - correctCount)`; no answer by an active participant means `correctCount`.
@@ -30,17 +30,29 @@ Browser database transport must use `src/database`. Do not create another Supaba
 
 Version 1 generates a candy jar from a prepared visual template:
 - 40–120 candies;
-- 4–10 colors, with at least three candies of each color;
+- 4–9 candy colors, excluding white and black, with at least three candies of each color;
+- one jar-interior background color selected from the visual palette but excluded from the candy colors;
 - random remaining color distribution and shuffled object list;
 - a random target color selected from colors present in the scene;
 - normalized 0–1000 coordinates;
-- limited overlap, no objects outside the jar, no fully hidden candies, and visible target candies.
+- deterministic bottom-up placement in staggered layers, with jar-wall positions evaluated before interior positions;
+- wall-adjacent candies use a 5% minimum overlap and must not cover more than 30% of any already placed neighbor;
+- pairwise circle intersections are used as an approximation for overlap, targeting 10–60% cumulative overlap on each candy (outer-contour candies may use a lower 5% floor when needed);
+- candy radius is bounded by 20–90 units;
+- the top 10–30% of the jar interior is left empty, with the percentage selected deterministically from the scene seed;
+- no objects outside the jar, no fully hidden candies, and visible target candies.
+
+The generation parameters are centralized in `src/games/NoCountIt/generationConfig.ts`. This file contains the allowed candy-count range, estimated jar area, target circle-area coverage, radius bounds, empty-top range, inner and edge overlap limits, maximum edge occlusion and radius fallback scales. Keep algorithm-specific scoring weights and geometry implementation details in `placementEngine.ts`.
+
+Current tuning values use an estimated jar area of 500,000 and target coverage of 0.90. Target coverage is a formula input for the sum of candy-circle areas; it is not an exact measurement of the visible union area after overlaps.
+
+A development-only round-results preview is available at `/?no-count-it-round-results=1` while running Vite. It renders an isolated mockup with sample player answers and errors; it does not connect to Supabase or mutate match state. In this preview, players with zero errors are listed together to the left of the correct-answer frame, with one shared zero on its right; when nobody is correct, that zero-score group and its zero are omitted. If the current player (selected by the mock Telegram ID assigned to Dmitry) is among the correct players, one outline encloses the full correct-player list and the complete correct-answer frame. The real match UI must use the signed-in player's Telegram ID for the same identity check. Keep this preview unavailable in production builds. A development-only generator preview is also available at `/?no-count-it-generator=1` while running Vite. It accepts a fixed candy count and seed so generated layouts can be compared reproducibly. The preview must remain unavailable in production builds. It uses local images from `src/games/NoCountIt/backgrounds/` (PNG, JPG, JPEG or WebP); one image is selected deterministically from the scene seed. One solid wall color is selected from the visual palette, excluding every color used by candies in that scene. This single color is the base layer behind the background artwork and remains visible through transparent parts of both the artwork and the jar. The SVG jar renderer must not paint a separate interior background. White and black are not used for candies; white remains available as the wall color. The dev-only layered composition shows a preview timer, the jar and the target-color prompt. These local backgrounds are not yet used by production multiplayer rounds.
 
 The generator creates the private scene data. The SVG renderer draws it and must not calculate game outcomes. Keep the generator independent from the match engine so additional scene generators can be added without changing match rules.
 
 ## 4. Privacy and trust boundary
 
-Scene object coordinates, seed, target count and other private generation metadata are server-only until the round reveal. The pre-reveal client snapshot may include a signed image URL and the prompt, but never the scene JSON or correct count.
+Scene object coordinates, seed, target count and other private generation metadata are server-only until the round reveal. The pre-reveal client snapshot may include a signed image URL, the prompt, the distinct candy-color list and the jar-interior background color, but never the scene JSON, seed, object coordinates or correct count.
 
 The backend verifies Telegram initData, derives the acting user ID, checks room membership and selected game, and enforces deadlines using database/server time. Never trust client-supplied identity, room membership, readiness, answer correctness, timestamps, score, errors or winner.
 
@@ -51,6 +63,8 @@ Every mutation must be atomic and safe under retries/concurrent requests. Preser
 Use the trusted Multiplayer `start_game` and `finish_game` operations from the game server only. Pass the exact `startedAt` returned by `start_game` to `finish_game`. The game client must not call these operations directly.
 
 A completed or technical-abort match keeps the shared room in `playing` while results are shown. Any member may return to the room; otherwise the client invokes the trusted `return_to_room` action 60 seconds after the match's server-recorded `completedAt`. That action verifies the terminal NoCountIt match and then marks the shared room `finished`. The room remains open and reusable.
+
+During each round's reveal/results phase, any current room member may choose **«Выйти досрочно»**. The trusted `early_exit` action atomically marks the NoCountIt match `cancelled` and finishes the shared room for all participants. Intermediate round/player error rows remain stored for inspection, but an interrupted match does not increment match statistics or award a winner. The room keeps its players and selected game and can be reused through the normal readiness flow. Concurrent early-exit requests for the same match are idempotent.
 
 ## 6. Planned persistence and storage
 
@@ -70,14 +84,30 @@ Real player departure is handled by a NoCountIt-owned trigger on the shared play
 
 The agreed 24-hour Storage object cleanup is still not implemented or scheduled.
 
+## 6.1 Round palette contract
+
+The private scene JSON stores `backgroundColor` separately from candy colors. White is excluded from candy generation but remains available as a jar-interior background; black is not in the visual palette. The trusted public snapshot exposes only the distinct `candyColors` array and `backgroundColor` for keypad styling. It must not expose the scene seed, object positions or correct count before reveal.
+
+The keypad derives its per-digit button and foreground colors deterministically from the match ID, round number and public palette, so every participant sees the same layout. Each digit's foreground color must differ from its own button background. Delete and confirm retain fixed red and green styling.
+
+The snapshot contract change is prepared in `20261112100000_no_count_it_round_palette.sql`; the matching `no-count-it` Edge Function update must also be deployed before the feature is available in Production. Neither deployment is performed by a source-code PR.
+
 ## 7. Client integration boundary
 
 The match component receives the existing room and standard callbacks from `MultiplayerRoomMenu`. It owns only NoCountIt match snapshots, preparation/image/answer/reveal UI and game-specific actions. It must not create/join/leave rooms, select games, set common readiness or duplicate the common room interface.
 
 Use `database.invokeFunction('no-count-it', ...)` for game actions. Use the existing Multiplayer room session and canonical game snapshots for synchronization. Realtime events are invalidation only.
 
-## 8. Verification
+## 8. Text resources and localization
 
-Test generator invariants independently and with deterministic seeds. Test server transitions and races for preparation deadlines, late readiness, zero-ready technical abort, early all-answered completion, timeout/no-answer, immutable answers, excluded-player average error, reveal privacy, stale match requests, real player departure, final tie/winner, reconnect, room return and results timeout.
+Client-visible game text is centralized in `src/games/NoCountIt/texts.ts`. Use `NO_COUNT_IT_TEXTS` for match UI, the development scene preview, accessibility labels and displayed color names. The color keys remain the English `NoCountItCandyColor` identifiers used by scene generation and server contracts; translate them only through `NO_COUNT_IT_TEXTS.colors`. Do not change wire values or database values when adding a display language.
+
+User-facing error messages returned by the NoCountIt Edge Function are centralized separately in `supabase/functions/no-count-it/texts.ts` and imported with the explicit `.ts` extension required by Deno. Keep the response shape and status codes unchanged when editing message text. Do not import browser resources into the Edge Function or duplicate server messages in client resources.
+
+Common room/menu text remains owned by Multiplayer Core and must not be copied into NoCountIt resources. When adding a visible NoCountIt string, place it in the appropriate client or server resource and reference it from the UI/handler.
+
+## 9. Verification
+
+Test generator invariants independently and with deterministic seeds. Test server transitions and races for preparation deadlines, late readiness, zero-ready technical abort, early all-answered completion, timeout/no-answer, immutable answers, excluded-player average error, reveal privacy, stale match requests, early exit during reveal (including concurrent requests and unchanged statistics), real player departure, final tie/winner, reconnect, room return and results timeout.
 
 Report build/typecheck, lint, SQL validation, deployment and real multi-client testing separately. A successful client build does not prove backend or multiplayer integration.
