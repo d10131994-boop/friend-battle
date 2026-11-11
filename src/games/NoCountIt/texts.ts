@@ -1,0 +1,44 @@
+import type { NoCountItPaletteColor } from './types'
+
+export const NO_COUNT_IT_TEXTS = {
+  colors: {
+    red: 'красный', orange: 'оранжевый', yellow: 'жёлтый', green: 'зелёный',
+    blue: 'синий', purple: 'фиолетовый', pink: 'розовый', teal: 'бирюзовый',
+    white: 'белый', brown: 'коричневый',
+  } satisfies Record<NoCountItPaletteColor, string>,
+  accessibility: { candyJar: 'Банка с разноцветными конфетами' },
+  match: {
+    updateFailed: 'Не удалось обновить игру.', multiplayer: 'МУЛЬТИПЛЕЕР',
+    eyebrow: 'NO COUNT IT', headingFirst: 'СКОЛЬКО', headingSecond: 'КОНФЕТ?',
+    subtitle: 'Три раунда · Меньше ошибок — выше шанс победить',
+    preparingGame: 'Готовим игру…', connectingMatch: 'Подключаемся к матчу…',
+    round: 'РАУНД', showing: 'ПОКАЗ', remaining: 'ОСТАЛОСЬ', yourEstimate: 'ТВОЯ ОЦЕНКА',
+    preparingImage: 'ГОТОВИМ ИЗОБРАЖЕНИЕ',
+    imagePreparationInfo: 'Как только изображение загрузится у участников, раунд начнётся одновременно для всех готовых игроков.',
+    imageAlt: 'Банка с конфетами', imageLoadFailed: 'Не удалось загрузить изображение раунда.',
+    imageReadyWaiting: '✓ Изображение готово. Ждём остальных…', loadingScene: 'Загружаем сцену…',
+    playersReady: 'Игроки готовы:', questionPrefix: 'Сколько конфет цвета «',
+    rememberPrompt: 'Запоминай расположение и количество. Ответ скоро!',
+    yourEstimateResult: '✓ Твоя оценка:', cannotChangeAnswer: 'Изменить её уже нельзя.',
+    notReady: 'В этом раунде ты не успел загрузить сцену. В следующем раунде сможешь участвовать.',
+    correctAnswer: 'Правильный ответ:', noAnswer: 'нет ответа', error: 'ошибка', errorSuffix: 'ошибок',
+    totalErrors: 'СУММА ОШИБОК', you: ' (ты)',
+    technicalAbort: 'НЕ УДАЛОСЬ ПОДГОТОВИТЬ РАУНД', cancelled: 'МАТЧ ПРЕРВАН', completed: 'МАТЧ ЗАВЕРШЁН',
+    technicalAbortDetails: 'Никто не успел подготовить изображение. Ошибки не начислены, комната сохранена.',
+    cancelledDetails: 'Игрок покинул комнату, и матч был прерван. Комната остаётся доступной.',
+    winner: 'Побеждает игрок с наименьшей суммой ошибок!', tie: 'Ничья!',
+    autoReturn: 'Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.',
+    returnToRoom: 'ВЕРНУТЬСЯ В КОМНАТУ',
+    earlyExit: 'Выйти досрочно',
+  },
+  preview: {
+    title: 'NoCountIt · генератор сцен',
+    description: 'Локальная лаборатория генерации. Изменения доступны только в dev-режиме.',
+    candyCount: 'Количество конфет:', newScene: 'Новая сцена',
+    generationError: 'Ошибка генерации:', fallbackError: 'Не удалось создать сцену.',
+    questionPrefix: 'Сколько конфет цвета «', sceneParameters: 'Параметры сцены',
+    totalCandies: 'Всего конфет:', correctAnswer: 'Правильный ответ:',
+    colorDistribution: 'Распределение цветов', seedLabel: 'Сид',
+    wallColorLabel: 'Цвет стены (слой 1):', timerLabel: 'ВРЕМЯ', backgroundFilesMissing: 'Добавь изображения фонов в src/games/NoCountIt/backgrounds.'
+  },
+} as const

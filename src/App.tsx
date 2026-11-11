@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import DevMultiplayerSmokeTest from './multiplayer/DevSmokeTest'
+import SceneGeneratorPreview from './games/NoCountIt/SceneGeneratorPreview'
 import { useReactionRush } from './games/ReactionRush/useReactionRush'
 import ReactionRush from './games/ReactionRush/ReactionRush'
 import BrainBattle from './games/BrainBattle/BrainBattle'
@@ -22,7 +23,7 @@ function getInviteCode(startParam: string | undefined): string | undefined {
   return undefined
 }
 
-function App() {
+function AppContent() {
   const inviteCode = getInviteCode(telegramStartParam)
   const [screen, setScreen] = useState<Screen>(inviteCode ? 'multiplayer-room' : 'home')
 
@@ -125,4 +126,10 @@ function App() {
   )
 }
 
-export default App
+export default function App() {
+  const params = new URLSearchParams(window.location.search)
+  if (import.meta.env.DEV && params.get('no-count-it-generator') === '1') {
+    return <SceneGeneratorPreview />
+  }
+  return <AppContent />
+}

@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
 import { telegramUser } from '../../services/telegram'
-import type { NoCountItPublicMatch, NoCountItSnapshot } from './types'
+import type { NoCountItPaletteColor, NoCountItPublicMatch, NoCountItSnapshot } from './types'
+import { createSeededRandom } from './scene/sceneGenerator'
+import { CANDY_PALETTE } from './scene/svgRenderer'
+import { NO_COUNT_IT_TEXTS } from './texts'
 
 type Props = {
   initData: string | undefined
@@ -14,7 +17,7 @@ type Props = {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Не удалось обновить игру.'
+  return error instanceof Error ? error.message : NO_COUNT_IT_TEXTS.match.updateFailed
 }
 
 export default function NoCountItMatch({
@@ -30,6 +33,7 @@ export default function NoCountItMatch({
   const [readyRoundKey, setReadyRoundKey] = useState<string | null>(null)
   const startAttemptRef = useRef(false)
   const readyAttemptRef = useRef<string | null>(null)
+  const answerSubmitAttemptRef = useRef<string | null>(null)
   const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
 
   const invokeGame = useCallback(async <T,>(body: Record<string, unknown>): Promise<T> => {
@@ -96,8 +100,39 @@ export default function NoCountItMatch({
   const myRoundPlayer = currentRound?.players.find((player) => player.userId === telegramId)
   const roundKey = match && currentRound ? `${match.matchId}:${currentRound.roundNumber}` : null
 
+  const keypadStyles = useMemo<Record<string, CSSProperties>>(() => {
+    const colors: NoCountItPaletteColor[] = [...new Set<NoCountItPaletteColor>([
+      ...(currentRound?.candyColors ?? []),
+      ...(currentRound?.backgroundColor ? [currentRound.backgroundColor] : []),
+    ])].sort()
+    if (colors.length < 2 || !match || !currentRound) return {}
+
+    const random = createSeededRandom(`${match.matchId}:${currentRound.roundNumber}:keypad`)
+    const styles: Record<string, CSSProperties> = {}
+    for (const digit of '0123456789') {
+      const backgroundColor = colors[Math.floor(random() * colors.length)]
+      const textColors = colors.filter((color) => color !== backgroundColor)
+      const textColor = textColors[Math.floor(random() * textColors.length)]
+      const background = CANDY_PALETTE[backgroundColor]
+      styles[digit] = {
+        background: `linear-gradient(180deg, ${background.light}, ${background.base})`,
+        color: CANDY_PALETTE[textColor].base,
+        borderColor: background.light,
+        boxShadow: `0 5px 0 ${background.dark}, 0 7px 11px rgba(74, 46, 14, .16), inset 0 2px 0 rgba(255,255,255,.65)`,
+      }
+    }
+    return styles
+  }, [match?.matchId, currentRound?.roundNumber, currentRound?.candyColors, currentRound?.backgroundColor])
+
   const roundReady = readyRoundKey === roundKey
   const answerInput = answerDraft.roundKey === roundKey ? answerDraft.value : ''
+
+  const isAnswering = currentRound?.status === 'answering'
+  const isActiveRoundScreen = currentRound?.status === 'showing' || isAnswering
+
+  useEffect(() => {
+    answerSubmitAttemptRef.current = null
+  }, [roundKey])
 
   const showStartedAt = currentRound?.showStartedAt ?? null
   const answerDeadline = currentRound?.answerDeadline ?? null
@@ -116,10 +151,11 @@ export default function NoCountItMatch({
     return () => window.clearInterval(timer)
   }, [showStartedAt, answerDeadline])
 
-  async function submitAnswer() {
+  const submitAnswer = useCallback(async () => {
     if (!match || !currentRound || currentRound.status !== 'answering' ||
       myRoundPlayer?.status !== 'active' || myRoundPlayer.answer !== null ||
-      !/^\d+$/.test(answerInput)) return
+      !/^\d+$/.test(answerInput) || answerSubmitAttemptRef.current === roundKey) return
+    answerSubmitAttemptRef.current = roundKey
     setLoading(true)
     setMessage('')
     try {
@@ -133,12 +169,20 @@ export default function NoCountItMatch({
       setAnswerDraft({ roundKey: null, value: '' })
       await refreshMatch()
     } catch (error) {
+      answerSubmitAttemptRef.current = null
       setMessage(errorMessage(error))
       await refreshMatch().catch(() => undefined)
     } finally {
       setLoading(false)
     }
-  }
+  }, [match, currentRound, myRoundPlayer, answerInput, roundKey, invokeGame, room.roomId, refreshMatch])
+
+  useEffect(() => {
+    if (!isAnswering || !answerDeadline || remaining > 0 || !answerInput || !roundKey ||
+      myRoundPlayer?.status !== 'active' || myRoundPlayer.answer !== null ||
+      answerSubmitAttemptRef.current === roundKey) return
+    void submitAnswer()
+  }, [isAnswering, answerDeadline, remaining, answerInput, roundKey, myRoundPlayer, submitAnswer])
 
   function appendDigit(digit: string) {
     if (answerInput.length >= 19 || myRoundPlayer?.answer !== null) return
@@ -160,6 +204,23 @@ export default function NoCountItMatch({
 
   const isFinished = match?.status === 'completed' || match?.status === 'technical_aborted' || match?.status === 'cancelled'
   const isReveal = currentRound?.status === 'revealing' || currentRound?.status === 'completed'
+
+  const exitEarly = useCallback(async () => {
+    if (!match || room.status !== 'playing' || loading) return
+    setLoading(true)
+    setMessage('')
+    try {
+      const response = await invokeGame<{ room: MultiplayerRoom }>({
+        action: 'early_exit', roomId: room.roomId, matchId: match.matchId,
+      })
+      onRoomUpdate(response.room)
+      onReturnToRoom()
+    } catch (error) {
+      setMessage(errorMessage(error))
+    } finally {
+      setLoading(false)
+    }
+  }, [match, room.status, room.roomId, loading, invokeGame, onRoomUpdate, onReturnToRoom])
 
   const finishAndReturn = useCallback(async () => {
     if (room.status !== 'playing') {
@@ -190,107 +251,118 @@ export default function NoCountItMatch({
 
 
   return (
-    <main className="app">
+    <main className={`app${isAnswering ? " no-count-it-answer-screen" : ""}`}>
       <header className="topbar">
         <div className="logo">NO COUNT <span>IT</span></div>
-        <div className="player-level">МУЛЬТИПЛЕЕР</div>
+        <div className="player-level">{NO_COUNT_IT_TEXTS.match.multiplayer}</div>
       </header>
-      <section className="hero">
-        <div className="eyebrow">NO COUNT IT</div>
+      {!isActiveRoundScreen && <section className="hero">
+        <div className="eyebrow">{NO_COUNT_IT_TEXTS.match.eyebrow}</div>
         <div className="game-icon">🍬</div>
-        <h1>СКОЛЬКО <span>КОНФЕТ?</span></h1>
-        <p>Три раунда · Меньше ошибок — выше шанс победить</p>
-      </section>
+        <h1>{NO_COUNT_IT_TEXTS.match.headingFirst} <span>{NO_COUNT_IT_TEXTS.match.headingSecond}</span></h1>
+        <p>{NO_COUNT_IT_TEXTS.match.subtitle}</p>
+      </section>}
 
-      {!match && <section className="game-card"><p>{loading ? 'Готовим игру…' : 'Подключаемся к матчу…'}</p></section>}
+      {!match && <section className="game-card"><p>{loading ? NO_COUNT_IT_TEXTS.match.preparingGame : NO_COUNT_IT_TEXTS.match.connectingMatch}</p></section>}
 
       {match && !isFinished && currentRound && (
         <>
-          <section className="stats">
-            <div className="stat-card"><span>🔁</span><div><small>РАУНД</small><strong>{currentRound.roundNumber} / 3</strong></div></div>
-            <div className="stat-card"><span>⏱️</span><div><small>{currentRound.status === 'showing' ? 'ПОКАЗ' : 'ОСТАЛОСЬ'}</small><strong>{currentRound.status === 'showing' ? imageRemaining : remaining}</strong></div></div>
-            <div className="stat-card"><span>🍬</span><div><small>ТВОЯ ОЦЕНКА</small><strong>{myRoundPlayer?.answer ?? '—'}</strong></div></div>
-          </section>
-
           {currentRound.status === 'preparing' && (
             <section className="game-card">
-              <h2>ГОТОВИМ ИЗОБРАЖЕНИЕ</h2>
-              <p>Как только изображение загрузится у участников, раунд начнётся одновременно для всех готовых игроков.</p>
-              {currentRound.imageUrl && <img src={currentRound.imageUrl} alt="Банка с конфетами" onLoad={() => void confirmRoundReady()} onError={() => setMessage('Не удалось загрузить изображение раунда.')} style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />}
-              <p>{roundReady ? '✓ Изображение готово. Ждём остальных…' : 'Загружаем сцену…'}</p>
-              <p>Игроки готовы: {currentRound.players.filter((player) => player.status === 'ready').length} / {currentRound.players.length}</p>
+              <h2>{NO_COUNT_IT_TEXTS.match.preparingImage}</h2>
+              <p>{NO_COUNT_IT_TEXTS.match.imagePreparationInfo}</p>
+              {currentRound.imageUrl && <img src={currentRound.imageUrl} alt={NO_COUNT_IT_TEXTS.match.imageAlt} onLoad={() => void confirmRoundReady()} onError={() => setMessage(NO_COUNT_IT_TEXTS.match.imageLoadFailed)} style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />}
+              <p>{roundReady ? NO_COUNT_IT_TEXTS.match.imageReadyWaiting : NO_COUNT_IT_TEXTS.match.loadingScene}</p>
+              <p>{NO_COUNT_IT_TEXTS.match.playersReady} {currentRound.players.filter((player) => player.status === 'ready').length} / {currentRound.players.length}</p>
             </section>
           )}
 
           {(currentRound.status === 'showing' || currentRound.status === 'answering' || isReveal) && (
-            <section className="game-card">
+            <section className={`game-card${isAnswering ? ' no-count-it-answer-card' : ' no-count-it-showing-card'}`}>
               {currentRound.status === 'showing' && currentRound.imageUrl && (
-                <img src={currentRound.imageUrl} alt="Банка с конфетами" style={{ width: '100%', maxWidth: 420, display: 'block', margin: '0 auto' }} />
+                <img src={currentRound.imageUrl} alt={NO_COUNT_IT_TEXTS.match.imageAlt} className="no-count-it-round-image" />
               )}
-              <h2>Сколько конфет цвета «{currentRound.targetColor ?? '…'}»?</h2>
-              {currentRound.status === 'showing' && <p>Запоминай расположение и количество. Ответ скоро!</p>}
-              {currentRound.status === 'answering' && myRoundPlayer?.status === 'active' && (
-                <>
-                  {myRoundPlayer.answer !== null ? (
-                    <p>✓ Твоя оценка: {myRoundPlayer.answer}. Изменить её уже нельзя.</p>
-                  ) : (
-                    <>
-                      <div className="stat-card"><strong style={{ fontSize: 32 }}>{answerInput || '0'}</strong></div>
-                      <div className="brain-answer-options" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
-                        {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map((digit) => (
-                          <button key={digit} className="primary-button" disabled={loading} onClick={() => {
+              {currentRound.status === 'answering' ? (
+                <div className="no-count-it-answer-layout">
+                  <div className="no-count-it-answer-top">
+                    <h2 className="no-count-it-answer-question">{NO_COUNT_IT_TEXTS.match.questionPrefix}{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
+                    <div className="no-count-it-answer-timer" aria-live="polite">{remaining} сек.</div>
+                    {myRoundPlayer && myRoundPlayer.answer !== null ? (
+                      <p className="no-count-it-answer-submitted">{NO_COUNT_IT_TEXTS.match.yourEstimateResult} {myRoundPlayer?.answer}. {NO_COUNT_IT_TEXTS.match.cannotChangeAnswer}</p>
+                    ) : myRoundPlayer?.status === 'active' ? (
+                      <div className="no-count-it-answer-value" aria-live="polite">{answerInput || '0'}</div>
+                    ) : null}
+                  </div>
+                  {myRoundPlayer?.status === 'active' && myRoundPlayer.answer === null && (
+                    <div className="no-count-it-keypad">
+                      {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map((digit) => (
+                        <button
+                          key={digit}
+                          type="button"
+                          className={`no-count-it-key${digit === '✓' ? ' no-count-it-key-submit' : digit === '⌫' ? ' no-count-it-key-delete' : ''}`}
+                          aria-label={digit === '⌫' ? 'Удалить последнюю цифру' : digit === '✓' ? 'Отправить ответ' : digit}
+                          disabled={loading || remaining <= 0}
+                          style={/^\d$/.test(digit) ? keypadStyles[digit] : undefined}
+                          onClick={() => {
                             if (digit === '✓') void submitAnswer()
                             else if (digit === '⌫') setAnswerDraft({ roundKey, value: answerInput.slice(0, -1) })
                             else appendDigit(digit)
-                          }}>{digit}</button>
-                        ))}
-                      </div>
-                    </>
+                          }}
+                        >{digit}</button>
+                      ))}
+                    </div>
                   )}
+                </div>
+              ) : (
+                <>
+                  <h2>{NO_COUNT_IT_TEXTS.match.questionPrefix}{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
+                  {currentRound.status === 'showing' && <p>{NO_COUNT_IT_TEXTS.match.rememberPrompt} · {imageRemaining} сек.</p>}
                 </>
               )}
               {currentRound.status === 'answering' && myRoundPlayer?.status === 'excluded_not_ready' && (
-                <p>В этом раунде ты не успел загрузить сцену. В следующем раунде сможешь участвовать.</p>
+                <p>{NO_COUNT_IT_TEXTS.match.notReady}</p>
               )}
               {isReveal && (
                 <>
-                  <h2>Правильный ответ: {currentRound.correctCount}</h2>
+                  <h2>{NO_COUNT_IT_TEXTS.match.correctAnswer} {currentRound.correctCount}</h2>
                   {currentRound.players.map((player) => (
-                    <p key={player.userId}>{player.displayName}: {player.answer ?? 'нет ответа'} · ошибка {player.error ?? '—'}</p>
+                    <p key={player.userId}>{player.displayName}: {player.answer ?? NO_COUNT_IT_TEXTS.match.noAnswer} · {NO_COUNT_IT_TEXTS.match.error} {player.error ?? '—'}</p>
                   ))}
+                  <button className="play-button" onClick={() => void exitEarly()} disabled={loading}>
+                    {NO_COUNT_IT_TEXTS.match.earlyExit}
+                  </button>
                 </>
               )}
             </section>
           )}
 
-          <section className="game-card">
-            <h2>СУММА ОШИБОК</h2>
+          {currentRound.status !== "showing" && currentRound.status !== "answering" && <section className="game-card">
+            <h2>{NO_COUNT_IT_TEXTS.match.totalErrors}</h2>
             {match.players.map((player) => (
               <div className="brain-room-player" key={player.userId}>
-                <span>{player.displayName}{player.userId === telegramId ? ' (ты)' : ''}</span>
+                <span>{player.displayName}{player.userId === telegramId ? NO_COUNT_IT_TEXTS.match.you : ''}</span>
                 <strong>{player.totalError}</strong>
               </div>
             ))}
-          </section>
+          </section>}
         </>
       )}
 
       {isFinished && match && (
         <section className="game-card">
-          <h2>{match.status === 'technical_aborted' ? 'НЕ УДАЛОСЬ ПОДГОТОВИТЬ РАУНД' : match.status === 'cancelled' ? 'МАТЧ ПРЕРВАН' : 'МАТЧ ЗАВЕРШЁН'}</h2>
+          <h2>{match.status === 'technical_aborted' ? NO_COUNT_IT_TEXTS.match.technicalAbort : match.status === 'cancelled' ? NO_COUNT_IT_TEXTS.match.cancelled : NO_COUNT_IT_TEXTS.match.completed}</h2>
           {match.status === 'technical_aborted'
-            ? <p>Никто не успел подготовить изображение. Ошибки не начислены, комната сохранена.</p>
+            ? <p>{NO_COUNT_IT_TEXTS.match.technicalAbortDetails}</p>
             : match.status === 'cancelled'
-              ? <p>Игрок покинул комнату, и матч был прерван. Комната остаётся доступной.</p>
+              ? <p>{NO_COUNT_IT_TEXTS.match.cancelledDetails}</p>
               : <>
               {match.finalResults?.map((player) => (
-                <p key={player.userId}>{player.userId === match.winnerUserId ? '🏆 ' : ''}{player.displayName}: <strong>{player.totalError}</strong> ошибок</p>
+                <p key={player.userId}>{player.userId === match.winnerUserId ? '🏆 ' : ''}{player.displayName}: <strong>{player.totalError}</strong> {NO_COUNT_IT_TEXTS.match.errorSuffix}</p>
               ))}
-              <p>{match.winnerUserId ? 'Побеждает игрок с наименьшей суммой ошибок!' : 'Ничья!'}</p>
+              <p>{match.winnerUserId ? NO_COUNT_IT_TEXTS.match.winner : NO_COUNT_IT_TEXTS.match.tie}</p>
             </>}
-          <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
-                    <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
-          <button className="play-button" onClick={() => void finishAndReturn()} disabled={loading}>ВЕРНУТЬСЯ В КОМНАТУ</button>
+          <p>{NO_COUNT_IT_TEXTS.match.autoReturn}</p>
+          <button className="play-button" onClick={() => void finishAndReturn()} disabled={loading}>{NO_COUNT_IT_TEXTS.match.returnToRoom}</button>
         </section>
       )}
       {message && <section className="game-card" role="alert"><p>{message}</p></section>}
