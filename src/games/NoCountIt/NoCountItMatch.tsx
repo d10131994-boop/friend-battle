@@ -226,7 +226,7 @@ export default function NoCountItMatch({
           {(currentRound.status === 'showing' || currentRound.status === 'answering' || isReveal) && (
             <section className="game-card">
               {currentRound.status === 'showing' && currentRound.imageUrl && (
-                <img src={currentRound.imageUrl} alt="Банка с конфетами" style={{ width: '100%', maxWidth: 420, display: 'block', margin: '0 auto' }} />
+                <img src={currentRound.imageUrl} alt={NO_COUNT_IT_TEXTS.match.imageAlt} style={{ width: '100%', maxWidth: 420, display: 'block', margin: '0 auto' }} />
               )}
               <h2>{NO_COUNT_IT_TEXTS.match.questionPrefix}{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
               {currentRound.status === 'showing' && <p>{NO_COUNT_IT_TEXTS.match.rememberPrompt}</p>}
@@ -285,12 +285,12 @@ export default function NoCountItMatch({
               ? <p>{NO_COUNT_IT_TEXTS.match.cancelledDetails}</p>
               : <>
               {match.finalResults?.map((player) => (
-                <p key={player.userId}>{player.userId === match.winnerUserId ? '🏆 ' : ''}{player.displayName}: <strong>{player.totalError}</strong> ошибок</p>
+                <p key={player.userId}>{player.userId === match.winnerUserId ? '🏆 ' : ''}{player.displayName}: <strong>{player.totalError}</strong> {NO_COUNT_IT_TEXTS.match.errorSuffix}</p>
               ))}
               <p>{match.winnerUserId ? NO_COUNT_IT_TEXTS.match.winner : NO_COUNT_IT_TEXTS.match.tie}</p>
             </>}
           <p>{NO_COUNT_IT_TEXTS.match.autoReturn}</p>
-                    <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
+                    <p>{NO_COUNT_IT_TEXTS.match.autoReturn}</p>
           <button className="play-button" onClick={() => void finishAndReturn()} disabled={loading}>{NO_COUNT_IT_TEXTS.match.returnToRoom}</button>
         </section>
       )}
