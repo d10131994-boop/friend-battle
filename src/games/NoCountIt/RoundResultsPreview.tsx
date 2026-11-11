@@ -5,7 +5,33 @@ const PLAYERS = [
   { id: '4', name: 'Екатерина', answer: 12, error: 6 },
 ]
 
+const CORRECT_ANSWER = 18
+
+const ROUND_CANDY_COLORS = [
+  { name: 'розовый', value: '#d85b91' },
+  { name: 'бирюзовый', value: '#269b9b' },
+  { name: 'оранжевый', value: '#e58a36' },
+  { name: 'фиолетовый', value: '#8962bd' },
+  { name: 'зелёный', value: '#69a64b' },
+]
+
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items]
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const target = Math.floor(Math.random() * (index + 1))
+    ;[result[index], result[target]] = [result[target], result[index]]
+  }
+  return result
+}
+
+const PLAYER_NAME_COLORS = shuffle(ROUND_CANDY_COLORS)
+
 export default function RoundResultsPreview() {
+  const maxDeviation = Math.max(
+    1,
+    ...PLAYERS.map((player) => Math.abs(player.answer - CORRECT_ANSWER)),
+  )
+
   return (
     <main style={{
       minHeight: '100vh',
@@ -21,13 +47,13 @@ export default function RoundResultsPreview() {
       <section style={{
         width: 'min(100%, 430px)',
         boxSizing: 'border-box',
-        padding: '24px 20px 20px',
+        padding: '24px 18px 20px',
         border: '1px solid #e7d2ad',
         borderRadius: 28,
         background: '#fffaf0',
         boxShadow: '0 18px 48px rgba(86, 58, 39, .16)',
       }}>
-        <header style={{ textAlign: 'center', marginBottom: 24 }}>
+        <header style={{ textAlign: 'center', marginBottom: 18 }}>
           <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 2, color: '#a17a50' }}>NO COUNT IT · МУЛЬТИПЛЕЕР</div>
           <h1 style={{ margin: '8px 0 0', fontSize: 30, lineHeight: 1.1, fontWeight: 1000 }}>
             РАУНД <span style={{ color: '#d17b35' }}>2</span>
@@ -36,50 +62,146 @@ export default function RoundResultsPreview() {
         </header>
 
         <div style={{
-          padding: '15px 18px',
-          marginBottom: 18,
-          borderRadius: 18,
-          background: 'linear-gradient(135deg, #f7e6c4, #f2d6a5)',
-          border: '1px solid #e8c995',
-          textAlign: 'center',
+          display: 'flex',
+          justifyContent: 'space-between',
+          padding: '0 5px 8px',
+          color: '#9a8062',
+          fontSize: 10,
+          fontWeight: 900,
+          letterSpacing: 1,
         }}>
-          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.5, color: '#98744e' }}>ПРАВИЛЬНЫЙ ОТВЕТ</div>
-          <div style={{ marginTop: 3, fontSize: 34, lineHeight: 1.1, fontWeight: 1000, color: '#70452d' }}>18</div>
+          <span>ОТВЕТ И ИГРОК</span>
+          <span>БАЛЛЫ</span>
         </div>
 
-        <div style={{ display: 'grid', gap: 9 }}>
-          {PLAYERS.map((player, index) => (
-            <div key={player.id} style={{
-              display: 'grid',
-              gridTemplateColumns: '30px minmax(0, 1fr) auto auto',
-              alignItems: 'center',
-              gap: 9,
-              padding: '12px 11px',
-              borderRadius: 15,
-              background: player.error === 0 ? '#e5f2df' : '#f7efdf',
-              border: player.error === 0 ? '1px solid #c5dfb9' : '1px solid #eadcc3',
-            }}>
-              <div style={{
-                width: 27, height: 27, borderRadius: 9,
-                display: 'grid', placeItems: 'center',
-                background: '#fffaf0', color: '#8c6b49', fontSize: 12, fontWeight: 900,
-              }}>{index + 1}</div>
-              <strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{player.name}</strong>
-              <div style={{ textAlign: 'center', minWidth: 37 }}>
-                <div style={{ fontSize: 9, color: '#9a8062', fontWeight: 800 }}>ОТВЕТ</div>
-                <strong style={{ fontSize: 17 }}>{player.answer}</strong>
+        <div style={{
+          position: 'relative',
+          height: 350,
+          margin: '0 0 8px',
+          borderRadius: 20,
+          background: 'linear-gradient(90deg, rgba(247,230,196,.28), rgba(242,214,165,.16) 50%, rgba(247,230,196,.28))',
+          border: '1px solid #f0e2c9',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: '7%',
+            bottom: '7%',
+            left: '50%',
+            width: 4,
+            transform: 'translateX(-50%)',
+            borderRadius: 4,
+            background: 'linear-gradient(180deg, #d8bd91, #b48b5d 50%, #d8bd91)',
+            boxShadow: '0 0 0 4px rgba(180,139,93,.08)',
+          }} />
+
+          {PLAYERS.map((player, index) => {
+            const offset = ((player.answer - CORRECT_ANSWER) / maxDeviation) * 39
+            const top = 50 - offset
+            const nameColor = PLAYER_NAME_COLORS[index % PLAYER_NAME_COLORS.length].value
+            const scoreColor = player.answer > CORRECT_ANSWER
+              ? '#388b43'
+              : player.answer < CORRECT_ANSWER
+                ? '#d34e43'
+                : '#8b704f'
+
+            return (
+              <div key={player.id} style={{
+                position: 'absolute',
+                top: `${top}%`,
+                left: 0,
+                right: 0,
+                transform: 'translateY(-50%)',
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                alignItems: 'center',
+                minHeight: 42,
+              }}>
+                <div style={{
+                  minWidth: 0,
+                  padding: '0 18px 0 8px',
+                  textAlign: 'right',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: 1,
+                }}>
+                  <strong style={{
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontSize: 13,
+                    lineHeight: 1.25,
+                    color: nameColor,
+                  }}>{player.name}</strong>
+                  <span style={{ fontSize: 18, lineHeight: 1, fontWeight: 1000, color: '#65482f' }}>{player.answer}</span>
+                </div>
+                <div style={{
+                  minWidth: 0,
+                  padding: '0 8px 0 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: 1,
+                }}>
+                  <strong style={{ fontSize: 21, lineHeight: 1, color: scoreColor }}>{player.error}</strong>
+                  <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: .7, color: '#a18a6d' }}>ОШИБОК</span>
+                </div>
+                <div style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  width: 13,
+                  height: 13,
+                  transform: 'translate(-50%, -50%)',
+                  borderRadius: '50%',
+                  background: nameColor,
+                  border: '3px solid #fffaf0',
+                  boxShadow: '0 1px 5px rgba(86,58,39,.28)',
+                  zIndex: 2,
+                }} />
               </div>
-              <div style={{ textAlign: 'right', minWidth: 45 }}>
-                <div style={{ fontSize: 9, color: '#9a8062', fontWeight: 800 }}>ОШИБКА</div>
-                <strong style={{ fontSize: 17, color: player.error === 0 ? '#397b36' : '#80583a' }}>{player.error}</strong>
-              </div>
-            </div>
-          ))}
+            )
+          })}
+
+          <div style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 3,
+            padding: '8px 11px 7px',
+            borderRadius: 12,
+            border: '2px solid #fffaf0',
+            background: '#704a30',
+            color: '#fffaf0',
+            textAlign: 'center',
+            boxShadow: '0 3px 10px rgba(86,58,39,.24)',
+            whiteSpace: 'nowrap',
+          }}>
+            <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: 1 }}>ПРАВИЛЬНО</div>
+            <div style={{ fontSize: 22, lineHeight: 1, fontWeight: 1000 }}>{CORRECT_ANSWER}</div>
+          </div>
+        </div>
+
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 14,
+          margin: '8px 0 0',
+          fontSize: 10,
+          color: '#9a8062',
+          fontWeight: 800,
+        }}>
+          <span><span style={{ color: '#388b43', fontSize: 14 }}>●</span> Больше правильного</span>
+          <span><span style={{ color: '#d34e43', fontSize: 14 }}>●</span> Меньше правильного</span>
         </div>
 
         <button type="button" style={{
           width: '100%',
-          marginTop: 22,
+          marginTop: 20,
           padding: '15px 18px',
           border: 0,
           borderRadius: 16,
