@@ -146,7 +146,7 @@ export default function RoundResultsPreview() {
                   gap: 1,
                 }}>
                   <strong style={{ fontSize: 18, lineHeight: 1, color: scoreColor }}>{player.error}</strong>
-                  <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: .7, color: '#a18a6d' }}>ОШИБОК</span>
+                  <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: .7, color: '#a18a6d' }}>БАЛЛОВ</span>
                 </div>
                 <div style={{
                   position: 'absolute',
@@ -180,7 +180,7 @@ export default function RoundResultsPreview() {
             boxShadow: '0 3px 10px rgba(86,58,39,.24)',
             whiteSpace: 'nowrap',
           }}>
-            <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: 1 }}>ПРАВИЛЬНО</div>
+            <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: 1 }}>ВЕРНО</div>
             <div style={{ fontSize: 22, lineHeight: 1, fontWeight: 1000 }}>{CORRECT_ANSWER}</div>
           </div>
         </div>
