@@ -2,7 +2,7 @@ import type { NoCountItCandyColor } from '../types'
 
 const COLORS: readonly NoCountItCandyColor[] = [
   'red', 'orange', 'yellow', 'green', 'blue',
-  'purple', 'pink', 'teal', 'white', 'brown',
+  'purple', 'pink', 'teal', 'brown',
 ]
 
 export interface ColorDistribution {
