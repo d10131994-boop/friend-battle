@@ -30,7 +30,8 @@ Browser database transport must use `src/database`. Do not create another Supaba
 
 Version 1 generates a candy jar from a prepared visual template:
 - 40–120 candies;
-- 4–10 colors, with at least three candies of each color;
+- 4–9 candy colors, excluding white and black, with at least three candies of each color;
+- one jar-interior background color selected from the visual palette but excluded from the candy colors;
 - random remaining color distribution and shuffled object list;
 - a random target color selected from colors present in the scene;
 - normalized 0–1000 coordinates;
@@ -45,13 +46,13 @@ The generation parameters are centralized in `src/games/NoCountIt/generationConf
 
 Current tuning values use an estimated jar area of 500,000 and target coverage of 0.90. Target coverage is a formula input for the sum of candy-circle areas; it is not an exact measurement of the visible union area after overlaps.
 
-A development-only generator preview is available at `/?no-count-it-generator=1` while running Vite. It accepts a fixed candy count and seed so generated layouts can be compared reproducibly. The preview must remain unavailable in production builds. It uses local images from `src/games/NoCountIt/backgrounds/` (PNG, JPG, JPEG or WebP); one image is selected deterministically from the scene seed. A solid color is also selected from the candy palette, excluding every color used by candies in that scene. The dev-only layered composition shows a preview timer, the jar and the target-color prompt. These local backgrounds are not yet used by production multiplayer rounds.
+A development-only generator preview is available at `/?no-count-it-generator=1` while running Vite. It accepts a fixed candy count and seed so generated layouts can be compared reproducibly. The preview must remain unavailable in production builds. It uses local images from `src/games/NoCountIt/backgrounds/` (PNG, JPG, JPEG or WebP); one image is selected deterministically from the scene seed. A solid color is selected for the jar interior from the visual palette, excluding every color used by candies in that scene. White and black are not used for candies; white remains available as an interior background. The dev-only layered composition shows a preview timer, the jar and the target-color prompt. These local backgrounds are not yet used by production multiplayer rounds.
 
 The generator creates the private scene data. The SVG renderer draws it and must not calculate game outcomes. Keep the generator independent from the match engine so additional scene generators can be added without changing match rules.
 
 ## 4. Privacy and trust boundary
 
-Scene object coordinates, seed, target count and other private generation metadata are server-only until the round reveal. The pre-reveal client snapshot may include a signed image URL and the prompt, but never the scene JSON or correct count.
+Scene object coordinates, seed, target count and other private generation metadata are server-only until the round reveal. The pre-reveal client snapshot may include a signed image URL, the prompt, the distinct candy-color list and the jar-interior background color, but never the scene JSON, seed, object coordinates or correct count.
 
 The backend verifies Telegram initData, derives the acting user ID, checks room membership and selected game, and enforces deadlines using database/server time. Never trust client-supplied identity, room membership, readiness, answer correctness, timestamps, score, errors or winner.
 
