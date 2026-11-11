@@ -20,7 +20,7 @@ export const NO_COUNT_IT_RULES = {
   minCandies: CANDY_GENERATION_CONFIG.minCandyCount,
   maxCandies: CANDY_GENERATION_CONFIG.maxCandyCount,
   minColors: 4,
-  maxColors: 10,
+  maxColors: 9,
   minCandiesPerColor: 3,
 } as const
 
