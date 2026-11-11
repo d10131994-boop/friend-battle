@@ -194,13 +194,13 @@ export default function NoCountItMatch({
     <main className="app">
       <header className="topbar">
         <div className="logo">NO COUNT <span>IT</span></div>
-        <div className="player-level">МУЛЬТИПЛЕЕР</div>
+        <div className="player-level">{NO_COUNT_IT_TEXTS.match.multiplayer}</div>
       </header>
       <section className="hero">
-        <div className="eyebrow">NO COUNT IT</div>
+        <div className="eyebrow">{NO_COUNT_IT_TEXTS.match.eyebrow}</div>
         <div className="game-icon">🍬</div>
-        <h1>СКОЛЬКО <span>КОНФЕТ?</span></h1>
-        <p>Три раунда · Меньше ошибок — выше шанс победить</p>
+        <h1>{NO_COUNT_IT_TEXTS.match.headingFirst} <span>{NO_COUNT_IT_TEXTS.match.headingSecond}</span></h1>
+        <p>{NO_COUNT_IT_TEXTS.match.subtitle}</p>
       </section>
 
       {!match && <section className="game-card"><p>{loading ? NO_COUNT_IT_TEXTS.match.preparingGame : NO_COUNT_IT_TEXTS.match.connectingMatch}</p></section>}
@@ -208,18 +208,18 @@ export default function NoCountItMatch({
       {match && !isFinished && currentRound && (
         <>
           <section className="stats">
-            <div className="stat-card"><span>🔁</span><div><small>РАУНД</small><strong>{currentRound.roundNumber} / 3</strong></div></div>
+            <div className="stat-card"><span>🔁</span><div><small>{NO_COUNT_IT_TEXTS.match.round}</small><strong>{currentRound.roundNumber} / 3</strong></div></div>
             <div className="stat-card"><span>⏱️</span><div><small>{currentRound.status === 'showing' ? NO_COUNT_IT_TEXTS.match.showing : NO_COUNT_IT_TEXTS.match.remaining}</small><strong>{currentRound.status === 'showing' ? imageRemaining : remaining}</strong></div></div>
-            <div className="stat-card"><span>🍬</span><div><small>ТВОЯ ОЦЕНКА</small><strong>{myRoundPlayer?.answer ?? '—'}</strong></div></div>
+            <div className="stat-card"><span>🍬</span><div><small>{NO_COUNT_IT_TEXTS.match.yourEstimate}</small><strong>{myRoundPlayer?.answer ?? '—'}</strong></div></div>
           </section>
 
           {currentRound.status === 'preparing' && (
             <section className="game-card">
-              <h2>ГОТОВИМ ИЗОБРАЖЕНИЕ</h2>
-              <p>Как только изображение загрузится у участников, раунд начнётся одновременно для всех готовых игроков.</p>
-              {currentRound.imageUrl && <img src={currentRound.imageUrl} alt="Банка с конфетами" onLoad={() => void confirmRoundReady()} onError={() => setMessage(NO_COUNT_IT_TEXTS.match.imageLoadFailed)} style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />}
+              <h2>{NO_COUNT_IT_TEXTS.match.preparingImage}</h2>
+              <p>{NO_COUNT_IT_TEXTS.match.imagePreparationInfo}</p>
+              {currentRound.imageUrl && <img src={currentRound.imageUrl} alt={NO_COUNT_IT_TEXTS.match.imageAlt} onLoad={() => void confirmRoundReady()} onError={() => setMessage(NO_COUNT_IT_TEXTS.match.imageLoadFailed)} style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />}
               <p>{roundReady ? NO_COUNT_IT_TEXTS.match.imageReadyWaiting : NO_COUNT_IT_TEXTS.match.loadingScene}</p>
-              <p>Игроки готовы: {currentRound.players.filter((player) => player.status === 'ready').length} / {currentRound.players.length}</p>
+              <p>{NO_COUNT_IT_TEXTS.match.playersReady} {currentRound.players.filter((player) => player.status === 'ready').length} / {currentRound.players.length}</p>
             </section>
           )}
 
@@ -228,12 +228,12 @@ export default function NoCountItMatch({
               {currentRound.status === 'showing' && currentRound.imageUrl && (
                 <img src={currentRound.imageUrl} alt="Банка с конфетами" style={{ width: '100%', maxWidth: 420, display: 'block', margin: '0 auto' }} />
               )}
-              <h2>Сколько конфет цвета «{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
-              {currentRound.status === 'showing' && <p>Запоминай расположение и количество. Ответ скоро!</p>}
+              <h2>{NO_COUNT_IT_TEXTS.match.questionPrefix}{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
+              {currentRound.status === 'showing' && <p>{NO_COUNT_IT_TEXTS.match.rememberPrompt}</p>}
               {currentRound.status === 'answering' && myRoundPlayer?.status === 'active' && (
                 <>
                   {myRoundPlayer.answer !== null ? (
-                    <p>✓ Твоя оценка: {myRoundPlayer.answer}. Изменить её уже нельзя.</p>
+                    <p>{NO_COUNT_IT_TEXTS.match.yourEstimateResult} {myRoundPlayer.answer}. {NO_COUNT_IT_TEXTS.match.cannotChangeAnswer}</p>
                   ) : (
                     <>
                       <div className="stat-card"><strong style={{ fontSize: 32 }}>{answerInput || '0'}</strong></div>
@@ -251,13 +251,13 @@ export default function NoCountItMatch({
                 </>
               )}
               {currentRound.status === 'answering' && myRoundPlayer?.status === 'excluded_not_ready' && (
-                <p>В этом раунде ты не успел загрузить сцену. В следующем раунде сможешь участвовать.</p>
+                <p>{NO_COUNT_IT_TEXTS.match.notReady}</p>
               )}
               {isReveal && (
                 <>
-                  <h2>Правильный ответ: {currentRound.correctCount}</h2>
+                  <h2>{NO_COUNT_IT_TEXTS.match.correctAnswer} {currentRound.correctCount}</h2>
                   {currentRound.players.map((player) => (
-                    <p key={player.userId}>{player.displayName}: {player.answer ?? NO_COUNT_IT_TEXTS.match.noAnswer} · ошибка {player.error ?? '—'}</p>
+                    <p key={player.userId}>{player.displayName}: {player.answer ?? NO_COUNT_IT_TEXTS.match.noAnswer} · {NO_COUNT_IT_TEXTS.match.error} {player.error ?? '—'}</p>
                   ))}
                 </>
               )}
@@ -265,7 +265,7 @@ export default function NoCountItMatch({
           )}
 
           <section className="game-card">
-            <h2>СУММА ОШИБОК</h2>
+            <h2>{NO_COUNT_IT_TEXTS.match.totalErrors}</h2>
             {match.players.map((player) => (
               <div className="brain-room-player" key={player.userId}>
                 <span>{player.displayName}{player.userId === telegramId ? NO_COUNT_IT_TEXTS.match.you : ''}</span>
@@ -280,18 +280,18 @@ export default function NoCountItMatch({
         <section className="game-card">
           <h2>{match.status === 'technical_aborted' ? NO_COUNT_IT_TEXTS.match.technicalAbort : match.status === 'cancelled' ? NO_COUNT_IT_TEXTS.match.cancelled : NO_COUNT_IT_TEXTS.match.completed}</h2>
           {match.status === 'technical_aborted'
-            ? <p>Никто не успел подготовить изображение. Ошибки не начислены, комната сохранена.</p>
+            ? <p>{NO_COUNT_IT_TEXTS.match.technicalAbortDetails}</p>
             : match.status === 'cancelled'
-              ? <p>Игрок покинул комнату, и матч был прерван. Комната остаётся доступной.</p>
+              ? <p>{NO_COUNT_IT_TEXTS.match.cancelledDetails}</p>
               : <>
               {match.finalResults?.map((player) => (
                 <p key={player.userId}>{player.userId === match.winnerUserId ? '🏆 ' : ''}{player.displayName}: <strong>{player.totalError}</strong> ошибок</p>
               ))}
               <p>{match.winnerUserId ? NO_COUNT_IT_TEXTS.match.winner : NO_COUNT_IT_TEXTS.match.tie}</p>
             </>}
-          <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
+          <p>{NO_COUNT_IT_TEXTS.match.autoReturn}</p>
                     <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
-          <button className="play-button" onClick={() => void finishAndReturn()} disabled={loading}>ВЕРНУТЬСЯ В КОМНАТУ</button>
+          <button className="play-button" onClick={() => void finishAndReturn()} disabled={loading}>{NO_COUNT_IT_TEXTS.match.returnToRoom}</button>
         </section>
       )}
       {message && <section className="game-card" role="alert"><p>{message}</p></section>}

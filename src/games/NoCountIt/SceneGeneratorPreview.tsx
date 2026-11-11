@@ -34,12 +34,12 @@ export default function SceneGeneratorPreview() {
   return (
     <main style={{ minHeight: '100vh', padding: 20, background: '#f3e5bd', color: '#563a27', fontFamily: 'Nunito, sans-serif' }}>
       <div style={{ width: 'min(100%, 980px)', margin: '0 auto' }}>
-        <h1 style={{ marginTop: 0 }}>NoCountIt · генератор сцен</h1>
-        <p>Локальная лаборатория генерации. Изменения доступны только в dev-режиме.</p>
+        <h1 style={{ marginTop: 0 }}>{NO_COUNT_IT_TEXTS.preview.title}</h1>
+        <p>{NO_COUNT_IT_TEXTS.preview.description}</p>
 
         <section style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 16, padding: 16, borderRadius: 16, background: '#fff8e8' }}>
           <label style={{ display: 'grid', gap: 6 }}>
-            Количество конфет: <strong>{count}</strong>
+            {NO_COUNT_IT_TEXTS.preview.candyCount} <strong>{count}</strong>
             <input
               type="range"
               min={CANDY_GENERATION_CONFIG.minCandyCount}
@@ -60,7 +60,7 @@ export default function SceneGeneratorPreview() {
 
         {generated.error ? (
           <section role="alert" style={{ marginTop: 16, padding: 16, borderRadius: 12, background: '#ffe0dc', color: '#8b2017' }}>
-            Ошибка генерации: {generated.error}
+            {NO_COUNT_IT_TEXTS.preview.generationError} {generated.error}
           </section>
         ) : generated.svg ? (
           <section style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(220px, 300px)', gap: 20, marginTop: 20, alignItems: 'start' }}>
@@ -71,11 +71,11 @@ export default function SceneGeneratorPreview() {
               </h2>
             </div>
             <aside style={{ padding: 16, borderRadius: 16, background: '#fff8e8' }}>
-              <h2 style={{ marginTop: 0 }}>Параметры сцены</h2>
-              <p>Всего конфет: <strong>{generated.scene?.objects.length}</strong></p>
-              <p>Правильный ответ: <strong>{generated.scene?.correctCount}</strong></p>
+              <h2 style={{ marginTop: 0 }}>{NO_COUNT_IT_TEXTS.preview.sceneParameters}</h2>
+              <p>{NO_COUNT_IT_TEXTS.preview.totalCandies} <strong>{generated.scene?.objects.length}</strong></p>
+              <p>{NO_COUNT_IT_TEXTS.preview.correctAnswer} <strong>{generated.scene?.correctCount}</strong></p>
               <p>Seed: <code>{generated.scene?.seed}</code></p>
-              <h3>Распределение цветов</h3>
+              <h3>{NO_COUNT_IT_TEXTS.preview.colorDistribution}</h3>
               {Object.entries(colorCounts).map(([color, amount]) => (
                 <div key={color} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #eadcc4' }}>
                   <span>{NO_COUNT_IT_TEXTS.colors[color as keyof typeof NO_COUNT_IT_TEXTS.colors]}</span><strong>{amount}</strong>
