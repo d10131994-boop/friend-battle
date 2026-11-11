@@ -21,7 +21,7 @@ export const NO_COUNT_IT_TEXTS = {
     rememberPrompt: 'Запоминай расположение и количество. Ответ скоро!',
     yourEstimateResult: '✓ Твоя оценка:', cannotChangeAnswer: 'Изменить её уже нельзя.',
     notReady: 'В этом раунде ты не успел загрузить сцену. В следующем раунде сможешь участвовать.',
-    correctAnswer: 'Правильный ответ:', noAnswer: 'нет ответа', error: 'ошибка',
+    correctAnswer: 'Правильный ответ:', noAnswer: 'нет ответа', error: 'ошибка', errorSuffix: 'ошибок',
     totalErrors: 'СУММА ОШИБОК', you: ' (ты)',
     technicalAbort: 'НЕ УДАЛОСЬ ПОДГОТОВИТЬ РАУНД', cancelled: 'МАТЧ ПРЕРВАН', completed: 'МАТЧ ЗАВЕРШЁН',
     technicalAbortDetails: 'Никто не успел подготовить изображение. Ошибки не начислены, комната сохранена.',
