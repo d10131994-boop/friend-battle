@@ -15,7 +15,7 @@ Browser database transport must use `src/database`. Do not create another Supaba
 - 2–4 players; no solo mode.
 - Three rounds per match.
 - One shared image and target-color prompt per round.
-- 30 seconds to prepare/load the image; 5 seconds to show it; 10 seconds to answer.
+- 30 seconds to prepare/load the image; 5 seconds to show it; 10 seconds to answer; 6 seconds to display round results before advancing.
 - Answers are non-negative integers without a fixed upper bound. The in-game keypad replaces the system keyboard.
 - An answer is immutable after successful submission.
 - A round completes when all active participants answer or the server deadline expires.
@@ -63,6 +63,8 @@ Use the trusted Multiplayer `start_game` and `finish_game` operations from the g
 
 A completed or technical-abort match keeps the shared room in `playing` while results are shown. Any member may return to the room; otherwise the client invokes the trusted `return_to_room` action 60 seconds after the match's server-recorded `completedAt`. That action verifies the terminal NoCountIt match and then marks the shared room `finished`. The room remains open and reusable.
 
+During each round's reveal/results phase, any current room member may choose **«Выйти досрочно»**. The trusted `early_exit` action atomically marks the NoCountIt match `cancelled` and finishes the shared room for all participants. Intermediate round/player error rows remain stored for inspection, but an interrupted match does not increment match statistics or award a winner. The room keeps its players and selected game and can be reused through the normal readiness flow. Concurrent early-exit requests for the same match are idempotent.
+
 ## 6. Planned persistence and storage
 
 The planned game tables are:
@@ -97,6 +99,6 @@ Common room/menu text remains owned by Multiplayer Core and must not be copied i
 
 ## 9. Verification
 
-Test generator invariants independently and with deterministic seeds. Test server transitions and races for preparation deadlines, late readiness, zero-ready technical abort, early all-answered completion, timeout/no-answer, immutable answers, excluded-player average error, reveal privacy, stale match requests, real player departure, final tie/winner, reconnect, room return and results timeout.
+Test generator invariants independently and with deterministic seeds. Test server transitions and races for preparation deadlines, late readiness, zero-ready technical abort, early all-answered completion, timeout/no-answer, immutable answers, excluded-player average error, reveal privacy, stale match requests, early exit during reveal (including concurrent requests and unchanged statistics), real player departure, final tie/winner, reconnect, room return and results timeout.
 
 Report build/typecheck, lint, SQL validation, deployment and real multi-client testing separately. A successful client build does not prove backend or multiplayer integration.

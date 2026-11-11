@@ -130,7 +130,7 @@ Deno.serve(async(req:Request)=>{
   if(!url||!key||!token)return fail(NO_COUNT_IT_SERVER_TEXTS.serverConfigurationMissing,500);
   const body=await req.json();
   if(!body||typeof body!=="object"||Array.isArray(body))return fail(NO_COUNT_IT_SERVER_TEXTS.invalidRequestBody,400);
-  const actions=["start_match","get_match","round_ready","submit_answer","return_to_room"];
+  const actions=["start_match","get_match","round_ready","submit_answer","return_to_room","early_exit"];
   if(!actions.includes(body.action))return fail(NO_COUNT_IT_SERVER_TEXTS.unknownAction,400);
   const initData=typeof body.initData==="string"?body.initData:"";
   if(!initData||initData.length>10000)return fail(NO_COUNT_IT_SERVER_TEXTS.invalidTelegramData,400);
@@ -148,6 +148,15 @@ Deno.serve(async(req:Request)=>{
     const finishedRoom=await finishSharedGame(db,roomId,snapshot.match.startedAt);
     await broadcast(db,roomId,"room_finished");
     return respond({room:finishedRoom});
+  }
+
+  if(body.action==="early_exit"){
+    const earlyExitMatchId=typeof body.matchId==="string"?body.matchId:"";
+    if(!/^[0-9a-f-]{36}$/i.test(earlyExitMatchId))return fail(NO_COUNT_IT_SERVER_TEXTS.validMatchIdRequired,400);
+    const {data,error}=await db.rpc("no_count_it_exit_early",{p_room_id:roomId,p_match_id:earlyExitMatchId,p_user_id:userId});
+    if(error)return fail(NO_COUNT_IT_SERVER_TEXTS.earlyExitFailed,409);
+    await broadcast(db,roomId,"room_finished");
+    return respond(data);
   }
 
   if(body.action==="start_match"){
@@ -199,7 +208,7 @@ Deno.serve(async(req:Request)=>{
   const match=snapshot?.match;
   if(match?.round?.status==="revealing"){
     const {data:round}=await db.from("games_no_count_it_rounds").select("reveal_started_at").eq("match_id",activeMatchId).eq("round_number",match.currentRound).maybeSingle();
-    if(round?.reveal_started_at&&Date.now()-Date.parse(round.reveal_started_at)>=4000){
+    if(round?.reveal_started_at&&Date.now()-Date.parse(round.reveal_started_at)>=6000){
       if(match.currentRound<3){
         const {scene,path}=await uploadScene(db,roomId,match.currentRound+1);
         const {data:progress,error:progressError}=await db.rpc("no_count_it_prepare_next_round",{p_room_id:roomId,p_match_id:activeMatchId,p_scene:scene,p_image_path:path});
