@@ -63,10 +63,12 @@ export default function SceneGeneratorPreview() {
             {NO_COUNT_IT_TEXTS.preview.generationError} {generated.error}
           </section>
         ) : generated.svg ? (
-          <section style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(220px, 300px)', gap: 20, marginTop: 20, alignItems: 'start' }}>
-            <div style={{ width: '100%', maxWidth: 540, margin: '0 auto', padding: 12, borderRadius: 20, background: '#fff8e8', boxShadow: '0 8px 24px #76512a22' }}>
-              <div dangerouslySetInnerHTML={{ __html: generated.svg }} />
-              <h2 style={{ margin: '8px 0', textAlign: 'center', fontSize: 22 }}>
+          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 20, marginTop: 20, alignItems: 'start' }}>
+            <div style={{ width: '100%', maxWidth: 360, aspectRatio: '3 / 4', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 10, margin: '0 auto', padding: 14, overflow: 'hidden', border: '8px solid #4b4038', borderRadius: 28, background: '#d9d1c2', boxShadow: '0 8px 24px #76512a33' }}>
+              <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '100%' }} dangerouslySetInnerHTML={{ __html: generated.svg }} />
+              </div>
+              <h2 style={{ flex: '0 0 auto', margin: 0, padding: '8px 4px', borderRadius: 12, background: '#fff8e8', textAlign: 'center', fontSize: 20, lineHeight: 1.2 }}>
                 {NO_COUNT_IT_TEXTS.preview.questionPrefix}{generated.scene ? NO_COUNT_IT_TEXTS.colors[generated.scene.targetColor] : ''}»?
               </h2>
             </div>
