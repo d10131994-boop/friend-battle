@@ -76,7 +76,7 @@ export default function RoundResultsPreview() {
 
         <div style={{
           position: 'relative',
-          height: 350,
+          height: 450,
           margin: '0 0 8px',
           borderRadius: 20,
           background: 'linear-gradient(90deg, rgba(247,230,196,.28), rgba(242,214,165,.16) 50%, rgba(247,230,196,.28))',
@@ -131,11 +131,11 @@ export default function RoundResultsPreview() {
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
-                    fontSize: 13,
-                    lineHeight: 1.25,
+                    fontSize: 11,
+                    lineHeight: 1,
                     color: nameColor,
                   }}>{player.name}</strong>
-                  <span style={{ fontSize: 18, lineHeight: 1, fontWeight: 1000, color: '#65482f' }}>{player.answer}</span>
+                  <span style={{ fontSize: 16, lineHeight: 1, fontWeight: 1000, color: '#65482f' }}>{player.answer}</span>
                 </div>
                 <div style={{
                   minWidth: 0,
@@ -145,8 +145,8 @@ export default function RoundResultsPreview() {
                   alignItems: 'flex-start',
                   gap: 1,
                 }}>
-                  <strong style={{ fontSize: 21, lineHeight: 1, color: scoreColor }}>{player.error}</strong>
-                  <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: .7, color: '#a18a6d' }}>ОШИБОК</span>
+                  <strong style={{ fontSize: 18, lineHeight: 1, color: scoreColor }}>{player.error}</strong>
+                  <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: .7, color: '#a18a6d' }}>ОШИБОК</span>
                 </div>
                 <div style={{
                   position: 'absolute',
