@@ -35,12 +35,12 @@ export function renderCandyJarSvg(scene: NoCountItScene): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 1000 1000" role="img" aria-label="${NO_COUNT_IT_TEXTS.accessibility.candyJar}">
   <defs>
     <clipPath id="jar-interior"><path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z"/></clipPath>
-    <linearGradient id="glass-edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#B7D7D9" stop-opacity=".55"/><stop offset=".18" stop-color="#FFFFFF" stop-opacity=".08"/><stop offset=".82" stop-color="#FFFFFF" stop-opacity=".08"/><stop offset="1" stop-color="#B7D7D9" stop-opacity=".55"/></linearGradient>
+    <linearGradient id="glass-edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000000" stop-opacity=".82"/><stop offset=".18" stop-color="#000000" stop-opacity=".12"/><stop offset=".82" stop-color="#000000" stop-opacity=".12"/><stop offset="1" stop-color="#000000" stop-opacity=".82"/></linearGradient>
   </defs>
   <g clip-path="url(#jar-interior)"><!-- CANDIES -->${candies}</g>
-  <path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z" fill="url(#glass-edge)" fill-opacity=".28" stroke="#A8C9CB" stroke-opacity=".72" stroke-width="13"/>
-  <path d="M260 105 Q260 80 292 80 H708 Q740 80 740 105 V135 Q740 155 710 155 H290 Q260 155 260 135 Z" fill="#D8E6E3" fill-opacity=".65" stroke="#A8C9CB" stroke-width="11"/>
-  <path d="M270 85 Q500 65 730 85" fill="none" stroke="#A8C9CB" stroke-opacity=".6" stroke-width="8"/>
+  <path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z" fill="#000000" fill-opacity=".12" stroke="#000000" stroke-opacity=".9" stroke-width="13"/>
+  <path d="M260 105 Q260 80 292 80 H708 Q740 80 740 105 V135 Q740 155 710 155 H290 Q260 155 260 135 Z" fill="#111111" fill-opacity=".92" stroke="#000000" stroke-width="11"/>
+  <path d="M270 85 Q500 65 730 85" fill="none" stroke="#000000" stroke-opacity=".9" stroke-width="8"/>
   <path d="M465 82 C430 25 385 48 420 92 C445 115 470 100 500 90 C530 100 555 115 580 92 C615 48 570 25 535 82" fill="#D98A9D" stroke="#A95F76" stroke-width="7"/>
   <circle cx="500" cy="91" r="17" fill="#E9A7B5" stroke="#A95F76" stroke-width="6"/>
   </svg>`
