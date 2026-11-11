@@ -92,7 +92,8 @@ function buildCandidates(radius: number, emptyTopPercent: number): Position[] {
   const positions: Position[] = []
   const verticalStep = radius * 1.2
   let row = 0
-  const highestCandyCenter = 145 + (930 - 145) * (emptyTopPercent / 100) + radius\n  for (let y = JAR_BOTTOM - radius; y >= highestCandyCenter; y -= verticalStep) {
+  const highestCandyCenter = 145 + (930 - 145) * (emptyTopPercent / 100) + radius
+  for (let y = JAR_BOTTOM - radius; y >= highestCandyCenter; y -= verticalStep) {
     positions.push(...buildLayerPositions(y, radius, row))
     row += 1
   }
@@ -102,9 +103,10 @@ function buildCandidates(radius: number, emptyTopPercent: number): Position[] {
 function tryPlacement(
   colors: NoCountItCandyColor[],
   radius: number,
+  emptyTopPercent: number,
 ): PlacedCandy[] | null {
   const placed: PlacedCandy[] = []
-  const positions = buildCandidates(radius)
+  const positions = buildCandidates(radius, emptyTopPercent)
   const available = [...positions]
 
   for (let index = 0; index < colors.length; index += 1) {
@@ -166,8 +168,9 @@ export function placeCandies(colors: NoCountItCandyColor[], random: () => number
   const baseRadius = Math.max(20, Math.min(30, calculatedRadius))
 
   let placed: PlacedCandy[] | null = null
+  const emptyTopPercent = randomInteger(random, 10, 30)
   for (const scale of [1, 0.96, 0.92, 0.88]) {
-    placed = tryPlacement(colors, baseRadius * scale)
+    placed = tryPlacement(colors, baseRadius * scale, emptyTopPercent)
     if (placed) break
   }
 
