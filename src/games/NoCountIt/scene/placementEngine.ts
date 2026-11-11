@@ -88,11 +88,11 @@ function buildLayerPositions(y: number, radius: number, row: number): Position[]
   return positions.sort((a, b) => Number(b.edge) - Number(a.edge))
 }
 
-function buildCandidates(radius: number): Position[] {
+function buildCandidates(radius: number, emptyTopPercent: number): Position[] {
   const positions: Position[] = []
   const verticalStep = radius * 1.2
   let row = 0
-  for (let y = JAR_BOTTOM - radius; y >= 205 + radius; y -= verticalStep) {
+  const highestCandyCenter = 145 + (930 - 145) * (emptyTopPercent / 100) + radius\n  for (let y = JAR_BOTTOM - radius; y >= highestCandyCenter; y -= verticalStep) {
     positions.push(...buildLayerPositions(y, radius, row))
     row += 1
   }
