@@ -34,7 +34,13 @@ Version 1 generates a candy jar from a prepared visual template:
 - random remaining color distribution and shuffled object list;
 - a random target color selected from colors present in the scene;
 - normalized 0–1000 coordinates;
-- limited overlap, no objects outside the jar, no fully hidden candies, and visible target candies.
+- deterministic bottom-up placement in staggered layers, with jar-wall positions evaluated before interior positions;
+- wall-adjacent candies must not cover more than 30% of any already placed neighbor;
+- pairwise circle intersections are used as an approximation for overlap, targeting 10–60% cumulative overlap on each candy (outer-contour candies may use a lower 5% floor when needed);
+- size is derived from the requested candy count so denser scenes use smaller candies;
+- no objects outside the jar, no fully hidden candies, and visible target candies.
+
+A development-only generator preview is available at `/?no-count-it-generator=1` while running Vite. It accepts a fixed candy count and seed so generated layouts can be compared reproducibly. The preview must remain unavailable in production builds.
 
 The generator creates the private scene data. The SVG renderer draws it and must not calculate game outcomes. Keep the generator independent from the match engine so additional scene generators can be added without changing match rules.
 
