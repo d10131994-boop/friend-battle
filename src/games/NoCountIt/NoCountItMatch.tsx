@@ -100,7 +100,7 @@ export default function NoCountItMatch({
   const myRoundPlayer = currentRound?.players.find((player) => player.userId === telegramId)
   const roundKey = match && currentRound ? `${match.matchId}:${currentRound.roundNumber}` : null
 
-  const keypadStyles = useMemo(() => {
+  const keypadStyles = useMemo<Record<string, CSSProperties>>(() => {
     const colors: NoCountItPaletteColor[] = [...new Set<NoCountItPaletteColor>([
       ...(currentRound?.candyColors ?? []),
       ...(currentRound?.backgroundColor ? [currentRound.backgroundColor] : []),
