@@ -1,11 +1,11 @@
-import type { NoCountItCandyColor } from './types'
+import type { NoCountItPaletteColor } from './types'
 
 export const NO_COUNT_IT_TEXTS = {
   colors: {
     red: 'красный', orange: 'оранжевый', yellow: 'жёлтый', green: 'зелёный',
     blue: 'синий', purple: 'фиолетовый', pink: 'розовый', teal: 'бирюзовый',
     white: 'белый', brown: 'коричневый',
-  } satisfies Record<NoCountItCandyColor, string>,
+  } satisfies Record<NoCountItPaletteColor, string>,
   accessibility: { candyJar: 'Банка с разноцветными конфетами' },
   match: {
     updateFailed: 'Не удалось обновить игру.', multiplayer: 'МУЛЬТИПЛЕЕР',
