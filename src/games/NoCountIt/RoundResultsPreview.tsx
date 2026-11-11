@@ -47,11 +47,21 @@ type PositionedPlayer = {
 
 function positionPlayers() {
   const ordered = [...PLAYERS].sort((a, b) => b.answer - a.answer)
-  const upperPlayers = ordered.filter((player) => player.answer > CORRECT_ANSWER)
-  const lowerPlayers = ordered.filter((player) => player.answer <= CORRECT_ANSWER)
+  const correctPlayers = PLAYERS
+    .filter((player) => player.error === 0)
+    .map((player) => ({
+      ...player,
+      nameColor: PLAYER_NAME_COLORS[PLAYERS.indexOf(player) % PLAYER_NAME_COLORS.length].value,
+    }))
+  const incorrectPlayers = ordered.filter((player) => player.error > 0)
+  const upperPlayers = incorrectPlayers.filter((player) => player.answer > CORRECT_ANSWER)
+  const lowerPlayers = incorrectPlayers.filter((player) => player.answer < CORRECT_ANSWER)
+  const correctGroupHeight = correctPlayers.length * RESULT_ROW_HEIGHT
+    + Math.max(0, correctPlayers.length - 1) * 8
+  const centerBandHeight = Math.max(ANSWER_WINDOW_HEIGHT, correctGroupHeight)
   const upperSpace = Math.max(170, upperPlayers.length * RESULT_ROW_GAP + 60)
   const lowerSpace = Math.max(170, lowerPlayers.length * RESULT_ROW_GAP + 60)
-  const scaleHeight = upperSpace + ANSWER_WINDOW_HEIGHT + lowerSpace
+  const scaleHeight = upperSpace + centerBandHeight + lowerSpace
   const upperMaxDeviation = Math.max(
     1,
     ...upperPlayers.map((player) => player.answer - CORRECT_ANSWER),
@@ -64,8 +74,6 @@ function positionPlayers() {
   const positioned = new Map<string, number>()
   let previousUpperTop = Number.POSITIVE_INFINITY
 
-  // Place the closest upper answer first. If two entries collide, only the
-  // farther-from-center entry is moved outward by the minimum required gap.
   for (const player of [...upperPlayers].reverse()) {
     const deviation = player.answer - CORRECT_ANSWER
     const ratio = deviation / upperMaxDeviation
@@ -77,46 +85,44 @@ function positionPlayers() {
 
   let previousLowerTop = Number.NEGATIVE_INFINITY
 
-  // The lower half uses the same rule, moving farther-low answers downwards.
   for (const player of lowerPlayers) {
     const deviation = CORRECT_ANSWER - player.answer
     const ratio = deviation / lowerMaxDeviation
-    const desiredTop = upperSpace + ANSWER_WINDOW_HEIGHT + MARKER_CLEARANCE
+    const desiredTop = upperSpace + centerBandHeight + MARKER_CLEARANCE
       + ratio * (lowerSpace - MARKER_CLEARANCE - OUTER_MARKER_MARGIN)
     const top = Math.max(desiredTop, previousLowerTop + RESULT_ROW_GAP)
     positioned.set(player.id, top)
     previousLowerTop = top
   }
 
-  const sideById = new Map(ordered.map((player, index) => [
+  const sideById = new Map(incorrectPlayers.map((player, index) => [
     player.id,
     index % 2 === 0 ? 'left' : 'right',
   ] as const))
 
-  const players: PositionedPlayer[] = PLAYERS.map((player, index) => ({
+  const players: PositionedPlayer[] = incorrectPlayers.map((player) => ({
     ...player,
-    nameColor: PLAYER_NAME_COLORS[index % PLAYER_NAME_COLORS.length].value,
-    scoreColor: player.answer > CORRECT_ANSWER
-      ? '#388b43'
-      : player.answer < CORRECT_ANSWER
-        ? '#d34e43'
-        : '#8b704f',
+    nameColor: PLAYER_NAME_COLORS[PLAYERS.indexOf(player) % PLAYER_NAME_COLORS.length].value,
+    scoreColor: player.answer > CORRECT_ANSWER ? '#388b43' : '#d34e43',
     labelSide: sideById.get(player.id) ?? 'left',
     top: positioned.get(player.id) ?? scaleHeight / 2,
   }))
 
   return {
     players,
+    correctPlayers,
+    correctGroupHeight,
+    correctGroupTop: upperSpace + (centerBandHeight - correctGroupHeight) / 2,
     upperSpace,
     lowerSpace,
     scaleHeight,
-    answerWindowTop: upperSpace,
+    answerWindowTop: upperSpace + (centerBandHeight - ANSWER_WINDOW_HEIGHT) / 2,
   }
 }
 
 export default function RoundResultsPreview() {
   const layout = positionPlayers()
-  const lineBottom = layout.answerWindowTop + ANSWER_WINDOW_HEIGHT
+  const lineBottom = layout.upperSpace + Math.max(ANSWER_WINDOW_HEIGHT, layout.correctGroupHeight)
 
   return (
     <main style={{
@@ -192,6 +198,25 @@ export default function RoundResultsPreview() {
             boxShadow: '0 0 0 4px rgba(180,139,93,.08)',
           }} />
 
+          {layout.correctPlayers.some((player) => player.telegramId === DEMO_CURRENT_TELEGRAM_ID) && (
+            <div style={{
+              position: 'absolute',
+              left: 6,
+              right: 'calc(50% - 52px)',
+              top: Math.min(layout.correctGroupTop, layout.answerWindowTop),
+              height: Math.max(
+                layout.correctGroupTop + layout.correctGroupHeight,
+                layout.answerWindowTop + ANSWER_WINDOW_HEIGHT,
+              ) - Math.min(layout.correctGroupTop, layout.answerWindowTop),
+              border: '2px solid #c58a42',
+              borderRadius: 18,
+              background: 'rgba(255, 239, 205, .42)',
+              boxShadow: '0 2px 8px rgba(116, 76, 35, .12)',
+              zIndex: 2,
+              pointerEvents: 'none',
+            }} />
+          )}
+
           {layout.players.map((player) => {
             const labelOnLeft = player.labelSide === 'left'
             const label = (
@@ -236,8 +261,6 @@ export default function RoundResultsPreview() {
               </div>
             )
 
-            const isCurrentPlayer = player.telegramId === DEMO_CURRENT_TELEGRAM_ID
-
             return (
               <div key={player.id} style={{
                 position: 'absolute',
@@ -250,10 +273,8 @@ export default function RoundResultsPreview() {
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 alignItems: 'center',
-                border: isCurrentPlayer ? '2px solid #c58a42' : '2px solid transparent',
+                border: '2px solid transparent',
                 borderRadius: 999,
-                background: isCurrentPlayer ? 'rgba(255, 239, 205, .82)' : 'transparent',
-                boxShadow: isCurrentPlayer ? '0 2px 8px rgba(116, 76, 35, .16)' : 'none',
               }}>
                 {labelOnLeft ? label : score}
                 {labelOnLeft ? score : label}
@@ -273,6 +294,65 @@ export default function RoundResultsPreview() {
               </div>
             )
           })}
+
+          {layout.correctPlayers.length > 0 && (
+            <>
+              <div style={{
+                position: 'absolute',
+                left: 8,
+                top: layout.correctGroupTop,
+                width: 'calc(50% - 62px)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-end',
+                gap: 8,
+                zIndex: 3,
+              }}>
+                {layout.correctPlayers.map((player) => (
+                  <div key={player.id} style={{
+                    width: '100%',
+                    minHeight: RESULT_ROW_HEIGHT,
+                    boxSizing: 'border-box',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    gap: 7,
+                    padding: '0 5px',
+                    color: player.nameColor,
+                    fontSize: 15,
+                    lineHeight: 1.15,
+                    fontWeight: 1000,
+                    textAlign: 'right',
+                    overflowWrap: 'anywhere',
+                  }}>
+                    <span>{player.name}</span>
+                    <span style={{
+                      flexShrink: 0,
+                      width: 9,
+                      height: 9,
+                      borderRadius: '50%',
+                      background: player.nameColor,
+                    }} />
+                  </div>
+                ))}
+              </div>
+              <div style={{
+                position: 'absolute',
+                left: 'calc(50% + 49px)',
+                top: layout.answerWindowTop,
+                height: ANSWER_WINDOW_HEIGHT,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#388b43',
+                fontSize: 23,
+                fontWeight: 1000,
+                zIndex: 3,
+              }}>
+                0
+              </div>
+            </>
+          )}
 
           <div style={{
             position: 'absolute',
