@@ -122,7 +122,7 @@ function positionPlayers() {
 
 export default function RoundResultsPreview() {
   const layout = positionPlayers()
-  const lineBottom = layout.answerWindowTop + ANSWER_WINDOW_HEIGHT
+  const lineBottom = layout.upperSpace + Math.max(ANSWER_WINDOW_HEIGHT, layout.correctGroupHeight)
 
   return (
     <main style={{
