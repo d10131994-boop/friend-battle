@@ -1,4 +1,4 @@
-import type { NoCountItScene } from '../types'
+import type { NoCountItCandyColor, NoCountItPaletteColor, NoCountItScene } from '../types'
 import { CANDY_GENERATION_CONFIG } from '../generationConfig'
 import { distributeCandyColors, randomInteger } from './colorDistributor'
 import { placeCandies } from './placementEngine'
@@ -48,13 +48,17 @@ export function generateCandyJarScene(options: SceneGenerationOptions = {}): NoC
   }
 
   const count = randomInteger(random, minCandies, maxCandies)
-  const distribution = distributeCandyColors(count, random, options.minColors ?? 4, options.maxColors ?? 10)
+  const distribution = distributeCandyColors(count, random, options.minColors ?? 4, options.maxColors ?? 9)
   const objects = placeCandies(distribution.colors, random)
+  const backgroundColors: NoCountItPaletteColor[] = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'teal', 'white', 'brown']
+  const availableBackgroundColors = backgroundColors.filter((color) => !distribution.colors.includes(color as NoCountItCandyColor))
+  const backgroundColor = availableBackgroundColors[randomInteger(random, 0, availableBackgroundColors.length - 1)]
   return {
     version: 1,
     seed,
     generator: 'candy-jar',
     objects,
+    backgroundColor,
     targetColor: distribution.targetColor,
     correctCount: objects.filter((object) => object.color === distribution.targetColor).length,
   }

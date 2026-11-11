@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
 import { telegramUser } from '../../services/telegram'
-import type { NoCountItPublicMatch, NoCountItSnapshot } from './types'
+import type { NoCountItPaletteColor, NoCountItPublicMatch, NoCountItSnapshot } from './types'
+import { createSeededRandom } from './scene/sceneGenerator'
+import { CANDY_PALETTE } from './scene/svgRenderer'
 import { NO_COUNT_IT_TEXTS } from './texts'
 
 type Props = {
@@ -97,6 +99,30 @@ export default function NoCountItMatch({
   const currentRound = match?.round
   const myRoundPlayer = currentRound?.players.find((player) => player.userId === telegramId)
   const roundKey = match && currentRound ? `${match.matchId}:${currentRound.roundNumber}` : null
+
+  const keypadStyles = useMemo<Record<string, CSSProperties>>(() => {
+    const colors: NoCountItPaletteColor[] = [...new Set<NoCountItPaletteColor>([
+      ...(currentRound?.candyColors ?? []),
+      ...(currentRound?.backgroundColor ? [currentRound.backgroundColor] : []),
+    ])].sort()
+    if (colors.length < 2 || !match || !currentRound) return {}
+
+    const random = createSeededRandom(`${match.matchId}:${currentRound.roundNumber}:keypad`)
+    const styles: Record<string, CSSProperties> = {}
+    for (const digit of '0123456789') {
+      const backgroundColor = colors[Math.floor(random() * colors.length)]
+      const textColors = colors.filter((color) => color !== backgroundColor)
+      const textColor = textColors[Math.floor(random() * textColors.length)]
+      const background = CANDY_PALETTE[backgroundColor]
+      styles[digit] = {
+        background: `linear-gradient(180deg, ${background.light}, ${background.base})`,
+        color: CANDY_PALETTE[textColor].base,
+        borderColor: background.light,
+        boxShadow: `0 5px 0 ${background.dark}, 0 7px 11px rgba(74, 46, 14, .16), inset 0 2px 0 rgba(255,255,255,.65)`,
+      }
+    }
+    return styles
+  }, [match?.matchId, currentRound?.roundNumber, currentRound?.candyColors, currentRound?.backgroundColor])
 
   const roundReady = readyRoundKey === roundKey
   const answerInput = answerDraft.roundKey === roundKey ? answerDraft.value : ''
@@ -276,6 +302,7 @@ export default function NoCountItMatch({
                           className={`no-count-it-key${digit === '✓' ? ' no-count-it-key-submit' : digit === '⌫' ? ' no-count-it-key-delete' : ''}`}
                           aria-label={digit === '⌫' ? 'Удалить последнюю цифру' : digit === '✓' ? 'Отправить ответ' : digit}
                           disabled={loading || remaining <= 0}
+                          style={/^\d$/.test(digit) ? keypadStyles[digit] : undefined}
                           onClick={() => {
                             if (digit === '✓') void submitAnswer()
                             else if (digit === '⌫') setAnswerDraft({ roundKey, value: answerInput.slice(0, -1) })

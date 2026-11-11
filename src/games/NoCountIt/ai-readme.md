@@ -30,7 +30,8 @@ Browser database transport must use `src/database`. Do not create another Supaba
 
 Version 1 generates a candy jar from a prepared visual template:
 - 40–120 candies;
-- 4–10 colors, with at least three candies of each color;
+- 4–9 candy colors, excluding white and black, with at least three candies of each color;
+- one jar-interior background color selected from the visual palette but excluded from the candy colors;
 - random remaining color distribution and shuffled object list;
 - a random target color selected from colors present in the scene;
 - normalized 0–1000 coordinates;
@@ -45,13 +46,13 @@ The generation parameters are centralized in `src/games/NoCountIt/generationConf
 
 Current tuning values use an estimated jar area of 500,000 and target coverage of 0.90. Target coverage is a formula input for the sum of candy-circle areas; it is not an exact measurement of the visible union area after overlaps.
 
-A development-only generator preview is available at `/?no-count-it-generator=1` while running Vite. It accepts a fixed candy count and seed so generated layouts can be compared reproducibly. The preview must remain unavailable in production builds. It uses local images from `src/games/NoCountIt/backgrounds/` (PNG, JPG, JPEG or WebP); one image is selected deterministically from the scene seed. A solid color is also selected from the candy palette, excluding every color used by candies in that scene. The dev-only layered composition shows a preview timer, the jar and the target-color prompt. These local backgrounds are not yet used by production multiplayer rounds.
+A development-only generator preview is available at `/?no-count-it-generator=1` while running Vite. It accepts a fixed candy count and seed so generated layouts can be compared reproducibly. The preview must remain unavailable in production builds. It uses local images from `src/games/NoCountIt/backgrounds/` (PNG, JPG, JPEG or WebP); one image is selected deterministically from the scene seed. A solid color is selected for the jar interior from the visual palette, excluding every color used by candies in that scene. White and black are not used for candies; white remains available as an interior background. The dev-only layered composition shows a preview timer, the jar and the target-color prompt. These local backgrounds are not yet used by production multiplayer rounds.
 
 The generator creates the private scene data. The SVG renderer draws it and must not calculate game outcomes. Keep the generator independent from the match engine so additional scene generators can be added without changing match rules.
 
 ## 4. Privacy and trust boundary
 
-Scene object coordinates, seed, target count and other private generation metadata are server-only until the round reveal. The pre-reveal client snapshot may include a signed image URL and the prompt, but never the scene JSON or correct count.
+Scene object coordinates, seed, target count and other private generation metadata are server-only until the round reveal. The pre-reveal client snapshot may include a signed image URL, the prompt, the distinct candy-color list and the jar-interior background color, but never the scene JSON, seed, object coordinates or correct count.
 
 The backend verifies Telegram initData, derives the acting user ID, checks room membership and selected game, and enforces deadlines using database/server time. Never trust client-supplied identity, room membership, readiness, answer correctness, timestamps, score, errors or winner.
 
@@ -82,6 +83,14 @@ Production currently contains all four game tables with RLS enabled and no brows
 Real player departure is handled by a NoCountIt-owned trigger on the shared player deletion: the leaver is marked `left`; if exactly one match participant remains, that player is recorded as the early winner and common room statistics are updated. If more than one participant remains, the active match is cancelled because the current shared Multiplayer leave operation resets the room and clears its selected game. The currently connected game screen preserves its NoCountIt view long enough to display the completed/cancelled result. Reconnection into that post-leave result view after a full app restart is not yet guaranteed.
 
 The agreed 24-hour Storage object cleanup is still not implemented or scheduled.
+
+## 6.1 Round palette contract
+
+The private scene JSON stores `backgroundColor` separately from candy colors. White is excluded from candy generation but remains available as a jar-interior background; black is not in the visual palette. The trusted public snapshot exposes only the distinct `candyColors` array and `backgroundColor` for keypad styling. It must not expose the scene seed, object positions or correct count before reveal.
+
+The keypad derives its per-digit button and foreground colors deterministically from the match ID, round number and public palette, so every participant sees the same layout. Each digit's foreground color must differ from its own button background. Delete and confirm retain fixed red and green styling.
+
+The snapshot contract change is prepared in `20261112100000_no_count_it_round_palette.sql`; the matching `no-count-it` Edge Function update must also be deployed before the feature is available in Production. Neither deployment is performed by a source-code PR.
 
 ## 7. Client integration boundary
 

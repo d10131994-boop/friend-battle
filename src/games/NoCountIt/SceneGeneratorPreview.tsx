@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { CANDY_GENERATION_CONFIG } from './generationConfig'
 import { createSeededRandom, generateCandyJarScene } from './scene/sceneGenerator'
 import { CANDY_PALETTE, renderCandyJarSvg } from './scene/svgRenderer'
-import type { NoCountItCandyColor } from './types'
+import type { NoCountItPaletteColor } from './types'
 import { NO_COUNT_IT_TEXTS } from './texts'
 
 const BACKGROUND_IMAGES = import.meta.glob<string>('./backgrounds/*.{png,jpg,jpeg,webp}', {
@@ -10,7 +10,7 @@ const BACKGROUND_IMAGES = import.meta.glob<string>('./backgrounds/*.{png,jpg,jpe
   query: '?url',
   import: 'default',
 })
-const CANDY_COLORS = Object.keys(CANDY_PALETTE) as NoCountItCandyColor[]
+const CANDY_COLORS = Object.keys(CANDY_PALETTE) as NoCountItPaletteColor[]
 
 export default function SceneGeneratorPreview() {
   const [count, setCount] = useState(80)
@@ -25,10 +25,8 @@ export default function SceneGeneratorPreview() {
         maxCandies: count,
         maxColors: CANDY_COLORS.length - 1,
       })
-      const usedColors = new Set(scene.objects.map((candy) => candy.color))
-      const availableBackgroundColors = CANDY_COLORS.filter((color) => !usedColors.has(color))
       const random = createSeededRandom(`${scene.seed}-layers`)
-      const backgroundColor = availableBackgroundColors[Math.floor(random() * availableBackgroundColors.length)]
+      const backgroundColor = scene.backgroundColor
       const backgroundPaths = Object.keys(BACKGROUND_IMAGES).sort()
       const backgroundPath = backgroundPaths.length
         ? backgroundPaths[Math.floor(random() * backgroundPaths.length)]
@@ -92,8 +90,7 @@ export default function SceneGeneratorPreview() {
           </section>
         ) : generated.svg && generated.scene && generated.backgroundColor ? (
           <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 20, marginTop: 20, alignItems: 'start' }}>
-            <div style={{ width: '100%', maxWidth: 360, aspectRatio: '3 / 4', boxSizing: 'border-box', position: 'relative', display: 'flex', flexDirection: 'column', gap: 10, margin: '0 auto', padding: 14, overflow: 'hidden', border: '8px solid #4b4038', borderRadius: 28, background: CANDY_PALETTE[generated.backgroundColor].base, boxShadow: '0 8px 24px #76512a33' }}>
-              <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0, background: CANDY_PALETTE[generated.backgroundColor].base }} />
+            <div style={{ width: '100%', maxWidth: 360, aspectRatio: '3 / 4', boxSizing: 'border-box', position: 'relative', display: 'flex', flexDirection: 'column', gap: 10, margin: '0 auto', padding: 14, overflow: 'hidden', border: '8px solid #4b4038', borderRadius: 28, background: '#f3e5bd', boxShadow: '0 8px 24px #76512a33' }}>
               {generated.backgroundImage && (
                 <img
                   src={generated.backgroundImage}
