@@ -47,7 +47,7 @@ function buildRevealLayout(
   }
   const colorByUserId = new Map(players.map((player, index) => [
     player.userId,
-    CANDY_PALETTE[shuffledColors[index % Math.max(1, shuffledColors.length)] ?? 'brown'].base,
+    CANDY_PALETTE[(shuffledColors[index % Math.max(1, shuffledColors.length)] ?? 'brown') as keyof typeof CANDY_PALETTE].base,
   ]))
 
   const correctPlayers = players.filter((player) => player.error === 0).map((player) => ({
