@@ -166,7 +166,8 @@ export function placeCandies(colors: NoCountItCandyColor[], random: () => number
   const estimatedJarArea = 430_000
   const targetCoverage = 0.48
   const calculatedRadius = Math.sqrt((estimatedJarArea * targetCoverage) / (colors.length * Math.PI))
-  const baseRadius = Math.max(20, Math.min(30, calculatedRadius))
+  // Let sparse scenes use their calculated larger size; keep a safety floor for dense scenes.
+  const baseRadius = Math.max(20, Math.min(90, calculatedRadius))
 
   let placed: PlacedCandy[] | null = null
   const emptyTopPercent = randomInteger(random, 10, 30)
