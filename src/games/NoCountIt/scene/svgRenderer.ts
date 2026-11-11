@@ -31,7 +31,7 @@ export function renderCandyJarSvg(scene: NoCountItScene): string {
     throw new Error('Unsupported NoCountIt scene version or generator.')
   }
   const candies = scene.objects.map(renderCandy).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="auto" viewBox="0 0 1000 1000" role="img" aria-label="Банка с разноцветными конфетами">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 1000 1000" role="img" aria-label="Банка с разноцветными конфетами">
   <defs>
     <clipPath id="jar-interior"><path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z"/></clipPath>
     <linearGradient id="glass-edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#B7D7D9" stop-opacity=".55"/><stop offset=".18" stop-color="#FFFFFF" stop-opacity=".08"/><stop offset=".82" stop-color="#FFFFFF" stop-opacity=".08"/><stop offset="1" stop-color="#B7D7D9" stop-opacity=".55"/></linearGradient>
