@@ -37,7 +37,7 @@ export function renderCandyJarSvg(scene: NoCountItScene): string {
     <clipPath id="jar-interior"><path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z"/></clipPath>
     <linearGradient id="glass-edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000000" stop-opacity=".82"/><stop offset=".18" stop-color="#000000" stop-opacity=".12"/><stop offset=".82" stop-color="#000000" stop-opacity=".12"/><stop offset="1" stop-color="#000000" stop-opacity=".82"/></linearGradient>
   </defs>
-  <g clip-path="url(#jar-interior)"><rect x="175" y="80" width="650" height="850" fill="${CANDY_PALETTE[scene.backgroundColor].base}"/><!-- CANDIES -->${candies}</g>
+  <g clip-path="url(#jar-interior)"><!-- CANDIES -->${candies}</g>
   <path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z" fill="#000000" fill-opacity=".12" stroke="#000000" stroke-opacity=".9" stroke-width="13"/>
   <path d="M260 105 Q260 80 292 80 H708 Q740 80 740 105 V135 Q740 155 710 155 H290 Q260 155 260 135 Z" fill="#111111" fill-opacity=".92" stroke="#000000" stroke-width="11"/>
   <path d="M270 85 Q500 65 730 85" fill="none" stroke="#000000" stroke-opacity=".9" stroke-width="8"/>
