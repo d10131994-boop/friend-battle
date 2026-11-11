@@ -63,6 +63,8 @@ Use the trusted Multiplayer `start_game` and `finish_game` operations from the g
 
 A completed or technical-abort match keeps the shared room in `playing` while results are shown. Any member may return to the room; otherwise the client invokes the trusted `return_to_room` action 60 seconds after the match's server-recorded `completedAt`. That action verifies the terminal NoCountIt match and then marks the shared room `finished`. The room remains open and reusable.
 
+During each round's reveal/results phase, any current room member may choose **«Выйти досрочно»**. The trusted `early_exit` action atomically marks the NoCountIt match `cancelled` and finishes the shared room for all participants. Intermediate round/player error rows remain stored for inspection, but an interrupted match does not increment match statistics or award a winner. The room keeps its players and selected game and can be reused through the normal readiness flow. Concurrent early-exit requests for the same match are idempotent.
+
 ## 6. Planned persistence and storage
 
 The planned game tables are:
