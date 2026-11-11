@@ -17,7 +17,7 @@ NoCountIt is a multiplayer estimation game for 2–4 players. There is no solo m
 
 ## Scene generation v1
 
-Version 1 uses a prepared candy-jar visual template and a deterministic server-side placement generator. A scene contains 40–120 candies and 4–9 candy colors; white and black are excluded from candy generation. Every generated color appears at least three times; remaining candies are distributed randomly. One present color is selected as the target. The jar interior receives a separate background color that is not used by any candy.
+Version 1 uses a prepared candy-jar visual template and a deterministic server-side placement generator. A scene contains 40–120 candies and 4–9 candy colors; white and black are excluded from candy generation. Every generated color appears at least three times; remaining candies are distributed randomly. One present color is selected as the target. A single wall color is selected that is not used by any candy. In the development layered preview, this color is the base behind the background artwork and is visible through transparent parts of the artwork and jar; the jar SVG itself does not paint an opaque interior fill.
 
 The generator stores a private scene description, including object positions and the correct count. The SVG renderer only draws that description; it does not implement game rules. Scene coordinates use a normalized 0–1000 space.
 
