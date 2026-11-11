@@ -9,9 +9,11 @@ if (!rootElement) {
 }
 
 const root = createRoot(rootElement)
+const previewParams = new URLSearchParams(window.location.search)
 const isSceneGeneratorPreview =
-  import.meta.env.DEV &&
-  new URLSearchParams(window.location.search).get('no-count-it-generator') === '1'
+  import.meta.env.DEV && previewParams.get('no-count-it-generator') === '1'
+const isRoundResultsPreview =
+  import.meta.env.DEV && previewParams.get('no-count-it-round-results') === '1'
 
 if (isSceneGeneratorPreview) {
   void import('./games/NoCountIt/SceneGeneratorPreview').then(({ default: SceneGeneratorPreview }) => {
@@ -26,6 +28,24 @@ if (isSceneGeneratorPreview) {
       <div className="startup-error" role="alert">
         <div className="startup-error__content">
           <h1>Не удалось загрузить генератор сцен</h1>
+          <p>Произошла ошибка при загрузке локального предпросмотра. Обнови страницу или проверь консоль разработчика.</p>
+        </div>
+      </div>,
+    )
+  })
+} else if (isRoundResultsPreview) {
+  void import('./games/NoCountIt/RoundResultsPreview').then(({ default: RoundResultsPreview }) => {
+    root.render(
+      <StrictMode>
+        <RoundResultsPreview />
+      </StrictMode>,
+    )
+  }).catch((error: unknown) => {
+    console.error('Не удалось загрузить предпросмотр итогов раунда NoCountIt:', error)
+    root.render(
+      <div className="startup-error" role="alert">
+        <div className="startup-error__content">
+          <h1>Не удалось загрузить предпросмотр итогов раунда</h1>
           <p>Произошла ошибка при загрузке локального предпросмотра. Обнови страницу или проверь консоль разработчика.</p>
         </div>
       </div>,
