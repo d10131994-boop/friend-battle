@@ -39,6 +39,6 @@ export const NO_COUNT_IT_TEXTS = {
     questionPrefix: 'Сколько конфет цвета «', sceneParameters: 'Параметры сцены',
     totalCandies: 'Всего конфет:', correctAnswer: 'Правильный ответ:',
     colorDistribution: 'Распределение цветов', seedLabel: 'Сид',
-    timerLabel: 'ВРЕМЯ', backgroundFilesMissing: 'Добавь изображения фонов в src/games/NoCountIt/backgrounds.'
+    wallColorLabel: 'Цвет стены (слой 1):', timerLabel: 'ВРЕМЯ', backgroundFilesMissing: 'Добавь изображения фонов в src/games/NoCountIt/backgrounds.'
   },
 } as const
