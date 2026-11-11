@@ -101,6 +101,13 @@ export default function NoCountItMatch({
   const roundReady = readyRoundKey === roundKey
   const answerInput = answerDraft.roundKey === roundKey ? answerDraft.value : ''
 
+  const isAnswering = currentRound?.status === 'answering'
+  const isActiveRoundScreen = currentRound?.status === 'showing' || isAnswering
+
+  useEffect(() => {
+    answerSubmitAttemptRef.current = null
+  }, [roundKey])
+
   const showStartedAt = currentRound?.showStartedAt ?? null
   const answerDeadline = currentRound?.answerDeadline ?? null
 
@@ -145,7 +152,7 @@ export default function NoCountItMatch({
   }
 
   useEffect(() => {
-    if (!isAnswering || remaining > 0 || !answerInput || !roundKey ||
+    if (!isAnswering || !answerDeadline || remaining > 0 || !answerInput || !roundKey ||
       myRoundPlayer?.status !== 'active' || myRoundPlayer.answer !== null ||
       answerSubmitAttemptRef.current === roundKey) return
     void submitAnswer()
@@ -171,12 +178,6 @@ export default function NoCountItMatch({
 
   const isFinished = match?.status === 'completed' || match?.status === 'technical_aborted' || match?.status === 'cancelled'
   const isReveal = currentRound?.status === 'revealing' || currentRound?.status === 'completed'
-  const isAnswering = currentRound?.status === 'answering'
-  const isActiveRoundScreen = currentRound?.status === 'showing' || isAnswering
-
-  useEffect(() => {
-    answerSubmitAttemptRef.current = null
-  }, [roundKey])
 
   const exitEarly = useCallback(async () => {
     if (!match || room.status !== 'playing' || loading) return
