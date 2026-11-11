@@ -37,7 +37,7 @@ Version 1 generates a candy jar from a prepared visual template:
 - deterministic bottom-up placement in staggered layers, with jar-wall positions evaluated before interior positions;
 - wall-adjacent candies must not cover more than 30% of any already placed neighbor;
 - pairwise circle intersections are used as an approximation for overlap, targeting 10–60% cumulative overlap on each candy (outer-contour candies may use a lower 5% floor when needed);
-- size is calculated from the requested candy count and multiplied by `CANDY_SIZE_MULTIPLIER` (currently `2`); the 20-unit minimum and 90-unit maximum base radius are multiplied by the same factor;
+- size is calculated from the requested candy count, bounded by a 20-unit minimum and a 90-unit maximum radius; no additional size multiplier is applied;
 - the top 10–30% of the jar interior is left empty, with the percentage selected deterministically from the scene seed;
 - no objects outside the jar, no fully hidden candies, and visible target candies.
 

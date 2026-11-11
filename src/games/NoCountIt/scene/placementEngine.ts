@@ -7,7 +7,6 @@ const MAX_OVERLAP = 0.6
 const MAX_EDGE_OCCLUSION = 0.3
 const MIN_CANDY_RADIUS = 20
 const MAX_CANDY_RADIUS = 90
-const CANDY_SIZE_MULTIPLIER = 2
 
 interface PlacedCandy extends NoCountItSceneObject {
   radius: number
@@ -169,11 +168,9 @@ export function placeCandies(colors: NoCountItCandyColor[], random: () => number
   const estimatedJarArea = 430_000
   const targetCoverage = 0.48
   const calculatedRadius = Math.sqrt((estimatedJarArea * targetCoverage) / (colors.length * Math.PI))
-  const minRadius = MIN_CANDY_RADIUS * CANDY_SIZE_MULTIPLIER
-  const maxRadius = MAX_CANDY_RADIUS * CANDY_SIZE_MULTIPLIER
   const baseRadius = Math.max(
-    minRadius,
-    Math.min(maxRadius, calculatedRadius * CANDY_SIZE_MULTIPLIER),
+    MIN_CANDY_RADIUS,
+    Math.min(MAX_CANDY_RADIUS, calculatedRadius),
   )
 
   let placed: PlacedCandy[] | null = null
