@@ -149,14 +149,14 @@ export default function NoCountItMatch({
     } finally {
       setLoading(false)
     }
-  }, [match, currentRound, myRoundPlayer?.status, myRoundPlayer?.answer, answerInput, roundKey, invokeGame, room.roomId, refreshMatch])
+  }, [match, currentRound, myRoundPlayer, answerInput, roundKey, invokeGame, room.roomId, refreshMatch])
 
   useEffect(() => {
     if (!isAnswering || !answerDeadline || remaining > 0 || !answerInput || !roundKey ||
       myRoundPlayer?.status !== 'active' || myRoundPlayer.answer !== null ||
       answerSubmitAttemptRef.current === roundKey) return
     void submitAnswer()
-  }, [isAnswering, answerDeadline, remaining, answerInput, roundKey, myRoundPlayer?.status, myRoundPlayer?.answer, submitAnswer])
+  }, [isAnswering, answerDeadline, remaining, answerInput, roundKey, myRoundPlayer, submitAnswer])
 
   function appendDigit(digit: string) {
     if (answerInput.length >= 19 || myRoundPlayer?.answer !== null) return
