@@ -1,8 +1,10 @@
+const DEMO_CURRENT_TELEGRAM_ID = 'demo-telegram-1003'
+
 const PLAYERS = [
-  { id: '1', name: 'Александр', answer: 17, error: 1 },
-  { id: '2', name: 'Мария', answer: 22, error: 4 },
-  { id: '3', name: 'Дмитрий', answer: 18, error: 0 },
-  { id: '4', name: 'Екатерина', answer: 12, error: 6 },
+  { id: '1', telegramId: 'demo-telegram-1001', name: 'Александр', answer: 17, error: 1 },
+  { id: '2', telegramId: 'demo-telegram-1002', name: 'Мария', answer: 22, error: 4 },
+  { id: '3', telegramId: 'demo-telegram-1003', name: 'Дмитрий', answer: 18, error: 0 },
+  { id: '4', telegramId: 'demo-telegram-1004', name: 'Екатерина', answer: 12, error: 6 },
 ]
 
 const CORRECT_ANSWER = 18
@@ -234,17 +236,24 @@ export default function RoundResultsPreview() {
               </div>
             )
 
+            const isCurrentPlayer = player.telegramId === DEMO_CURRENT_TELEGRAM_ID
+
             return (
               <div key={player.id} style={{
                 position: 'absolute',
                 top: player.top,
-                left: 0,
-                right: 0,
+                left: 6,
+                right: 6,
                 height: RESULT_ROW_HEIGHT,
+                boxSizing: 'border-box',
                 transform: 'translateY(-50%)',
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 alignItems: 'center',
+                border: isCurrentPlayer ? '2px solid #c58a42' : '2px solid transparent',
+                borderRadius: 999,
+                background: isCurrentPlayer ? 'rgba(255, 239, 205, .82)' : 'transparent',
+                boxShadow: isCurrentPlayer ? '0 2px 8px rgba(116, 76, 35, .16)' : 'none',
               }}>
                 {labelOnLeft ? label : score}
                 {labelOnLeft ? score : label}
