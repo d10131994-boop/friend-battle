@@ -53,6 +53,12 @@ The task branch adds `20261108100000_multiplayer_active_match_departure.sql`. It
 
 The task branch also adds `20261108113000_democracy_merge_multiplayer.sql` with canonical source `supabase/sql/democracy_merge_multiplayer.sql`. It creates private match/player/action/history/statistics tables; trusted start, snapshot, reserve, commit, release, history and deletion RPCs; game-owned departure/room-cancellation triggers; and five-minute disconnect plus 30-minute deadline Cron jobs. It replaces the shared heartbeat guard hook with the Democracy Merge-specific five-minute departure policy. The reserve/commit flow allows an action already accepted before the deadline to finish while preventing new actions after it; the disconnect Cron also waits for valid actions reserved before the five-minute cutoff. This migration depends on `leave_active_match` and the no-op hook from the preceding Multiplayer migration. Both migrations must be applied together before deploying the updated Edge Functions and frontend; they are pending and have not been applied to Production. Test them on an isolated Supabase database first.
 
+## Pending NoCountIt round palette migration
+
+The AI task branch adds `20261112100000_no_count_it_round_palette.sql`. It replaces the NoCountIt public match snapshot function so it returns the distinct candy-color list and jar-interior background color, without exposing the private scene seed, object coordinates or correct count. This migration is pending and has not been applied to Production.
+
+The matching `supabase/functions/no-count-it/index.ts` change generates the separate background color, excludes white from candy colors, and embeds the background inside the jar SVG. Deploy the Edge Function only after the migration is applied and verified. Neither the migration nor Edge Function has been deployed as part of this PR.
+
 ## Baseline decision
 
 A fresh live-schema baseline is optional future work, not a prerequisite for the current release. Do not recreate or backfill old migration history. If a baseline is later needed for a specific workflow, capture it from a real Production dump, review managed-schema exclusions and custom Realtime policies, and commit it as a baseline for future environments only.
