@@ -15,7 +15,7 @@ Browser database transport must use `src/database`. Do not create another Supaba
 - 2–4 players; no solo mode.
 - Three rounds per match.
 - One shared image and target-color prompt per round.
-- 30 seconds to prepare/load the image; 5 seconds to show it; 10 seconds to answer.
+- 30 seconds to prepare/load the image; 5 seconds to show it; 10 seconds to answer; 6 seconds to display round results before advancing.
 - Answers are non-negative integers without a fixed upper bound. The in-game keypad replaces the system keyboard.
 - An answer is immutable after successful submission.
 - A round completes when all active participants answer or the server deadline expires.
