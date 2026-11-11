@@ -35,13 +35,13 @@ Version 1 generates a candy jar from a prepared visual template:
 - a random target color selected from colors present in the scene;
 - normalized 0–1000 coordinates;
 - deterministic bottom-up placement in staggered layers, with jar-wall positions evaluated before interior positions;
-- wall-adjacent candies must not cover more than 30% of any already placed neighbor;
+- wall-adjacent candies use a 5% minimum overlap and must not cover more than 30% of any already placed neighbor;
 - pairwise circle intersections are used as an approximation for overlap, targeting 10–60% cumulative overlap on each candy (outer-contour candies may use a lower 5% floor when needed);
 - candy radius is bounded by 20–90 units;
 - the top 10–30% of the jar interior is left empty, with the percentage selected deterministically from the scene seed;
 - no objects outside the jar, no fully hidden candies, and visible target candies.
 
-The generation parameters are centralized in `src/games/NoCountIt/generationConfig.ts`. This file contains the allowed candy-count range, estimated jar area, target circle-area coverage, radius bounds, empty-top range, overlap limits and radius fallback scales. Keep algorithm-specific scoring weights and geometry implementation details in `placementEngine.ts`.
+The generation parameters are centralized in `src/games/NoCountIt/generationConfig.ts`. This file contains the allowed candy-count range, estimated jar area, target circle-area coverage, radius bounds, empty-top range, inner and edge overlap limits, maximum edge occlusion and radius fallback scales. Keep algorithm-specific scoring weights and geometry implementation details in `placementEngine.ts`.
 
 Current tuning values use an estimated jar area of 500,000 and target coverage of 0.90. Target coverage is a formula input for the sum of candy-circle areas; it is not an exact measurement of the visible union area after overlaps.
 

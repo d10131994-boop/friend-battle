@@ -23,7 +23,6 @@ export const CANDY_GENERATION_CONFIG = {
 
   // Placement overlap constraints.
   minOverlap: 0.1,
-  minEdgeOverlap: 0.05,
   maxOverlap: 0.6,
   maxEdgeOcclusion: 0.3,
 

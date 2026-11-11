@@ -120,9 +120,7 @@ function tryPlacement(
         // The first candy rests on the jar floor; subsequent candies must overlap.
         if (placed.length > 0) continue
       } else {
-        const minimum = position.edge
-          ? CANDY_GENERATION_CONFIG.minEdgeOverlap
-          : CANDY_GENERATION_CONFIG.minOverlap
+        const minimum = position.edge ? 0.05 : CANDY_GENERATION_CONFIG.minOverlap
         if (
           overlap.overlapRatio < minimum ||
           overlap.overlapRatio > CANDY_GENERATION_CONFIG.maxOverlap
