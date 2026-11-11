@@ -1,4 +1,5 @@
 import type { NoCountItCandyColor, NoCountItSceneObject } from '../types'
+import { randomInteger } from './colorDistributor'
 
 const JAR_BOTTOM = 875
 const MIN_OVERLAP = 0.1
@@ -156,7 +157,7 @@ function tryPlacement(
  * evaluated first, but only accepted when they do not hide an existing candy
  * by more than 30%. Pairwise circle intersections approximate visible overlap.
  */
-export function placeCandies(colors: NoCountItCandyColor[], _random: () => number): NoCountItSceneObject[] {
+export function placeCandies(colors: NoCountItCandyColor[], random: () => number): NoCountItSceneObject[] {
   if (colors.length === 0) return []
 
   const estimatedJarArea = 430_000
@@ -174,5 +175,9 @@ export function placeCandies(colors: NoCountItCandyColor[], _random: () => numbe
     throw new Error(`Could not pack ${colors.length} candies while preserving visibility and overlap constraints.`)
   }
 
-  return placed.map(({ radius: _radius, ...object }) => object)
+  return placed.map(({ radius: _radius, ...object }) => ({
+    ...object,
+    rotation: randomInteger(random, -180, 180),
+    shape: (['round', 'oval', 'wrapped'] as const)[randomInteger(random, 0, 2)],
+  }))
 }
