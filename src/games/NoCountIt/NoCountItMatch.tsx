@@ -162,6 +162,23 @@ export default function NoCountItMatch({
   const isFinished = match?.status === 'completed' || match?.status === 'technical_aborted' || match?.status === 'cancelled'
   const isReveal = currentRound?.status === 'revealing' || currentRound?.status === 'completed'
 
+  const exitEarly = useCallback(async () => {
+    if (!match || room.status !== 'playing' || loading) return
+    setLoading(true)
+    setMessage('')
+    try {
+      const response = await invokeGame<{ room: MultiplayerRoom }>({
+        action: 'early_exit', roomId: room.roomId, matchId: match.matchId,
+      })
+      onRoomUpdate(response.room)
+      onReturnToRoom()
+    } catch (error) {
+      setMessage(errorMessage(error))
+    } finally {
+      setLoading(false)
+    }
+  }, [match, room.status, room.roomId, loading, invokeGame, onRoomUpdate, onReturnToRoom])
+
   const finishAndReturn = useCallback(async () => {
     if (room.status !== 'playing') {
       onReturnToRoom()
@@ -259,6 +276,9 @@ export default function NoCountItMatch({
                   {currentRound.players.map((player) => (
                     <p key={player.userId}>{player.displayName}: {player.answer ?? NO_COUNT_IT_TEXTS.match.noAnswer} · {NO_COUNT_IT_TEXTS.match.error} {player.error ?? '—'}</p>
                   ))}
+                  <button className="play-button" onClick={() => void exitEarly()} disabled={loading}>
+                    {NO_COUNT_IT_TEXTS.match.earlyExit}
+                  </button>
                 </>
               )}
             </section>
