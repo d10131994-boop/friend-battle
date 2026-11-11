@@ -103,8 +103,8 @@ export default function SceneGeneratorPreview() {
                 />
               )}
               <div style={{ position: 'relative', zIndex: 2, flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <div style={{ alignSelf: 'flex-end', padding: '7px 13px', borderRadius: 999, background: '#fff8e8ef', border: '2px solid #70452d66', boxShadow: '0 3px 10px #38231533', fontWeight: 900, letterSpacing: 1 }}>
-                  {NO_COUNT_IT_TEXTS.preview.timerLabel} · 00:05
+                <div style={{ alignSelf: 'center', padding: '7px 13px', borderRadius: 999, background: '#fff8e8ef', border: '2px solid #70452d66', boxShadow: '0 3px 10px #38231533', fontWeight: 900, letterSpacing: 1 }}>
+                  00:05
                 </div>
                 <div style={{ flex: '1 1 auto', minHeight: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ width: '100%', maxHeight: '100%' }} dangerouslySetInnerHTML={{ __html: generated.svg }} />
