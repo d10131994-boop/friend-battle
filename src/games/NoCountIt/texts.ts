@@ -37,6 +37,6 @@ export const NO_COUNT_IT_TEXTS = {
     generationError: 'Ошибка генерации:', fallbackError: 'Не удалось создать сцену.',
     questionPrefix: 'Сколько конфет цвета «', sceneParameters: 'Параметры сцены',
     totalCandies: 'Всего конфет:', correctAnswer: 'Правильный ответ:',
-    colorDistribution: 'Распределение цветов', seedLabel: 'Сид', errorSuffix: 'ошибок',
+    colorDistribution: 'Распределение цветов', seedLabel: 'Сид',
   },
 } as const
