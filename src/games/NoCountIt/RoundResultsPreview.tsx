@@ -18,6 +18,7 @@ const ROUND_CANDY_COLORS = [
 const RESULT_ROW_GAP = 58
 const RESULT_ROW_HEIGHT = 42
 const MARKER_CLEARANCE = 28
+const OUTER_MARKER_MARGIN = 30
 const ANSWER_WINDOW_HEIGHT = 62
 
 function shuffle<T>(items: T[]): T[] {
@@ -46,8 +47,8 @@ function positionPlayers() {
   const ordered = [...PLAYERS].sort((a, b) => b.answer - a.answer)
   const upperPlayers = ordered.filter((player) => player.answer > CORRECT_ANSWER)
   const lowerPlayers = ordered.filter((player) => player.answer <= CORRECT_ANSWER)
-  const upperSpace = Math.max(170, upperPlayers.length * RESULT_ROW_GAP + 24)
-  const lowerSpace = Math.max(170, lowerPlayers.length * RESULT_ROW_GAP + 24)
+  const upperSpace = Math.max(170, upperPlayers.length * RESULT_ROW_GAP + 60)
+  const lowerSpace = Math.max(170, lowerPlayers.length * RESULT_ROW_GAP + 60)
   const scaleHeight = upperSpace + ANSWER_WINDOW_HEIGHT + lowerSpace
   const upperMaxDeviation = Math.max(
     1,
@@ -66,7 +67,7 @@ function positionPlayers() {
   for (const player of [...upperPlayers].reverse()) {
     const deviation = player.answer - CORRECT_ANSWER
     const ratio = deviation / upperMaxDeviation
-    const desiredTop = upperSpace - MARKER_CLEARANCE - ratio * (upperSpace - MARKER_CLEARANCE - 12)
+    const desiredTop = upperSpace - MARKER_CLEARANCE - ratio * (upperSpace - MARKER_CLEARANCE - OUTER_MARKER_MARGIN)
     const top = Math.min(desiredTop, previousUpperTop - RESULT_ROW_GAP)
     positioned.set(player.id, top)
     previousUpperTop = top
@@ -79,7 +80,7 @@ function positionPlayers() {
     const deviation = CORRECT_ANSWER - player.answer
     const ratio = deviation / lowerMaxDeviation
     const desiredTop = upperSpace + ANSWER_WINDOW_HEIGHT + MARKER_CLEARANCE
-      + ratio * (lowerSpace - MARKER_CLEARANCE - 12)
+      + ratio * (lowerSpace - MARKER_CLEARANCE - OUTER_MARKER_MARGIN)
     const top = Math.max(desiredTop, previousLowerTop + RESULT_ROW_GAP)
     positioned.set(player.id, top)
     previousLowerTop = top
