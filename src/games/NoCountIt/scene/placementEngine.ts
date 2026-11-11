@@ -14,6 +14,7 @@ interface Position {
   x: number
   y: number
   edge: boolean
+  row: number
 }
 
 function jarHalfWidth(y: number): number {
@@ -80,11 +81,11 @@ function buildLayerPositions(y: number, radius: number, row: number): Position[]
   const maxX = 500 + halfWidth
 
   for (let x = minX + offset; x <= maxX; x += step) {
-    positions.push({ x, y, edge: Math.abs(Math.abs(x - 500) - halfWidth) <= step * 0.6 })
+    positions.push({ x, y, edge: Math.abs(Math.abs(x - 500) - halfWidth) <= step * 0.6, row })
   }
 
   // Include exact wall-adjacent positions and try them before interior positions.
-  positions.push({ x: minX, y, edge: true }, { x: maxX, y, edge: true })
+  positions.push({ x: minX, y, edge: true, row }, { x: maxX, y, edge: true, row })
   return positions.sort((a, b) => Number(b.edge) - Number(a.edge))
 }
 
@@ -128,9 +129,9 @@ function tryPlacement(
 
       // Prefer wall positions first, then dense but not excessive overlap.
       const score =
+        -position.row * 1000 +
         (position.edge ? 100 : 0) +
-        overlap.overlapRatio * 20 -
-        Math.abs(position.y - (JAR_BOTTOM - radius - Math.floor(index / 8) * radius * 1.2)) * 0.01
+        overlap.overlapRatio * 20
       if (score > bestScore) {
         bestScore = score
         bestIndex = positionIndex
