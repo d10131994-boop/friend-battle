@@ -26,7 +26,7 @@ export default function SceneGeneratorPreview() {
         maxColors: CANDY_COLORS.length - 1,
       })
       const random = createSeededRandom(`${scene.seed}-layers`)
-      const backgroundColor = scene.backgroundColor
+      const wallColor = scene.backgroundColor
       const backgroundPaths = Object.keys(BACKGROUND_IMAGES).sort()
       const backgroundPath = backgroundPaths.length
         ? backgroundPaths[Math.floor(random() * backgroundPaths.length)]
@@ -35,7 +35,7 @@ export default function SceneGeneratorPreview() {
       return {
         svg: renderCandyJarSvg(scene),
         scene,
-        backgroundColor,
+        wallColor,
         backgroundImage: backgroundPath ? BACKGROUND_IMAGES[backgroundPath] : null,
         backgroundPath,
         error: null,
@@ -44,7 +44,7 @@ export default function SceneGeneratorPreview() {
       return {
         svg: null,
         scene: null,
-        backgroundColor: null,
+        wallColor: null,
         backgroundImage: null,
         backgroundPath: null,
         error: error instanceof Error ? error.message : NO_COUNT_IT_TEXTS.preview.fallbackError,
@@ -88,9 +88,9 @@ export default function SceneGeneratorPreview() {
           <section role="alert" style={{ marginTop: 16, padding: 16, borderRadius: 12, background: '#ffe0dc', color: '#8b2017' }}>
             {NO_COUNT_IT_TEXTS.preview.generationError} {generated.error}
           </section>
-        ) : generated.svg && generated.scene && generated.backgroundColor ? (
+        ) : generated.svg && generated.scene && generated.wallColor ? (
           <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 20, marginTop: 20, alignItems: 'start' }}>
-            <div style={{ width: '100%', maxWidth: 360, aspectRatio: '3 / 4', boxSizing: 'border-box', position: 'relative', display: 'flex', flexDirection: 'column', gap: 10, margin: '0 auto', padding: 14, overflow: 'hidden', border: '8px solid #4b4038', borderRadius: 28, background: '#f3e5bd', boxShadow: '0 8px 24px #76512a33' }}>
+            <div style={{ width: '100%', maxWidth: 360, aspectRatio: '3 / 4', boxSizing: 'border-box', position: 'relative', display: 'flex', flexDirection: 'column', gap: 10, margin: '0 auto', padding: 14, overflow: 'hidden', border: '8px solid #4b4038', borderRadius: 28, background: CANDY_PALETTE[generated.wallColor].base, boxShadow: '0 8px 24px #76512a33' }}>
               {generated.backgroundImage && (
                 <img
                   src={generated.backgroundImage}
@@ -116,7 +116,7 @@ export default function SceneGeneratorPreview() {
               <p>{NO_COUNT_IT_TEXTS.preview.totalCandies} <strong>{generated.scene.objects.length}</strong></p>
               <p>{NO_COUNT_IT_TEXTS.preview.correctAnswer} <strong>{generated.scene.correctCount}</strong></p>
               <p>{NO_COUNT_IT_TEXTS.preview.seedLabel}: <code>{generated.scene.seed}</code></p>
-              <p>Цвет нижнего слоя: <strong>{NO_COUNT_IT_TEXTS.colors[generated.backgroundColor]}</strong></p>
+              <p>{NO_COUNT_IT_TEXTS.preview.wallColorLabel} <strong>{NO_COUNT_IT_TEXTS.colors[generated.wallColor]}</strong></p>
               <p>Фон: <strong>{generated.backgroundPath ?? 'изображения пока не добавлены'}</strong></p>
               <h3>{NO_COUNT_IT_TEXTS.preview.colorDistribution}</h3>
               {Object.entries(colorCounts).map(([color, amount]) => (
