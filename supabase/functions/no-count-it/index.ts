@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { NO_COUNT_IT_SERVER_TEXTS } from "./texts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,11 +42,13 @@ async function verifyTelegram(initData: string, botToken: string): Promise<Teleg
   } catch { return null; }
 }
 
-type CandyColor = "red" | "orange" | "yellow" | "green" | "blue" | "purple" | "pink" | "teal" | "white" | "brown";
+type CandyColor = "red" | "orange" | "yellow" | "green" | "blue" | "purple" | "pink" | "teal" | "brown";
+type PaletteColor = CandyColor | "white";
 type Candy = { id: number; x: number; y: number; rotation: number; scale: number; color: CandyColor; shape: "round" | "oval" | "wrapped" };
-type Scene = { version: 1; seed: string; generator: "candy-jar"; objects: Candy[]; targetColor: CandyColor; correctCount: number };
-const COLORS: CandyColor[] = ["red","orange","yellow","green","blue","purple","pink","teal","white","brown"];
-const PALETTE: Record<CandyColor, [string,string,string]> = {
+type Scene = { version: 1; seed: string; generator: "candy-jar"; objects: Candy[]; targetColor: CandyColor; backgroundColor: PaletteColor; correctCount: number };
+const COLORS: CandyColor[] = ["red","orange","yellow","green","blue","purple","pink","teal","brown"];
+const BACKGROUND_COLORS: PaletteColor[] = [...COLORS, "white"];
+const PALETTE: Record<PaletteColor, [string,string,string]> = {
   red:["#D95755","#F28A7B","#983B43"], orange:["#E98C42","#F7B96F","#B95E32"],
   yellow:["#E7C94E","#F7E58A","#B99736"], green:["#65A978","#9BD19A","#3F795B"],
   blue:["#5B91C5","#9CC4E5","#3D638F"], purple:["#9675B7","#C0A1D8","#6B508E"],
@@ -65,11 +68,13 @@ function int(r:()=>number,min:number,max:number){return min+Math.floor(r()*(max-
 function shuffle<T>(items:T[],r:()=>number){const a=[...items];for(let i=a.length-1;i>0;i--){const j=int(r,0,i);[a[i],a[j]]=[a[j],a[i]];}return a;}
 function halfWidth(y:number){if(y<145||y>930)return 0;if(y<245)return 250+(y-145)*.55;if(y<790)return 305;return 305-(y-790)*(45/140);}
 function generateScene(): Scene {
-  const seed=crypto.randomUUID(), r=seeded(seed), count=int(r,40,120), colorCount=int(r,4,10);
+  const seed=crypto.randomUUID(), r=seeded(seed), count=int(r,40,120), colorCount=int(r,4,Math.min(9,COLORS.length));
   const selected=shuffle(COLORS,r).slice(0,colorCount), colors: CandyColor[]=[];
   for(const c of selected)for(let i=0;i<3;i++)colors.push(c);
   while(colors.length<count)colors.push(selected[int(r,0,selected.length-1)]);
   const shuffled=shuffle(colors,r), targetColor=selected[int(r,0,selected.length-1)];
+  const availableBackgroundColors=BACKGROUND_COLORS.filter(c=>!selected.includes(c as CandyColor));
+  const backgroundColor=availableBackgroundColors[int(r,0,availableBackgroundColors.length-1)];
   const objects:Candy[]=[];
   for(let i=0;i<shuffled.length;i++){
     let placed:Candy|null=null;
@@ -84,7 +89,7 @@ function generateScene(): Scene {
     if(!placed)throw new Error("Scene placement failed; retry generation.");
     objects.push(placed);
   }
-  return {version:1,seed,generator:"candy-jar",objects,targetColor,correctCount:objects.filter(o=>o.color===targetColor).length};
+  return {version:1,seed,generator:"candy-jar",objects,targetColor,backgroundColor,correctCount:objects.filter(o=>o.color===targetColor).length};
 }
 function renderSvg(scene:Scene):string{
   const candies=scene.objects.map(o=>{
@@ -95,7 +100,7 @@ function renderSvg(scene:Scene):string{
       :'<circle cx="0" cy="0" r="29"/>';
     return `<g transform="translate(${o.x} ${o.y}) rotate(${o.rotation}) scale(${o.scale})"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${light}"/><stop offset=".56" stop-color="${base}"/><stop offset="1" stop-color="${dark}"/></linearGradient></defs><g fill="url(#${id})" stroke="#654B45" stroke-opacity=".2" stroke-width="2">${shape}</g><ellipse cx="-9" cy="-11" rx="8" ry="4" fill="#fff" opacity=".22"/></g>`;
   }).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><clipPath id="inside"><path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z"/></clipPath></defs><g clip-path="url(#inside)">${candies}</g><path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z" fill="#D9ECEA" fill-opacity=".08" stroke="#A8C9CB" stroke-opacity=".72" stroke-width="13"/><path d="M260 105 Q260 80 292 80 H708 Q740 80 740 105 V135 Q740 155 710 155 H290 Q260 155 260 135 Z" fill="#D8E6E3" fill-opacity=".65" stroke="#A8C9CB" stroke-width="11"/><path d="M465 82 C430 25 385 48 420 92 C445 115 470 100 500 90 C530 100 555 115 580 92 C615 48 570 25 535 82" fill="#D98A9D" stroke="#A95F76" stroke-width="7"/><circle cx="500" cy="91" r="17" fill="#E9A7B5" stroke="#A95F76" stroke-width="6"/></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><clipPath id="inside"><path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z"/></clipPath></defs><g clip-path="url(#inside)"><rect x="175" y="80" width="650" height="850" fill="${PALETTE[scene.backgroundColor][0]}"/>${candies}</g><path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z" fill="#D9ECEA" fill-opacity=".08" stroke="#A8C9CB" stroke-opacity=".72" stroke-width="13"/><path d="M260 105 Q260 80 292 80 H708 Q740 80 740 105 V135 Q740 155 710 155 H290 Q260 155 260 135 Z" fill="#D8E6E3" fill-opacity=".65" stroke="#A8C9CB" stroke-width="11"/><path d="M465 82 C430 25 385 48 420 92 C445 115 470 100 500 90 C530 100 555 115 580 92 C615 48 570 25 535 82" fill="#D98A9D" stroke="#A95F76" stroke-width="7"/><circle cx="500" cy="91" r="17" fill="#E9A7B5" stroke="#A95F76" stroke-width="6"/></svg>`;
 }
 async function uploadScene(db:SupabaseClient,roomId:string,round:number){
  let scene:Scene|undefined;
@@ -123,82 +128,91 @@ async function broadcast(db:SupabaseClient,roomId:string,event:string){
 
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:corsHeaders});
- if(req.method!=="POST")return fail("Method not allowed",405);
+ if(req.method!=="POST")return fail(NO_COUNT_IT_SERVER_TEXTS.methodNotAllowed,405);
  try{
   const url=Deno.env.get("SUPABASE_URL"),key=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),token=Deno.env.get("TELEGRAM_BOT_TOKEN");
-  if(!url||!key||!token)return fail("Server configuration missing",500);
+  if(!url||!key||!token)return fail(NO_COUNT_IT_SERVER_TEXTS.serverConfigurationMissing,500);
   const body=await req.json();
-  if(!body||typeof body!=="object"||Array.isArray(body))return fail("Invalid request body",400);
-  const actions=["start_match","get_match","round_ready","submit_answer","return_to_room"];
-  if(!actions.includes(body.action))return fail("Unknown NoCountIt action",400);
+  if(!body||typeof body!=="object"||Array.isArray(body))return fail(NO_COUNT_IT_SERVER_TEXTS.invalidRequestBody,400);
+  const actions=["start_match","get_match","round_ready","submit_answer","return_to_room","early_exit"];
+  if(!actions.includes(body.action))return fail(NO_COUNT_IT_SERVER_TEXTS.unknownAction,400);
   const initData=typeof body.initData==="string"?body.initData:"";
-  if(!initData||initData.length>10000)return fail("Invalid Telegram data",400);
+  if(!initData||initData.length>10000)return fail(NO_COUNT_IT_SERVER_TEXTS.invalidTelegramData,400);
   const user=await verifyTelegram(initData,token);
-  if(!user)return fail("Telegram verification failed",401);
+  if(!user)return fail(NO_COUNT_IT_SERVER_TEXTS.telegramVerificationFailed,401);
   const userId=String(user.id),displayName=user.first_name?.trim().slice(0,100)||"Игрок";
   const roomId=typeof body.roomId==="string"?body.roomId.trim():"";
-  if(!/^[0-9a-f-]{36}$/i.test(roomId))return fail("A valid roomId is required",400);
+  if(!/^[0-9a-f-]{36}$/i.test(roomId))return fail(NO_COUNT_IT_SERVER_TEXTS.validRoomIdRequired,400);
   const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
 
   if(body.action==="return_to_room"){
     const {data:snapshot,error:snapshotError}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
-    if(snapshotError)return fail("Не удалось получить состояние матча",409);
-    if(snapshot?.match?.status!=="completed" && snapshot?.match?.status!=="technical_aborted")return fail("Матч ещё не завершён",409);
+    if(snapshotError)return fail(NO_COUNT_IT_SERVER_TEXTS.matchStateUnavailable,409);
+    if(snapshot?.match?.status!=="completed" && snapshot?.match?.status!=="technical_aborted")return fail(NO_COUNT_IT_SERVER_TEXTS.matchNotFinished,409);
     const finishedRoom=await finishSharedGame(db,roomId,snapshot.match.startedAt);
     await broadcast(db,roomId,"room_finished");
     return respond({room:finishedRoom});
   }
 
+  if(body.action==="early_exit"){
+    const earlyExitMatchId=typeof body.matchId==="string"?body.matchId:"";
+    if(!/^[0-9a-f-]{36}$/i.test(earlyExitMatchId))return fail(NO_COUNT_IT_SERVER_TEXTS.validMatchIdRequired,400);
+    const {data,error}=await db.rpc("no_count_it_exit_early",{p_room_id:roomId,p_match_id:earlyExitMatchId,p_user_id:userId});
+    if(error)return fail(NO_COUNT_IT_SERVER_TEXTS.earlyExitFailed,409);
+    await broadcast(db,roomId,"room_finished");
+    return respond(data);
+  }
+
   if(body.action==="start_match"){
     const {data:room,error}=await db.rpc("multiplayer_execute_action",{p_action:"get_room",p_user_id:userId,p_display_name:displayName,p_payload:{roomId}});
-    if(error)return fail("Не удалось проверить комнату",403);
-    if(room?.gameId!=="no-count-it")return fail("В комнате должна быть выбрана NoCountIt",409);
+    if(error)return fail(NO_COUNT_IT_SERVER_TEXTS.roomCheckFailed,403);
+    if(room?.gameId!=="no-count-it")return fail(NO_COUNT_IT_SERVER_TEXTS.gameSelectionRequired,409);
     const member=room.players?.find((p:{userId:string})=>p.userId===userId);
-    if(!member||!member.isHost)return fail("Начать матч может только ведущий комнаты",403);
+    if(!member||!member.isHost)return fail(NO_COUNT_IT_SERVER_TEXTS.hostOnlyStart,403);
     const {scene,path}=await uploadScene(db,roomId,1);
     const {data,error:startError}=await db.rpc("no_count_it_start_match",{p_room_id:roomId,p_user_id:userId,p_display_name:displayName,p_scene:scene,p_image_path:path});
-    if(startError){await db.storage.from("no-count-it-scenes").remove([path]);return fail("Не удалось начать матч",409);}
+    if(startError){await db.storage.from("no-count-it-scenes").remove([path]);return fail(NO_COUNT_IT_SERVER_TEXTS.matchStartFailed,409);}
     await broadcast(db,roomId,"match_started");
     return respond(data);
   }
 
   const matchId=typeof body.matchId==="string"?body.matchId:"";
   if(body.action==="round_ready" || body.action==="submit_answer"){
-    if(!/^[0-9a-f-]{36}$/i.test(matchId))return fail("A valid matchId is required",400);
+    if(!/^[0-9a-f-]{36}$/i.test(matchId))return fail(NO_COUNT_IT_SERVER_TEXTS.validMatchIdRequired,400);
   }
   if(body.action==="round_ready"){
     const {data,error}=await db.rpc("no_count_it_round_ready",{p_room_id:roomId,p_match_id:matchId,p_user_id:userId});
-    if(error)return fail("Не удалось подтвердить готовность раунда",409);
+    if(error)return fail(NO_COUNT_IT_SERVER_TEXTS.roundReadyFailed,409);
     await broadcast(db,roomId,"round_updated");
     return respond(data);
   }
   if(body.action==="submit_answer"){
     const roundNumber=Number(body.roundNumber),answer=typeof body.answer==="string"&&/^\d{1,15}$/.test(body.answer)?BigInt(body.answer):null;
-    if(!Number.isInteger(roundNumber)||roundNumber<1||roundNumber>3||answer===null||answer>9223372036854775807n)return fail("Некорректный ответ",400);
+    if(!Number.isInteger(roundNumber)||roundNumber<1||roundNumber>3||answer===null||answer>9223372036854775807n)return fail(NO_COUNT_IT_SERVER_TEXTS.invalidAnswer,400);
     const {data,error}=await db.rpc("no_count_it_submit_answer",{p_room_id:roomId,p_match_id:matchId,p_round_number:roundNumber,p_user_id:userId,p_answer:answer.toString()});
-    if(error)return fail("Ответ не принят. Возможно, время вышло или ответ уже отправлен.",409);
+    if(error)return fail(NO_COUNT_IT_SERVER_TEXTS.answerRejected,409);
     await broadcast(db,roomId,"answer_submitted");
     return respond(data);
   }
 
   const {data:room,error:roomError}=await db.rpc("multiplayer_execute_action",{p_action:"get_room",p_user_id:userId,p_display_name:displayName,p_payload:{roomId}});
-  if(roomError)return fail("Вы не участник этой комнаты",403);
+  if(roomError)return fail(NO_COUNT_IT_SERVER_TEXTS.notRoomMember,403);
   const {data:initialSnapshot,error:initialSnapshotError}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
-  if(initialSnapshotError)return fail("Не удалось получить состояние матча",409);
+  if(initialSnapshotError)return fail(NO_COUNT_IT_SERVER_TEXTS.matchStateUnavailable,409);
   const currentMatchId=initialSnapshot?.match?.matchId;
   if(!currentMatchId)return respond({room,match:null});
-  if(matchId && matchId!==currentMatchId)return fail("Матч уже изменился. Обновите игру.",409);
+  if(matchId && matchId!==currentMatchId)return fail(NO_COUNT_IT_SERVER_TEXTS.matchChanged,409);
   const activeMatchId=matchId||currentMatchId;
   const {data:prep,error:prepError}=await db.rpc("no_count_it_finalize_preparation",{p_room_id:roomId,p_match_id:activeMatchId});
   if(!prepError&&prep?.status==="technical_aborted"){
     await broadcast(db,roomId,"match_finished");
   }
   const {data:snapshot,error}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
-  if(error)return fail("Не удалось получить состояние матча",409);
+  if(error)return fail(NO_COUNT_IT_SERVER_TEXTS.matchStateUnavailable,409);
   const match=snapshot?.match;
   if(match?.round?.status==="revealing"){
     const {data:round}=await db.from("games_no_count_it_rounds").select("reveal_started_at").eq("match_id",activeMatchId).eq("round_number",match.currentRound).maybeSingle();
-    if(round?.reveal_started_at&&Date.now()-Date.parse(round.reveal_started_at)>=4000){
+    if(round?.reveal_started_at&&Date.now()-Date.parse(round.reveal_started_at)>=6000){
       if(match.currentRound<3){
         const {scene,path}=await uploadScene(db,roomId,match.currentRound+1);
         const {data:progress,error:progressError}=await db.rpc("no_count_it_prepare_next_round",{p_room_id:roomId,p_match_id:activeMatchId,p_scene:scene,p_image_path:path});
@@ -212,7 +226,7 @@ Deno.serve(async(req:Request)=>{
     }
   }
   const {data:latest,error:latestError}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
-  if(latestError)return fail("Не удалось обновить состояние матча",500);
+  if(latestError)return fail(NO_COUNT_IT_SERVER_TEXTS.matchRefreshFailed,500);
   const current=latest?.match;
   if(current?.round?.imagePath){
     const {data:signed,error:signedError}=await db.storage.from("no-count-it-scenes").createSignedUrl(current.round.imagePath,600);
@@ -221,6 +235,6 @@ Deno.serve(async(req:Request)=>{
   return respond({room:latest.room??room,match:current??null});
  }catch(error){
   console.error("NoCountIt function error",error instanceof Error?error.message:"Unknown error");
-  return fail("Внутренняя ошибка NoCountIt",500);
+  return fail(NO_COUNT_IT_SERVER_TEXTS.internalError,500);
  }
 });
