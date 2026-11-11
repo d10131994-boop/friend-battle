@@ -805,6 +805,20 @@ h1 span {
   touch-action: manipulation;
 }
 
+.no-count-it-key-delete {
+  border-color: #ffc0b8;
+  background: linear-gradient(180deg, #ed7160, #cb443b);
+  color: #fff;
+  box-shadow: 0 5px 0 #91352e, 0 7px 11px rgba(74, 46, 14, .16), inset 0 2px 0 rgba(255,255,255,.45);
+}
+
+.no-count-it-key-submit {
+  border-color: #b9f5a7;
+  background: linear-gradient(180deg, #79d45e, #48a83c);
+  color: #fff;
+  box-shadow: 0 5px 0 #34752b, 0 7px 11px rgba(74, 46, 14, .16), inset 0 2px 0 rgba(255,255,255,.45);
+}
+
 .no-count-it-key:active:not(:disabled) {
   transform: translateY(4px);
   filter: brightness(.97);
