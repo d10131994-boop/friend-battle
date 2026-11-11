@@ -177,6 +177,7 @@ export function placeCandies(colors: NoCountItCandyColor[], random: () => number
 
   return placed.map(({ radius: _radius, ...object }) => ({
     ...object,
+    ...(_radius > 0 ? {} : {}),
     rotation: randomInteger(random, -180, 180),
     shape: (['round', 'oval', 'wrapped'] as const)[randomInteger(random, 0, 2)],
   }))
