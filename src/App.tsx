@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import DevMultiplayerSmokeTest from './multiplayer/DevSmokeTest'
 import SceneGeneratorPreview from './games/NoCountIt/SceneGeneratorPreview'
+import RoundResultsPreview from './games/NoCountIt/RoundResultsPreview'
 import { useReactionRush } from './games/ReactionRush/useReactionRush'
 import ReactionRush from './games/ReactionRush/ReactionRush'
 import BrainBattle from './games/BrainBattle/BrainBattle'
@@ -127,8 +128,12 @@ function AppContent() {
 }
 
 export default function App() {
-  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('no-count-it-generator') === '1') {
+  const params = new URLSearchParams(window.location.search)
+  if (import.meta.env.DEV && params.get('no-count-it-generator') === '1') {
     return <SceneGeneratorPreview />
+  }
+  if (import.meta.env.DEV && params.get('no-count-it-round-results') === '1') {
+    return <RoundResultsPreview />
   }
   return <AppContent />
 }
