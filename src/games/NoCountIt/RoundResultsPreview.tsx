@@ -1,5 +1,3 @@
-import { NO_COUNT_IT_TEXTS } from './texts'
-
 const PLAYERS = [
   { id: '1', name: 'Александр', answer: 17, error: 1 },
   { id: '2', name: 'Мария', answer: 22, error: 4 },
