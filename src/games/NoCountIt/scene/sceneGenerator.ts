@@ -48,7 +48,7 @@ export function generateCandyJarScene(options: SceneGenerationOptions = {}): NoC
   }
 
   const count = randomInteger(random, minCandies, maxCandies)
-  const distribution = distributeCandyColors(count, random, options.minColors ?? 4, options.maxColors ?? 10)
+  const distribution = distributeCandyColors(count, random, options.minColors ?? 4, options.maxColors ?? 9)
   const objects = placeCandies(distribution.colors, random)
   const backgroundColors: NoCountItPaletteColor[] = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'teal', 'white', 'brown']
   const availableBackgroundColors = backgroundColors.filter((color) => !distribution.colors.includes(color as NoCountItCandyColor))
