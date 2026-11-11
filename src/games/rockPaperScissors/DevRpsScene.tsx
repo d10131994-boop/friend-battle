@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { RoundScene } from './RpsScenes'
+import './rockPaperScissors.css'
 
 const previewStyle = `
   .dev-rps { min-height: 100svh; padding: 24px; color: #292820; background: #eee9dc; font-family: system-ui, sans-serif; }

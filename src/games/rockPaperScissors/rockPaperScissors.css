@@ -329,7 +329,7 @@
   inset: 0;
   background-color: #d8dfcf;
   background-position: center;
-  background-size: cover;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
 }
 .rps-round-scene .rps-scene-objects {
