@@ -15,6 +15,12 @@ const ROUND_CANDY_COLORS = [
   { name: 'зелёный', value: '#69a64b' },
 ]
 
+const RESULT_ROW_GAP = 58
+const RESULT_ROW_HEIGHT = 42
+const MARKER_CLEARANCE = 28
+const OUTER_MARKER_MARGIN = 30
+const ANSWER_WINDOW_HEIGHT = 62
+
 function shuffle<T>(items: T[]): T[] {
   const result = [...items]
   for (let index = result.length - 1; index > 0; index -= 1) {
@@ -26,11 +32,89 @@ function shuffle<T>(items: T[]): T[] {
 
 const PLAYER_NAME_COLORS = shuffle(ROUND_CANDY_COLORS)
 
-export default function RoundResultsPreview() {
-  const maxDeviation = Math.max(
+type PositionedPlayer = {
+  id: string
+  name: string
+  answer: number
+  error: number
+  nameColor: string
+  scoreColor: string
+  labelSide: 'left' | 'right'
+  top: number
+}
+
+function positionPlayers() {
+  const ordered = [...PLAYERS].sort((a, b) => b.answer - a.answer)
+  const upperPlayers = ordered.filter((player) => player.answer > CORRECT_ANSWER)
+  const lowerPlayers = ordered.filter((player) => player.answer <= CORRECT_ANSWER)
+  const upperSpace = Math.max(170, upperPlayers.length * RESULT_ROW_GAP + 60)
+  const lowerSpace = Math.max(170, lowerPlayers.length * RESULT_ROW_GAP + 60)
+  const scaleHeight = upperSpace + ANSWER_WINDOW_HEIGHT + lowerSpace
+  const upperMaxDeviation = Math.max(
     1,
-    ...PLAYERS.map((player) => Math.abs(player.answer - CORRECT_ANSWER)),
+    ...upperPlayers.map((player) => player.answer - CORRECT_ANSWER),
   )
+  const lowerMaxDeviation = Math.max(
+    1,
+    ...lowerPlayers.map((player) => CORRECT_ANSWER - player.answer),
+  )
+
+  const positioned = new Map<string, number>()
+  let previousUpperTop = Number.POSITIVE_INFINITY
+
+  // Place the closest upper answer first. If two entries collide, only the
+  // farther-from-center entry is moved outward by the minimum required gap.
+  for (const player of [...upperPlayers].reverse()) {
+    const deviation = player.answer - CORRECT_ANSWER
+    const ratio = deviation / upperMaxDeviation
+    const desiredTop = upperSpace - MARKER_CLEARANCE - ratio * (upperSpace - MARKER_CLEARANCE - OUTER_MARKER_MARGIN)
+    const top = Math.min(desiredTop, previousUpperTop - RESULT_ROW_GAP)
+    positioned.set(player.id, top)
+    previousUpperTop = top
+  }
+
+  let previousLowerTop = Number.NEGATIVE_INFINITY
+
+  // The lower half uses the same rule, moving farther-low answers downwards.
+  for (const player of lowerPlayers) {
+    const deviation = CORRECT_ANSWER - player.answer
+    const ratio = deviation / lowerMaxDeviation
+    const desiredTop = upperSpace + ANSWER_WINDOW_HEIGHT + MARKER_CLEARANCE
+      + ratio * (lowerSpace - MARKER_CLEARANCE - OUTER_MARKER_MARGIN)
+    const top = Math.max(desiredTop, previousLowerTop + RESULT_ROW_GAP)
+    positioned.set(player.id, top)
+    previousLowerTop = top
+  }
+
+  const sideById = new Map(ordered.map((player, index) => [
+    player.id,
+    index % 2 === 0 ? 'left' : 'right',
+  ] as const))
+
+  const players: PositionedPlayer[] = PLAYERS.map((player, index) => ({
+    ...player,
+    nameColor: PLAYER_NAME_COLORS[index % PLAYER_NAME_COLORS.length].value,
+    scoreColor: player.answer > CORRECT_ANSWER
+      ? '#388b43'
+      : player.answer < CORRECT_ANSWER
+        ? '#d34e43'
+        : '#8b704f',
+    labelSide: sideById.get(player.id) ?? 'left',
+    top: positioned.get(player.id) ?? scaleHeight / 2,
+  }))
+
+  return {
+    players,
+    upperSpace,
+    lowerSpace,
+    scaleHeight,
+    answerWindowTop: upperSpace,
+  }
+}
+
+export default function RoundResultsPreview() {
+  const layout = positionPlayers()
+  const lineBottom = layout.answerWindowTop + ANSWER_WINDOW_HEIGHT
 
   return (
     <main style={{
@@ -70,13 +154,13 @@ export default function RoundResultsPreview() {
           fontWeight: 900,
           letterSpacing: 1,
         }}>
-          <span>ОТВЕТ И ИГРОК</span>
-          <span>БАЛЛЫ</span>
+          <span>ИГРОК И ОТВЕТ</span>
+          <span>ОШИБКИ</span>
         </div>
 
         <div style={{
           position: 'relative',
-          height: 450,
+          height: layout.scaleHeight,
           margin: '0 0 8px',
           borderRadius: 20,
           background: 'linear-gradient(90deg, rgba(247,230,196,.28), rgba(242,214,165,.16) 50%, rgba(247,230,196,.28))',
@@ -85,78 +169,94 @@ export default function RoundResultsPreview() {
         }}>
           <div style={{
             position: 'absolute',
-            top: '7%',
-            bottom: '7%',
+            top: 12,
+            height: layout.answerWindowTop - 12,
             left: '50%',
             width: 4,
             transform: 'translateX(-50%)',
-            borderRadius: 4,
-            background: 'linear-gradient(180deg, #d8bd91, #b48b5d 50%, #d8bd91)',
+            borderRadius: '4px 4px 0 0',
+            background: 'linear-gradient(180deg, #d8bd91, #b48b5d)',
+            boxShadow: '0 0 0 4px rgba(180,139,93,.08)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: lineBottom,
+            bottom: 12,
+            left: '50%',
+            width: 4,
+            transform: 'translateX(-50%)',
+            borderRadius: '0 0 4px 4px',
+            background: 'linear-gradient(180deg, #b48b5d, #d8bd91)',
             boxShadow: '0 0 0 4px rgba(180,139,93,.08)',
           }} />
 
-          {PLAYERS.map((player, index) => {
-            const offset = ((player.answer - CORRECT_ANSWER) / maxDeviation) * 39
-            const top = 50 - offset
-            const nameColor = PLAYER_NAME_COLORS[index % PLAYER_NAME_COLORS.length].value
-            const scoreColor = player.answer > CORRECT_ANSWER
-              ? '#388b43'
-              : player.answer < CORRECT_ANSWER
-                ? '#d34e43'
-                : '#8b704f'
+          {layout.players.map((player) => {
+            const labelOnLeft = player.labelSide === 'left'
+            const label = (
+              <div style={{
+                minWidth: 0,
+                padding: labelOnLeft ? '0 20px 0 8px' : '0 8px 0 20px',
+                textAlign: labelOnLeft ? 'right' : 'left',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: labelOnLeft ? 'flex-end' : 'flex-start',
+                gap: 5,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                fontSize: 15,
+                lineHeight: 1.15,
+                fontWeight: 1000,
+              }}>
+                {labelOnLeft ? (
+                  <>
+                    <span style={{ color: player.nameColor, overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</span>
+                    <span style={{ color: '#65482f', flexShrink: 0 }}>- {player.answer}</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ color: '#65482f', flexShrink: 0 }}>{player.answer} -</span>
+                    <span style={{ color: player.nameColor, overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</span>
+                  </>
+                )}
+              </div>
+            )
+            const score = (
+              <div style={{
+                minWidth: 0,
+                padding: labelOnLeft ? '0 8px 0 20px' : '0 20px 0 8px',
+                textAlign: labelOnLeft ? 'left' : 'right',
+                fontSize: 23,
+                lineHeight: 1,
+                fontWeight: 1000,
+                color: player.scoreColor,
+              }}>
+                {player.error}
+              </div>
+            )
 
             return (
               <div key={player.id} style={{
                 position: 'absolute',
-                top: `${top}%`,
+                top: player.top,
                 left: 0,
                 right: 0,
+                height: RESULT_ROW_HEIGHT,
                 transform: 'translateY(-50%)',
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 alignItems: 'center',
-                minHeight: 42,
               }}>
-                <div style={{
-                  minWidth: 0,
-                  padding: '0 18px 0 8px',
-                  textAlign: 'right',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  gap: 1,
-                }}>
-                  <strong style={{
-                    maxWidth: '100%',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    fontSize: 11,
-                    lineHeight: 1,
-                    color: nameColor,
-                  }}>{player.name}</strong>
-                  <span style={{ fontSize: 16, lineHeight: 1, fontWeight: 1000, color: '#65482f' }}>{player.answer}</span>
-                </div>
-                <div style={{
-                  minWidth: 0,
-                  padding: '0 8px 0 18px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  gap: 1,
-                }}>
-                  <strong style={{ fontSize: 18, lineHeight: 1, color: scoreColor }}>{player.error}</strong>
-                  <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: .7, color: '#a18a6d' }}>БАЛЛОВ</span>
-                </div>
+                {labelOnLeft ? label : score}
+                {labelOnLeft ? score : label}
                 <div style={{
                   position: 'absolute',
                   left: '50%',
                   top: '50%',
-                  width: 13,
-                  height: 13,
+                  width: 15,
+                  height: 15,
                   transform: 'translate(-50%, -50%)',
                   borderRadius: '50%',
-                  background: nameColor,
+                  background: player.nameColor,
                   border: '3px solid #fffaf0',
                   boxShadow: '0 1px 5px rgba(86,58,39,.28)',
                   zIndex: 2,
@@ -168,20 +268,24 @@ export default function RoundResultsPreview() {
           <div style={{
             position: 'absolute',
             left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
+            top: layout.answerWindowTop,
+            height: ANSWER_WINDOW_HEIGHT,
+            width: 92,
+            boxSizing: 'border-box',
+            transform: 'translateX(-50%)',
             zIndex: 3,
-            padding: '8px 11px 7px',
-            borderRadius: 12,
+            borderRadius: 14,
             border: '2px solid #fffaf0',
             background: '#704a30',
             color: '#fffaf0',
             textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
             boxShadow: '0 3px 10px rgba(86,58,39,.24)',
-            whiteSpace: 'nowrap',
           }}>
-            <div style={{ fontSize: 8, fontWeight: 900, letterSpacing: 1 }}>ВЕРНО</div>
-            <div style={{ fontSize: 22, lineHeight: 1, fontWeight: 1000 }}>{CORRECT_ANSWER}</div>
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 1 }}>ВЕРНО</div>
+            <div style={{ fontSize: 25, lineHeight: 1.1, fontWeight: 1000 }}>{CORRECT_ANSWER}</div>
           </div>
         </div>
 
