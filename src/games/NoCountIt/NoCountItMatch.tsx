@@ -261,7 +261,7 @@ export default function NoCountItMatch({
                   <div className="no-count-it-answer-top">
                     <h2 className="no-count-it-answer-question">{NO_COUNT_IT_TEXTS.match.questionPrefix}{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
                     <div className="no-count-it-answer-timer" aria-live="polite">{remaining} сек.</div>
-                    {myRoundPlayer?.answer !== null ? (
+                    {myRoundPlayer && myRoundPlayer.answer !== null ? (
                       <p className="no-count-it-answer-submitted">{NO_COUNT_IT_TEXTS.match.yourEstimateResult} {myRoundPlayer?.answer}. {NO_COUNT_IT_TEXTS.match.cannotChangeAnswer}</p>
                     ) : myRoundPlayer?.status === 'active' ? (
                       <div className="no-count-it-answer-value" aria-live="polite">{answerInput || '0'}</div>
