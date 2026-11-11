@@ -31,6 +31,7 @@ export default function NoCountItMatch({
   const [readyRoundKey, setReadyRoundKey] = useState<string | null>(null)
   const startAttemptRef = useRef(false)
   const readyAttemptRef = useRef<string | null>(null)
+  const answerSubmitAttemptRef = useRef<string | null>(null)
   const telegramId = telegramUser?.id ? String(telegramUser.id) : ''
 
   const invokeGame = useCallback(async <T,>(body: Record<string, unknown>): Promise<T> => {
@@ -120,7 +121,8 @@ export default function NoCountItMatch({
   async function submitAnswer() {
     if (!match || !currentRound || currentRound.status !== 'answering' ||
       myRoundPlayer?.status !== 'active' || myRoundPlayer.answer !== null ||
-      !/^\d+$/.test(answerInput)) return
+      !/^\d+$/.test(answerInput) || answerSubmitAttemptRef.current === roundKey) return
+    answerSubmitAttemptRef.current = roundKey
     setLoading(true)
     setMessage('')
     try {
@@ -134,12 +136,20 @@ export default function NoCountItMatch({
       setAnswerDraft({ roundKey: null, value: '' })
       await refreshMatch()
     } catch (error) {
+      answerSubmitAttemptRef.current = null
       setMessage(errorMessage(error))
       await refreshMatch().catch(() => undefined)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (!isAnswering || remaining > 0 || !answerInput || !roundKey ||
+      myRoundPlayer?.status !== 'active' || myRoundPlayer.answer !== null ||
+      answerSubmitAttemptRef.current === roundKey) return
+    void submitAnswer()
+  }, [isAnswering, remaining, answerInput, roundKey, myRoundPlayer?.status, myRoundPlayer?.answer, submitAnswer])
 
   function appendDigit(digit: string) {
     if (answerInput.length >= 19 || myRoundPlayer?.answer !== null) return
@@ -161,6 +171,12 @@ export default function NoCountItMatch({
 
   const isFinished = match?.status === 'completed' || match?.status === 'technical_aborted' || match?.status === 'cancelled'
   const isReveal = currentRound?.status === 'revealing' || currentRound?.status === 'completed'
+  const isAnswering = currentRound?.status === 'answering'
+  const isActiveRoundScreen = currentRound?.status === 'showing' || isAnswering
+
+  useEffect(() => {
+    answerSubmitAttemptRef.current = null
+  }, [roundKey])
 
   const exitEarly = useCallback(async () => {
     if (!match || room.status !== 'playing' || loading) return
@@ -208,28 +224,22 @@ export default function NoCountItMatch({
 
 
   return (
-    <main className="app">
+    <main className={`app${isAnswering ? " no-count-it-answer-screen" : ""}`}>
       <header className="topbar">
         <div className="logo">NO COUNT <span>IT</span></div>
         <div className="player-level">{NO_COUNT_IT_TEXTS.match.multiplayer}</div>
       </header>
-      <section className="hero">
+      {!isActiveRoundScreen && <section className="hero">
         <div className="eyebrow">{NO_COUNT_IT_TEXTS.match.eyebrow}</div>
         <div className="game-icon">🍬</div>
         <h1>{NO_COUNT_IT_TEXTS.match.headingFirst} <span>{NO_COUNT_IT_TEXTS.match.headingSecond}</span></h1>
         <p>{NO_COUNT_IT_TEXTS.match.subtitle}</p>
-      </section>
+      </section>}
 
       {!match && <section className="game-card"><p>{loading ? NO_COUNT_IT_TEXTS.match.preparingGame : NO_COUNT_IT_TEXTS.match.connectingMatch}</p></section>}
 
       {match && !isFinished && currentRound && (
         <>
-          <section className="stats">
-            <div className="stat-card"><span>🔁</span><div><small>{NO_COUNT_IT_TEXTS.match.round}</small><strong>{currentRound.roundNumber} / 3</strong></div></div>
-            <div className="stat-card"><span>⏱️</span><div><small>{currentRound.status === 'showing' ? NO_COUNT_IT_TEXTS.match.showing : NO_COUNT_IT_TEXTS.match.remaining}</small><strong>{currentRound.status === 'showing' ? imageRemaining : remaining}</strong></div></div>
-            <div className="stat-card"><span>🍬</span><div><small>{NO_COUNT_IT_TEXTS.match.yourEstimate}</small><strong>{myRoundPlayer?.answer ?? '—'}</strong></div></div>
-          </section>
-
           {currentRound.status === 'preparing' && (
             <section className="game-card">
               <h2>{NO_COUNT_IT_TEXTS.match.preparingImage}</h2>
@@ -241,30 +251,44 @@ export default function NoCountItMatch({
           )}
 
           {(currentRound.status === 'showing' || currentRound.status === 'answering' || isReveal) && (
-            <section className="game-card">
+            <section className={`game-card${isAnswering ? ' no-count-it-answer-card' : ' no-count-it-showing-card'}`}>
               {currentRound.status === 'showing' && currentRound.imageUrl && (
-                <img src={currentRound.imageUrl} alt={NO_COUNT_IT_TEXTS.match.imageAlt} style={{ width: '100%', maxWidth: 420, display: 'block', margin: '0 auto' }} />
+                <img src={currentRound.imageUrl} alt={NO_COUNT_IT_TEXTS.match.imageAlt} className="no-count-it-round-image" />
               )}
-              <h2>{NO_COUNT_IT_TEXTS.match.questionPrefix}{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
-              {currentRound.status === 'showing' && <p>{NO_COUNT_IT_TEXTS.match.rememberPrompt}</p>}
-              {currentRound.status === 'answering' && myRoundPlayer?.status === 'active' && (
-                <>
-                  {myRoundPlayer.answer !== null ? (
-                    <p>{NO_COUNT_IT_TEXTS.match.yourEstimateResult} {myRoundPlayer.answer}. {NO_COUNT_IT_TEXTS.match.cannotChangeAnswer}</p>
-                  ) : (
-                    <>
-                      <div className="stat-card"><strong style={{ fontSize: 32 }}>{answerInput || '0'}</strong></div>
-                      <div className="brain-answer-options" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
-                        {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map((digit) => (
-                          <button key={digit} className="primary-button" disabled={loading} onClick={() => {
+              {currentRound.status === 'answering' ? (
+                <div className="no-count-it-answer-layout">
+                  <div className="no-count-it-answer-top">
+                    <h2 className="no-count-it-answer-question">{NO_COUNT_IT_TEXTS.match.questionPrefix}{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
+                    <div className="no-count-it-answer-timer" aria-live="polite">{remaining} сек.</div>
+                    {myRoundPlayer?.answer !== null ? (
+                      <p className="no-count-it-answer-submitted">{NO_COUNT_IT_TEXTS.match.yourEstimateResult} {myRoundPlayer?.answer}. {NO_COUNT_IT_TEXTS.match.cannotChangeAnswer}</p>
+                    ) : myRoundPlayer?.status === 'active' ? (
+                      <div className="no-count-it-answer-value" aria-live="polite">{answerInput || '0'}</div>
+                    ) : null}
+                  </div>
+                  {myRoundPlayer?.status === 'active' && myRoundPlayer.answer === null && (
+                    <div className="no-count-it-keypad">
+                      {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map((digit) => (
+                        <button
+                          key={digit}
+                          type="button"
+                          className={`no-count-it-key${digit === '✓' ? ' no-count-it-key-submit' : digit === '⌫' ? ' no-count-it-key-delete' : ''}`}
+                          aria-label={digit === '⌫' ? 'Удалить последнюю цифру' : digit === '✓' ? 'Отправить ответ' : digit}
+                          disabled={loading || remaining <= 0}
+                          onClick={() => {
                             if (digit === '✓') void submitAnswer()
                             else if (digit === '⌫') setAnswerDraft({ roundKey, value: answerInput.slice(0, -1) })
                             else appendDigit(digit)
-                          }}>{digit}</button>
-                        ))}
-                      </div>
-                    </>
+                          }}
+                        >{digit}</button>
+                      ))}
+                    </div>
                   )}
+                </div>
+              ) : (
+                <>
+                  <h2>{NO_COUNT_IT_TEXTS.match.questionPrefix}{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
+                  {currentRound.status === 'showing' && <p>{NO_COUNT_IT_TEXTS.match.rememberPrompt} · {imageRemaining} сек.</p>}
                 </>
               )}
               {currentRound.status === 'answering' && myRoundPlayer?.status === 'excluded_not_ready' && (
@@ -284,7 +308,7 @@ export default function NoCountItMatch({
             </section>
           )}
 
-          <section className="game-card">
+          {currentRound.status !== "showing" && currentRound.status !== "answering" && <section className="game-card">
             <h2>{NO_COUNT_IT_TEXTS.match.totalErrors}</h2>
             {match.players.map((player) => (
               <div className="brain-room-player" key={player.userId}>
@@ -292,7 +316,7 @@ export default function NoCountItMatch({
                 <strong>{player.totalError}</strong>
               </div>
             ))}
-          </section>
+          </section>}
         </>
       )}
 
