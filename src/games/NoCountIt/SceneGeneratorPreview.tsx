@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { CANDY_GENERATION_CONFIG } from './generationConfig'
 import { generateCandyJarScene } from './scene/sceneGenerator'
 import { renderCandyJarSvg } from './scene/svgRenderer'
 
@@ -38,7 +39,14 @@ export default function SceneGeneratorPreview() {
         <section style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 16, padding: 16, borderRadius: 16, background: '#fff8e8' }}>
           <label style={{ display: 'grid', gap: 6 }}>
             Количество конфет: <strong>{count}</strong>
-            <input type="range" min="40" max="120" step="1" value={count} onChange={(event) => setCount(Number(event.target.value))} />
+            <input
+              type="range"
+              min={CANDY_GENERATION_CONFIG.minCandyCount}
+              max={CANDY_GENERATION_CONFIG.maxCandyCount}
+              step="1"
+              value={count}
+              onChange={(event) => setCount(Number(event.target.value))}
+            />
           </label>
           <label style={{ display: 'grid', gap: 6, flex: '1 1 220px' }}>
             Seed

@@ -1,12 +1,8 @@
 import type { NoCountItCandyColor, NoCountItSceneObject } from '../types'
+import { CANDY_GENERATION_CONFIG } from '../generationConfig'
 import { randomInteger } from './colorDistributor'
 
 const JAR_BOTTOM = 875
-const MIN_OVERLAP = 0.1
-const MAX_OVERLAP = 0.6
-const MAX_EDGE_OCCLUSION = 0.3
-const MIN_CANDY_RADIUS = 20
-const MAX_CANDY_RADIUS = 90
 
 interface PlacedCandy extends NoCountItSceneObject {
   radius: number
@@ -124,9 +120,15 @@ function tryPlacement(
         // The first candy rests on the jar floor; subsequent candies must overlap.
         if (placed.length > 0) continue
       } else {
-        const minimum = position.edge ? 0.05 : MIN_OVERLAP
-        if (overlap.overlapRatio < minimum || overlap.overlapRatio > MAX_OVERLAP) continue
-        if (position.edge && overlap.maxExistingOcclusion > MAX_EDGE_OCCLUSION) continue
+        const minimum = position.edge ? 0.05 : CANDY_GENERATION_CONFIG.minOverlap
+        if (
+          overlap.overlapRatio < minimum ||
+          overlap.overlapRatio > CANDY_GENERATION_CONFIG.maxOverlap
+        ) continue
+        if (
+          position.edge &&
+          overlap.maxExistingOcclusion > CANDY_GENERATION_CONFIG.maxEdgeOcclusion
+        ) continue
       }
 
       // Prefer wall positions first, then dense but not excessive overlap.
@@ -160,22 +162,30 @@ function tryPlacement(
 /**
  * Packs candies bottom-up in staggered layers. Wall-adjacent positions are
  * evaluated first, but only accepted when they do not hide an existing candy
- * by more than 30%. Pairwise circle intersections approximate visible overlap.
+ * by more than the configured limit. Pairwise circle intersections approximate
+ * visible overlap.
  */
 export function placeCandies(colors: NoCountItCandyColor[], random: () => number): NoCountItSceneObject[] {
   if (colors.length === 0) return []
 
-  const estimatedJarArea = 430_000
-  const targetCoverage = 0.48
+  const {
+    estimatedJarArea,
+    targetCoverage,
+    minCandyRadius,
+    maxCandyRadius,
+    emptyTopMinPercent,
+    emptyTopMaxPercent,
+    radiusFallbackScales,
+  } = CANDY_GENERATION_CONFIG
   const calculatedRadius = Math.sqrt((estimatedJarArea * targetCoverage) / (colors.length * Math.PI))
   const baseRadius = Math.max(
-    MIN_CANDY_RADIUS,
-    Math.min(MAX_CANDY_RADIUS, calculatedRadius),
+    minCandyRadius,
+    Math.min(maxCandyRadius, calculatedRadius),
   )
 
   let placed: PlacedCandy[] | null = null
-  const emptyTopPercent = randomInteger(random, 10, 30)
-  for (const scale of [1, 0.96, 0.92, 0.88]) {
+  const emptyTopPercent = randomInteger(random, emptyTopMinPercent, emptyTopMaxPercent)
+  for (const scale of radiusFallbackScales) {
     placed = tryPlacement(colors, baseRadius * scale, emptyTopPercent)
     if (placed) break
   }

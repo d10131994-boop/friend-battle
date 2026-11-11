@@ -6,6 +6,8 @@
  * correct answer before the round enters its reveal phase.
  */
 
+import { CANDY_GENERATION_CONFIG } from './generationConfig'
+
 export const NO_COUNT_IT_GAME_ID = 'no-count-it' as const
 
 export const NO_COUNT_IT_RULES = {
@@ -15,8 +17,8 @@ export const NO_COUNT_IT_RULES = {
   preparationWindowMs: 30_000,
   imageDisplayMs: 5_000,
   answerWindowMs: 10_000,
-  minCandies: 40,
-  maxCandies: 120,
+  minCandies: CANDY_GENERATION_CONFIG.minCandyCount,
+  maxCandies: CANDY_GENERATION_CONFIG.maxCandyCount,
   minColors: 4,
   maxColors: 10,
   minCandiesPerColor: 3,

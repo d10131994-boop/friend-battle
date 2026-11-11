@@ -1,4 +1,5 @@
 import type { NoCountItScene } from '../types'
+import { CANDY_GENERATION_CONFIG } from '../generationConfig'
 import { distributeCandyColors, randomInteger } from './colorDistributor'
 import { placeCandies } from './placementEngine'
 
@@ -33,12 +34,18 @@ export function createSeededRandom(seed: string): () => number {
 export function generateCandyJarScene(options: SceneGenerationOptions = {}): NoCountItScene {
   const seed = options.seed ?? createRuntimeSeed()
   const random = createSeededRandom(seed)
-  const minCandies = options.minCandies ?? 40
-  const maxCandies = options.maxCandies ?? 120
+  const minCandies = options.minCandies ?? CANDY_GENERATION_CONFIG.minCandyCount
+  const maxCandies = options.maxCandies ?? CANDY_GENERATION_CONFIG.maxCandyCount
   if (
     !Number.isInteger(minCandies) || !Number.isInteger(maxCandies) ||
-    minCandies < 40 || maxCandies > 120 || minCandies > maxCandies
-  ) throw new Error('Candy count bounds must be integers within the agreed 40–120 range.')
+    minCandies < CANDY_GENERATION_CONFIG.minCandyCount ||
+    maxCandies > CANDY_GENERATION_CONFIG.maxCandyCount ||
+    minCandies > maxCandies
+  ) {
+    throw new Error(
+      `Candy count bounds must be integers within the agreed ${CANDY_GENERATION_CONFIG.minCandyCount}–${CANDY_GENERATION_CONFIG.maxCandyCount} range.`,
+    )
+  }
 
   const count = randomInteger(random, minCandies, maxCandies)
   const distribution = distributeCandyColors(count, random, options.minColors ?? 4, options.maxColors ?? 10)
