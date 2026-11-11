@@ -362,7 +362,6 @@ export default function NoCountItMatch({
               <p>{match.winnerUserId ? NO_COUNT_IT_TEXTS.match.winner : NO_COUNT_IT_TEXTS.match.tie}</p>
             </>}
           <p>{NO_COUNT_IT_TEXTS.match.autoReturn}</p>
-                    <p>{NO_COUNT_IT_TEXTS.match.autoReturn}</p>
           <button className="play-button" onClick={() => void finishAndReturn()} disabled={loading}>{NO_COUNT_IT_TEXTS.match.returnToRoom}</button>
         </section>
       )}
