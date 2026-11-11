@@ -84,6 +84,14 @@ Real player departure is handled by a NoCountIt-owned trigger on the shared play
 
 The agreed 24-hour Storage object cleanup is still not implemented or scheduled.
 
+## 6.1 Round palette contract
+
+The private scene JSON stores `backgroundColor` separately from candy colors. White is excluded from candy generation but remains available as a jar-interior background; black is not in the visual palette. The trusted public snapshot exposes only the distinct `candyColors` array and `backgroundColor` for keypad styling. It must not expose the scene seed, object positions or correct count before reveal.
+
+The keypad derives its per-digit button and foreground colors deterministically from the match ID, round number and public palette, so every participant sees the same layout. Each digit's foreground color must differ from its own button background. Delete and confirm retain fixed red and green styling.
+
+The snapshot contract change is prepared in `20261112100000_no_count_it_round_palette.sql`; the matching `no-count-it` Edge Function update must also be deployed before the feature is available in Production. Neither deployment is performed by a source-code PR.
+
 ## 7. Client integration boundary
 
 The match component receives the existing room and standard callbacks from `MultiplayerRoomMenu`. It owns only NoCountIt match snapshots, preparation/image/answer/reveal UI and game-specific actions. It must not create/join/leave rooms, select games, set common readiness or duplicate the common room interface.
