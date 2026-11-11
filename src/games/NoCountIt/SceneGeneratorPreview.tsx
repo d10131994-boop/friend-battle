@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { CANDY_GENERATION_CONFIG } from './generationConfig'
 import { generateCandyJarScene } from './scene/sceneGenerator'
 import { renderCandyJarSvg } from './scene/svgRenderer'
+import { NO_COUNT_IT_TEXTS } from './texts'
 
 export default function SceneGeneratorPreview() {
   const [count, setCount] = useState(80)
@@ -20,7 +21,7 @@ export default function SceneGeneratorPreview() {
       return {
         svg: null,
         scene: null,
-        error: error instanceof Error ? error.message : 'Не удалось создать сцену.',
+        error: error instanceof Error ? error.message : NO_COUNT_IT_TEXTS.preview.fallbackError,
       }
     }
   }, [count, seed, revision])
@@ -66,7 +67,7 @@ export default function SceneGeneratorPreview() {
             <div style={{ width: '100%', maxWidth: 540, margin: '0 auto', padding: 12, borderRadius: 20, background: '#fff8e8', boxShadow: '0 8px 24px #76512a22' }}>
               <div dangerouslySetInnerHTML={{ __html: generated.svg }} />
               <h2 style={{ margin: '8px 0', textAlign: 'center', fontSize: 22 }}>
-                Сколько конфет цвета «{generated.scene?.targetColor}»?
+                Сколько конфет цвета «{generated.scene ? NO_COUNT_IT_TEXTS.colors[generated.scene.targetColor] : ''}»?
               </h2>
             </div>
             <aside style={{ padding: 16, borderRadius: 16, background: '#fff8e8' }}>
@@ -77,7 +78,7 @@ export default function SceneGeneratorPreview() {
               <h3>Распределение цветов</h3>
               {Object.entries(colorCounts).map(([color, amount]) => (
                 <div key={color} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #eadcc4' }}>
-                  <span>{color}</span><strong>{amount}</strong>
+                  <span>{NO_COUNT_IT_TEXTS.colors[color as keyof typeof NO_COUNT_IT_TEXTS.colors]}</span><strong>{amount}</strong>
                 </div>
               ))}
             </aside>

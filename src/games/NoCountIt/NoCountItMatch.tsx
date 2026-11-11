@@ -3,6 +3,7 @@ import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
 import { telegramUser } from '../../services/telegram'
 import type { NoCountItPublicMatch, NoCountItSnapshot } from './types'
+import { NO_COUNT_IT_TEXTS } from './texts'
 
 type Props = {
   initData: string | undefined
@@ -14,7 +15,7 @@ type Props = {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Не удалось обновить игру.'
+  return error instanceof Error ? error.message : NO_COUNT_IT_TEXTS.match.updateFailed
 }
 
 export default function NoCountItMatch({
@@ -202,13 +203,13 @@ export default function NoCountItMatch({
         <p>Три раунда · Меньше ошибок — выше шанс победить</p>
       </section>
 
-      {!match && <section className="game-card"><p>{loading ? 'Готовим игру…' : 'Подключаемся к матчу…'}</p></section>}
+      {!match && <section className="game-card"><p>{loading ? NO_COUNT_IT_TEXTS.match.preparingGame : NO_COUNT_IT_TEXTS.match.connectingMatch}</p></section>}
 
       {match && !isFinished && currentRound && (
         <>
           <section className="stats">
             <div className="stat-card"><span>🔁</span><div><small>РАУНД</small><strong>{currentRound.roundNumber} / 3</strong></div></div>
-            <div className="stat-card"><span>⏱️</span><div><small>{currentRound.status === 'showing' ? 'ПОКАЗ' : 'ОСТАЛОСЬ'}</small><strong>{currentRound.status === 'showing' ? imageRemaining : remaining}</strong></div></div>
+            <div className="stat-card"><span>⏱️</span><div><small>{currentRound.status === 'showing' ? NO_COUNT_IT_TEXTS.match.showing : NO_COUNT_IT_TEXTS.match.remaining}</small><strong>{currentRound.status === 'showing' ? imageRemaining : remaining}</strong></div></div>
             <div className="stat-card"><span>🍬</span><div><small>ТВОЯ ОЦЕНКА</small><strong>{myRoundPlayer?.answer ?? '—'}</strong></div></div>
           </section>
 
@@ -216,8 +217,8 @@ export default function NoCountItMatch({
             <section className="game-card">
               <h2>ГОТОВИМ ИЗОБРАЖЕНИЕ</h2>
               <p>Как только изображение загрузится у участников, раунд начнётся одновременно для всех готовых игроков.</p>
-              {currentRound.imageUrl && <img src={currentRound.imageUrl} alt="Банка с конфетами" onLoad={() => void confirmRoundReady()} onError={() => setMessage('Не удалось загрузить изображение раунда.')} style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />}
-              <p>{roundReady ? '✓ Изображение готово. Ждём остальных…' : 'Загружаем сцену…'}</p>
+              {currentRound.imageUrl && <img src={currentRound.imageUrl} alt="Банка с конфетами" onLoad={() => void confirmRoundReady()} onError={() => setMessage(NO_COUNT_IT_TEXTS.match.imageLoadFailed)} style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />}
+              <p>{roundReady ? NO_COUNT_IT_TEXTS.match.imageReadyWaiting : NO_COUNT_IT_TEXTS.match.loadingScene}</p>
               <p>Игроки готовы: {currentRound.players.filter((player) => player.status === 'ready').length} / {currentRound.players.length}</p>
             </section>
           )}
@@ -227,7 +228,7 @@ export default function NoCountItMatch({
               {currentRound.status === 'showing' && currentRound.imageUrl && (
                 <img src={currentRound.imageUrl} alt="Банка с конфетами" style={{ width: '100%', maxWidth: 420, display: 'block', margin: '0 auto' }} />
               )}
-              <h2>Сколько конфет цвета «{currentRound.targetColor ?? '…'}»?</h2>
+              <h2>Сколько конфет цвета «{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
               {currentRound.status === 'showing' && <p>Запоминай расположение и количество. Ответ скоро!</p>}
               {currentRound.status === 'answering' && myRoundPlayer?.status === 'active' && (
                 <>
@@ -256,7 +257,7 @@ export default function NoCountItMatch({
                 <>
                   <h2>Правильный ответ: {currentRound.correctCount}</h2>
                   {currentRound.players.map((player) => (
-                    <p key={player.userId}>{player.displayName}: {player.answer ?? 'нет ответа'} · ошибка {player.error ?? '—'}</p>
+                    <p key={player.userId}>{player.displayName}: {player.answer ?? NO_COUNT_IT_TEXTS.match.noAnswer} · ошибка {player.error ?? '—'}</p>
                   ))}
                 </>
               )}
@@ -267,7 +268,7 @@ export default function NoCountItMatch({
             <h2>СУММА ОШИБОК</h2>
             {match.players.map((player) => (
               <div className="brain-room-player" key={player.userId}>
-                <span>{player.displayName}{player.userId === telegramId ? ' (ты)' : ''}</span>
+                <span>{player.displayName}{player.userId === telegramId ? NO_COUNT_IT_TEXTS.match.you : ''}</span>
                 <strong>{player.totalError}</strong>
               </div>
             ))}
@@ -277,7 +278,7 @@ export default function NoCountItMatch({
 
       {isFinished && match && (
         <section className="game-card">
-          <h2>{match.status === 'technical_aborted' ? 'НЕ УДАЛОСЬ ПОДГОТОВИТЬ РАУНД' : match.status === 'cancelled' ? 'МАТЧ ПРЕРВАН' : 'МАТЧ ЗАВЕРШЁН'}</h2>
+          <h2>{match.status === 'technical_aborted' ? NO_COUNT_IT_TEXTS.match.technicalAbort : match.status === 'cancelled' ? NO_COUNT_IT_TEXTS.match.cancelled : NO_COUNT_IT_TEXTS.match.completed}</h2>
           {match.status === 'technical_aborted'
             ? <p>Никто не успел подготовить изображение. Ошибки не начислены, комната сохранена.</p>
             : match.status === 'cancelled'
@@ -286,7 +287,7 @@ export default function NoCountItMatch({
               {match.finalResults?.map((player) => (
                 <p key={player.userId}>{player.userId === match.winnerUserId ? '🏆 ' : ''}{player.displayName}: <strong>{player.totalError}</strong> ошибок</p>
               ))}
-              <p>{match.winnerUserId ? 'Побеждает игрок с наименьшей суммой ошибок!' : 'Ничья!'}</p>
+              <p>{match.winnerUserId ? NO_COUNT_IT_TEXTS.match.winner : NO_COUNT_IT_TEXTS.match.tie}</p>
             </>}
           <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
                     <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>

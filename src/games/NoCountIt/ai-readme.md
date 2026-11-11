@@ -87,7 +87,15 @@ The match component receives the existing room and standard callbacks from `Mult
 
 Use `database.invokeFunction('no-count-it', ...)` for game actions. Use the existing Multiplayer room session and canonical game snapshots for synchronization. Realtime events are invalidation only.
 
-## 8. Verification
+## 8. Text resources and localization
+
+Client-visible game text is centralized in `src/games/NoCountIt/texts.ts`. Use `NO_COUNT_IT_TEXTS` for match UI, the development scene preview, accessibility labels and displayed color names. The color keys remain the English `NoCountItCandyColor` identifiers used by scene generation and server contracts; translate them only through `NO_COUNT_IT_TEXTS.colors`. Do not change wire values or database values when adding a display language.
+
+User-facing error messages returned by the NoCountIt Edge Function are centralized separately in `supabase/functions/no-count-it/texts.ts` and imported with the explicit `.ts` extension required by Deno. Keep the response shape and status codes unchanged when editing message text. Do not import browser resources into the Edge Function or duplicate server messages in client resources.
+
+Common room/menu text remains owned by Multiplayer Core and must not be copied into NoCountIt resources. When adding a visible NoCountIt string, place it in the appropriate client or server resource and reference it from the UI/handler.
+
+## 9. Verification
 
 Test generator invariants independently and with deterministic seeds. Test server transitions and races for preparation deadlines, late readiness, zero-ready technical abort, early all-answered completion, timeout/no-answer, immutable answers, excluded-player average error, reveal privacy, stale match requests, real player departure, final tie/winner, reconnect, room return and results timeout.
 

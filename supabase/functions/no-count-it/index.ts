@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { NO_COUNT_IT_SERVER_TEXTS } from "./texts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -123,27 +124,27 @@ async function broadcast(db:SupabaseClient,roomId:string,event:string){
 
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:corsHeaders});
- if(req.method!=="POST")return fail("Method not allowed",405);
+ if(req.method!=="POST")return fail(NO_COUNT_IT_SERVER_TEXTS.methodNotAllowed,405);
  try{
   const url=Deno.env.get("SUPABASE_URL"),key=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),token=Deno.env.get("TELEGRAM_BOT_TOKEN");
-  if(!url||!key||!token)return fail("Server configuration missing",500);
+  if(!url||!key||!token)return fail(NO_COUNT_IT_SERVER_TEXTS.serverConfigurationMissing,500);
   const body=await req.json();
-  if(!body||typeof body!=="object"||Array.isArray(body))return fail("Invalid request body",400);
+  if(!body||typeof body!=="object"||Array.isArray(body))return fail(NO_COUNT_IT_SERVER_TEXTS.invalidRequestBody,400);
   const actions=["start_match","get_match","round_ready","submit_answer","return_to_room"];
-  if(!actions.includes(body.action))return fail("Unknown NoCountIt action",400);
+  if(!actions.includes(body.action))return fail(NO_COUNT_IT_SERVER_TEXTS.unknownAction,400);
   const initData=typeof body.initData==="string"?body.initData:"";
-  if(!initData||initData.length>10000)return fail("Invalid Telegram data",400);
+  if(!initData||initData.length>10000)return fail(NO_COUNT_IT_SERVER_TEXTS.invalidTelegramData,400);
   const user=await verifyTelegram(initData,token);
-  if(!user)return fail("Telegram verification failed",401);
+  if(!user)return fail(NO_COUNT_IT_SERVER_TEXTS.telegramVerificationFailed,401);
   const userId=String(user.id),displayName=user.first_name?.trim().slice(0,100)||"Игрок";
   const roomId=typeof body.roomId==="string"?body.roomId.trim():"";
-  if(!/^[0-9a-f-]{36}$/i.test(roomId))return fail("A valid roomId is required",400);
+  if(!/^[0-9a-f-]{36}$/i.test(roomId))return fail(NO_COUNT_IT_SERVER_TEXTS.validRoomIdRequired,400);
   const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
 
   if(body.action==="return_to_room"){
     const {data:snapshot,error:snapshotError}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
-    if(snapshotError)return fail("Не удалось получить состояние матча",409);
-    if(snapshot?.match?.status!=="completed" && snapshot?.match?.status!=="technical_aborted")return fail("Матч ещё не завершён",409);
+    if(snapshotError)return fail(NO_COUNT_IT_SERVER_TEXTS.matchStateUnavailable,409);
+    if(snapshot?.match?.status!=="completed" && snapshot?.match?.status!=="technical_aborted")return fail(NO_COUNT_IT_SERVER_TEXTS.matchNotFinished,409);
     const finishedRoom=await finishSharedGame(db,roomId,snapshot.match.startedAt);
     await broadcast(db,roomId,"room_finished");
     return respond({room:finishedRoom});
@@ -151,50 +152,50 @@ Deno.serve(async(req:Request)=>{
 
   if(body.action==="start_match"){
     const {data:room,error}=await db.rpc("multiplayer_execute_action",{p_action:"get_room",p_user_id:userId,p_display_name:displayName,p_payload:{roomId}});
-    if(error)return fail("Не удалось проверить комнату",403);
-    if(room?.gameId!=="no-count-it")return fail("В комнате должна быть выбрана NoCountIt",409);
+    if(error)return fail(NO_COUNT_IT_SERVER_TEXTS.roomCheckFailed,403);
+    if(room?.gameId!=="no-count-it")return fail(NO_COUNT_IT_SERVER_TEXTS.gameSelectionRequired,409);
     const member=room.players?.find((p:{userId:string})=>p.userId===userId);
-    if(!member||!member.isHost)return fail("Начать матч может только ведущий комнаты",403);
+    if(!member||!member.isHost)return fail(NO_COUNT_IT_SERVER_TEXTS.hostOnlyStart,403);
     const {scene,path}=await uploadScene(db,roomId,1);
     const {data,error:startError}=await db.rpc("no_count_it_start_match",{p_room_id:roomId,p_user_id:userId,p_display_name:displayName,p_scene:scene,p_image_path:path});
-    if(startError){await db.storage.from("no-count-it-scenes").remove([path]);return fail("Не удалось начать матч",409);}
+    if(startError){await db.storage.from("no-count-it-scenes").remove([path]);return fail(NO_COUNT_IT_SERVER_TEXTS.matchStartFailed,409);}
     await broadcast(db,roomId,"match_started");
     return respond(data);
   }
 
   const matchId=typeof body.matchId==="string"?body.matchId:"";
   if(body.action==="round_ready" || body.action==="submit_answer"){
-    if(!/^[0-9a-f-]{36}$/i.test(matchId))return fail("A valid matchId is required",400);
+    if(!/^[0-9a-f-]{36}$/i.test(matchId))return fail(NO_COUNT_IT_SERVER_TEXTS.validMatchIdRequired,400);
   }
   if(body.action==="round_ready"){
     const {data,error}=await db.rpc("no_count_it_round_ready",{p_room_id:roomId,p_match_id:matchId,p_user_id:userId});
-    if(error)return fail("Не удалось подтвердить готовность раунда",409);
+    if(error)return fail(NO_COUNT_IT_SERVER_TEXTS.roundReadyFailed,409);
     await broadcast(db,roomId,"round_updated");
     return respond(data);
   }
   if(body.action==="submit_answer"){
     const roundNumber=Number(body.roundNumber),answer=typeof body.answer==="string"&&/^\d{1,15}$/.test(body.answer)?BigInt(body.answer):null;
-    if(!Number.isInteger(roundNumber)||roundNumber<1||roundNumber>3||answer===null||answer>9223372036854775807n)return fail("Некорректный ответ",400);
+    if(!Number.isInteger(roundNumber)||roundNumber<1||roundNumber>3||answer===null||answer>9223372036854775807n)return fail(NO_COUNT_IT_SERVER_TEXTS.invalidAnswer,400);
     const {data,error}=await db.rpc("no_count_it_submit_answer",{p_room_id:roomId,p_match_id:matchId,p_round_number:roundNumber,p_user_id:userId,p_answer:answer.toString()});
-    if(error)return fail("Ответ не принят. Возможно, время вышло или ответ уже отправлен.",409);
+    if(error)return fail(NO_COUNT_IT_SERVER_TEXTS.answerRejected,409);
     await broadcast(db,roomId,"answer_submitted");
     return respond(data);
   }
 
   const {data:room,error:roomError}=await db.rpc("multiplayer_execute_action",{p_action:"get_room",p_user_id:userId,p_display_name:displayName,p_payload:{roomId}});
-  if(roomError)return fail("Вы не участник этой комнаты",403);
+  if(roomError)return fail(NO_COUNT_IT_SERVER_TEXTS.notRoomMember,403);
   const {data:initialSnapshot,error:initialSnapshotError}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
-  if(initialSnapshotError)return fail("Не удалось получить состояние матча",409);
+  if(initialSnapshotError)return fail(NO_COUNT_IT_SERVER_TEXTS.matchStateUnavailable,409);
   const currentMatchId=initialSnapshot?.match?.matchId;
   if(!currentMatchId)return respond({room,match:null});
-  if(matchId && matchId!==currentMatchId)return fail("Матч уже изменился. Обновите игру.",409);
+  if(matchId && matchId!==currentMatchId)return fail(NO_COUNT_IT_SERVER_TEXTS.matchChanged,409);
   const activeMatchId=matchId||currentMatchId;
   const {data:prep,error:prepError}=await db.rpc("no_count_it_finalize_preparation",{p_room_id:roomId,p_match_id:activeMatchId});
   if(!prepError&&prep?.status==="technical_aborted"){
     await broadcast(db,roomId,"match_finished");
   }
   const {data:snapshot,error}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
-  if(error)return fail("Не удалось получить состояние матча",409);
+  if(error)return fail(NO_COUNT_IT_SERVER_TEXTS.matchStateUnavailable,409);
   const match=snapshot?.match;
   if(match?.round?.status==="revealing"){
     const {data:round}=await db.from("games_no_count_it_rounds").select("reveal_started_at").eq("match_id",activeMatchId).eq("round_number",match.currentRound).maybeSingle();
@@ -212,7 +213,7 @@ Deno.serve(async(req:Request)=>{
     }
   }
   const {data:latest,error:latestError}=await db.rpc("no_count_it_match_snapshot",{p_room_id:roomId,p_user_id:userId});
-  if(latestError)return fail("Не удалось обновить состояние матча",500);
+  if(latestError)return fail(NO_COUNT_IT_SERVER_TEXTS.matchRefreshFailed,500);
   const current=latest?.match;
   if(current?.round?.imagePath){
     const {data:signed,error:signedError}=await db.storage.from("no-count-it-scenes").createSignedUrl(current.round.imagePath,600);
@@ -221,6 +222,6 @@ Deno.serve(async(req:Request)=>{
   return respond({room:latest.room??room,match:current??null});
  }catch(error){
   console.error("NoCountIt function error",error instanceof Error?error.message:"Unknown error");
-  return fail("Внутренняя ошибка NoCountIt",500);
+  return fail(NO_COUNT_IT_SERVER_TEXTS.internalError,500);
  }
 });
