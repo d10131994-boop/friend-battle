@@ -128,6 +128,7 @@ AS $function$
 DECLARE
   v_room public.common_multiplayer_rooms%ROWTYPE;
   v_match public.games_no_count_it_matches%ROWTYPE;
+  v_round public.games_no_count_it_rounds%ROWTYPE;
   v_now timestamptz := pg_catalog.clock_timestamp();
   v_results jsonb;
   v_finished_room jsonb;
@@ -164,8 +165,16 @@ BEGIN
     );
   END IF;
 
-  IF v_room.status <> 'playing' OR v_match.status NOT IN ('preparing', 'playing') THEN
+  IF v_room.status <> 'playing' OR v_match.status <> 'playing' THEN
     RAISE EXCEPTION 'Match is no longer active' USING ERRCODE = '55000';
+  END IF;
+
+  SELECT * INTO v_round
+  FROM public.games_no_count_it_rounds
+  WHERE match_id = p_match_id AND round_number = v_match.current_round
+  FOR UPDATE;
+  IF NOT FOUND OR v_round.status <> 'revealing' THEN
+    RAISE EXCEPTION 'Early exit is available only after a round' USING ERRCODE = '55000';
   END IF;
 
   SELECT COALESCE(pg_catalog.jsonb_agg(
