@@ -125,7 +125,7 @@ export default function NoCountItMatch({
     return () => window.clearInterval(timer)
   }, [showStartedAt, answerDeadline])
 
-  async function submitAnswer() {
+  const submitAnswer = useCallback(async () => {
     if (!match || !currentRound || currentRound.status !== 'answering' ||
       myRoundPlayer?.status !== 'active' || myRoundPlayer.answer !== null ||
       !/^\d+$/.test(answerInput) || answerSubmitAttemptRef.current === roundKey) return
@@ -149,14 +149,14 @@ export default function NoCountItMatch({
     } finally {
       setLoading(false)
     }
-  }
+  }, [match, currentRound, myRoundPlayer?.status, myRoundPlayer?.answer, answerInput, roundKey, invokeGame, room.roomId, refreshMatch])
 
   useEffect(() => {
     if (!isAnswering || !answerDeadline || remaining > 0 || !answerInput || !roundKey ||
       myRoundPlayer?.status !== 'active' || myRoundPlayer.answer !== null ||
       answerSubmitAttemptRef.current === roundKey) return
     void submitAnswer()
-  }, [isAnswering, remaining, answerInput, roundKey, myRoundPlayer?.status, myRoundPlayer?.answer, submitAnswer])
+  }, [isAnswering, answerDeadline, remaining, answerInput, roundKey, myRoundPlayer?.status, myRoundPlayer?.answer, submitAnswer])
 
   function appendDigit(digit: string) {
     if (answerInput.length >= 19 || myRoundPlayer?.answer !== null) return
