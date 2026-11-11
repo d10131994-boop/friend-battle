@@ -58,8 +58,9 @@ export type NoCountItCandyColor =
   | 'purple'
   | 'pink'
   | 'teal'
-  | 'white'
   | 'brown'
+
+export type NoCountItPaletteColor = NoCountItCandyColor | 'white'
 
 /** Private server-only scene description. Never serialize this to clients pre-reveal. */
 export interface NoCountItScene {
@@ -68,6 +69,7 @@ export interface NoCountItScene {
   generator: 'candy-jar'
   objects: NoCountItSceneObject[]
   targetColor: NoCountItCandyColor
+  backgroundColor: NoCountItPaletteColor
   correctCount: number
 }
 
@@ -102,6 +104,8 @@ export interface NoCountItPublicRound {
   status: NoCountItRoundStatus
   imageUrl: string | null
   targetColor: NoCountItCandyColor | null
+  candyColors: NoCountItCandyColor[]
+  backgroundColor: NoCountItPaletteColor
   preparationDeadline: string | null
   showStartedAt: string | null
   answerDeadline: string | null
