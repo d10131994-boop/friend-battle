@@ -1,7 +1,7 @@
 import type { NoCountItCandyColor, NoCountItScene, NoCountItSceneObject } from '../types'
 import { NO_COUNT_IT_TEXTS } from '../texts'
 
-const PALETTE: Record<NoCountItCandyColor, { base: string; light: string; dark: string }> = {
+export const CANDY_PALETTE: Record<NoCountItCandyColor, { base: string; light: string; dark: string }> = {
   red: { base: '#D95755', light: '#F28A7B', dark: '#983B43' },
   orange: { base: '#E98C42', light: '#F7B96F', dark: '#B95E32' },
   yellow: { base: '#E7C94E', light: '#F7E58A', dark: '#B99736' },
@@ -15,7 +15,7 @@ const PALETTE: Record<NoCountItCandyColor, { base: string; light: string; dark: 
 }
 
 function renderCandy(object: NoCountItSceneObject): string {
-  const color = PALETTE[object.color]
+  const color = CANDY_PALETTE[object.color]
   const gradientId = `candy-gradient-${object.id}`
   const transform = `translate(${object.x} ${object.y}) rotate(${object.rotation}) scale(${object.scale})`
   const shape = object.shape === 'wrapped'

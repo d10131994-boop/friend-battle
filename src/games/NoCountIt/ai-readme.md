@@ -45,7 +45,7 @@ The generation parameters are centralized in `src/games/NoCountIt/generationConf
 
 Current tuning values use an estimated jar area of 500,000 and target coverage of 0.90. Target coverage is a formula input for the sum of candy-circle areas; it is not an exact measurement of the visible union area after overlaps.
 
-A development-only generator preview is available at `/?no-count-it-generator=1` while running Vite. It accepts a fixed candy count and seed so generated layouts can be compared reproducibly. The preview must remain unavailable in production builds.
+A development-only generator preview is available at `/?no-count-it-generator=1` while running Vite. It accepts a fixed candy count and seed so generated layouts can be compared reproducibly. The preview must remain unavailable in production builds. It uses local images from `src/games/NoCountIt/backgrounds/` (PNG, JPG, JPEG or WebP); one image is selected deterministically from the scene seed. A solid color is also selected from the candy palette, excluding every color used by candies in that scene. The dev-only layered composition shows a preview timer, the jar and the target-color prompt. These local backgrounds are not yet used by production multiplayer rounds.
 
 The generator creates the private scene data. The SVG renderer draws it and must not calculate game outcomes. Keep the generator independent from the match engine so additional scene generators can be added without changing match rules.
 
