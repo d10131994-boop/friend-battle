@@ -14,7 +14,7 @@ export function distributeCandyColors(
   count: number,
   random: () => number,
   minColors = 4,
-  maxColors = 10,
+  maxColors = 9,
   minPerColor = 3,
 ): ColorDistribution {
   if (!Number.isInteger(count) || count < minColors * minPerColor) {
