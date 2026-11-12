@@ -838,3 +838,15 @@
   border:0;
   box-shadow:none;
 }
+
+/* Issue 008: seamless grass grid. Grid gap is zero; crop small transparent
+   margins baked into grass artwork instead of exposing the frame below. */
+.dm-solo-screen .dm-solo-layout .dm-board {
+  column-gap:0;
+  row-gap:0;
+}
+.dm-solo-screen .dm-solo-layout .dm-cell {
+  background-size:106% 106%;
+  background-position:center;
+  background-repeat:no-repeat;
+}
