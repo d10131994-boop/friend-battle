@@ -828,3 +828,13 @@
 .dm-solo-screen .dm-solo-layout .dm-cell {
   border-radius:0;
 }
+
+/* No board underlay: only the wooden frame and grass tile images are visible. */
+.dm-solo-screen .dm-solo-layout .dm-board {
+  background-color:transparent;
+}
+.dm-solo-screen .dm-solo-layout .dm-cell {
+  background-color:transparent;
+  border:0;
+  box-shadow:none;
+}
