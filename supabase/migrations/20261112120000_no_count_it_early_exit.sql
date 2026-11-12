@@ -63,6 +63,11 @@ BEGIN
     SET status = 'completed', completed_at = v_now, final_results = v_results, winner_user_id = v_winner
     WHERE id = p_match_id;
 
+    -- Preserve scene assets for 24 hours after normal match completion.
+    UPDATE public.games_no_count_it_rounds
+    SET delete_after = v_now + interval '24 hours'
+    WHERE match_id = p_match_id;
+
     INSERT INTO public.common_multiplayer_room_stats(room_id, user_id, wins, matches_played, updated_at)
     SELECT p_room_id, mp.user_id, CASE WHEN mp.user_id = v_winner THEN 1 ELSE 0 END, 1, v_now
     FROM public.games_no_count_it_match_players mp
@@ -189,6 +194,11 @@ BEGIN
   SET status = 'cancelled', completed_at = v_now,
       final_results = v_results, winner_user_id = NULL
   WHERE id = p_match_id;
+
+  -- Early-exited matches also receive the normal 24-hour scene retention window.
+  UPDATE public.games_no_count_it_rounds
+  SET delete_after = v_now + interval '24 hours'
+  WHERE match_id = p_match_id;
 
   -- This trusted transition finishes the shared room without removing members.
   v_finished_room := public.multiplayer_execute_action(
