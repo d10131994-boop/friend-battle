@@ -74,7 +74,7 @@ function validStoredData(value: unknown): value is StoredSoloData {
     !Array.isArray(state.obstacleSequence) || state.obstacleSequence.length !== state.characterSequence.length ||
     !Number.isInteger(state.turnNumber) || state.turnNumber < 0 ||
     !Number.isFinite(state.score) || state.score < 0 ||
-    !Number.isInteger(state.maxLevel) || state.maxLevel < 1 || state.maxLevel > 10 ||
+    !Number.isInteger(state.maxLevel) || state.maxLevel < 1 || state.maxLevel > 6 ||
     !Number.isInteger(state.coins) || state.coins < 0 ||
     !['active', 'completed', 'surrendered'].includes(state.status) ||
     !Number.isFinite(Date.parse(state.startedAt)) || !Number.isFinite(Date.parse(state.deadlineAt)) ||
@@ -84,7 +84,7 @@ function validStoredData(value: unknown): value is StoredSoloData {
       Number.isInteger(state.inventory[tool as ToolType]) &&
       state.inventory[tool as ToolType] >= 0 && state.inventory[tool as ToolType] <= 3) ||
     (state.storage !== null && (!Number.isInteger(state.storage?.level) ||
-      state.storage.level < 1 || state.storage.level > 10))
+      state.storage.level < 1 || state.storage.level > 6))
   ) return false
   try {
     assertBoard(state.board)
