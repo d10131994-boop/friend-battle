@@ -815,3 +815,11 @@
 .dm-solo-screen .dm-solo-layout .dm-cell .dm-character-portrait img {
   max-width:100%;max-height:100%;
 }
+
+/* Issue 008: grass artwork fills every tile, with no green CSS underlay. */
+.dm-solo-screen .dm-solo-layout .dm-cell {
+  background-color:transparent;
+  background-size:100% 100%;
+  background-position:center;
+  background-repeat:no-repeat;
+}
