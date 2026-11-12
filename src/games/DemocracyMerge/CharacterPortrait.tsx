@@ -1,35 +1,15 @@
-import { useState } from 'react'
-
 type Props = {
   level: number
   className?: string
 }
 
-/**
- * Solo character artwork is kept separate from multiplayer artwork.
- * Show the original level number as a fallback if a PNG fails to load.
+/** The cooperative V1 character set consists of numbered level 1–6 tokens.
+ * Reuse the same six identities in solo rather than solo-only level 7–10 art.
  */
 export default function CharacterPortrait({ level, className = '' }: Props) {
-  const [failedPath, setFailedPath] = useState<string | null>(null)
-  const path = `/democracy-merge/solo/level-${String(level).padStart(2, '0')}.png`
-
   return (
-    <span className={`dm-character-portrait ${className}`}>
-      {failedPath !== path && (
-        <img
-          key={path}
-          className="dm-character-art"
-          src={path}
-          alt=""
-          aria-hidden="true"
-          loading="eager"
-          draggable={false}
-          onError={() => setFailedPath(path)}
-        />
-      )}
-      <span className="dm-character-fallback" aria-label={`Уровень ${level}`}>
-        {level}
-      </span>
+    <span className={`dm-character-portrait dm-coop-character dm-level-${level} ${className}`} aria-label={`Уровень ${level}`}>
+      <span className="dm-character-fallback">{level}</span>
     </span>
   )
 }
