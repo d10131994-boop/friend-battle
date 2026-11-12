@@ -823,3 +823,8 @@
   background-position:center;
   background-repeat:no-repeat;
 }
+
+/* Grass tiles must cover their entire rectangular grid slot, including corners. */
+.dm-solo-screen .dm-solo-layout .dm-cell {
+  border-radius:0;
+}
