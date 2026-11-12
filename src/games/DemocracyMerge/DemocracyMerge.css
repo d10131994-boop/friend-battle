@@ -790,3 +790,36 @@
 }
 
 .dm-solo-screen .dm-visually-hidden {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Portraits sit directly on the grass; keep numeric fallback invisible while art loads. */
+.dm-character-portrait .dm-character-fallback[hidden]{display:none!important}
+.dm-character-portrait img[hidden]{display:none!important}
+.dm-solo-screen .dm-solo-layout .dm-character-portrait{background:transparent;box-shadow:none;border:0}
+
+/* Issue 008: keep the 6x6 board geometry independent of character content. */
+.dm-solo-screen .dm-solo-layout .dm-board {
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  grid-template-rows:repeat(6,minmax(0,1fr));
+}
+.dm-solo-screen .dm-solo-layout .dm-cell {
+  box-sizing:border-box;
+  width:100%;height:100%;
+  min-width:0;min-height:0;
+  overflow:hidden;
+}
+.dm-solo-screen .dm-solo-layout .dm-cell > .dm-character {
+  box-sizing:border-box;
+  min-width:0;min-height:0;
+  max-width:100%;max-height:100%;
+}
+.dm-solo-screen .dm-solo-layout .dm-cell .dm-character-portrait img {
+  max-width:100%;max-height:100%;
+}
+
+/* Issue 008: grass artwork fills every tile, with no green CSS underlay. */
+.dm-solo-screen .dm-solo-layout .dm-cell {
+  background-color:transparent;
+  background-size:100% 100%;
+  background-position:center;
+  background-repeat:no-repeat;
+}
