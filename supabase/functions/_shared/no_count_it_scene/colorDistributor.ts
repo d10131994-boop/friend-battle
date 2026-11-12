@@ -1,4 +1,4 @@
-import type { NoCountItCandyColor } from '../types'
+import type { NoCountItCandyColor } from './types.ts'
 
 const COLORS: readonly NoCountItCandyColor[] = [
   'red', 'orange', 'yellow', 'green', 'blue',
