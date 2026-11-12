@@ -107,6 +107,7 @@ function tryPlacement(
   const placed: PlacedCandy[] = []
   const positions = buildCandidates(radius, emptyTopPercent)
   const available = [...positions]
+  let minimumRow = 0
 
   for (let index = 0; index < colors.length; index += 1) {
     let bestIndex = -1
@@ -114,7 +115,7 @@ function tryPlacement(
 
     for (let positionIndex = 0; positionIndex < available.length; positionIndex += 1) {
       const position = available[positionIndex]
-      if (!isInsideJar(position, radius)) continue
+      if (position.row < minimumRow || !isInsideJar(position, radius)) continue
       const overlap = overlapStats(position, radius, placed)
       if (overlap.contacts === 0) {
         // The first candy rests on the jar floor; subsequent candies must overlap.
@@ -146,6 +147,7 @@ function tryPlacement(
 
     if (bestIndex < 0) return null
     const [position] = available.splice(bestIndex, 1)
+    minimumRow = position.row
     placed.push({
       id: index + 1,
       x: Math.round(position.x),
