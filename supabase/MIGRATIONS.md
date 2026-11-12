@@ -53,11 +53,13 @@ The task branch adds `20261108100000_multiplayer_active_match_departure.sql`. It
 
 The task branch also adds `20261108113000_democracy_merge_multiplayer.sql` with canonical source `supabase/sql/democracy_merge_multiplayer.sql`. It creates private match/player/action/history/statistics tables; trusted start, snapshot, reserve, commit, release, history and deletion RPCs; game-owned departure/room-cancellation triggers; and five-minute disconnect plus 30-minute deadline Cron jobs. It replaces the shared heartbeat guard hook with the Democracy Merge-specific five-minute departure policy. The reserve/commit flow allows an action already accepted before the deadline to finish while preventing new actions after it; the disconnect Cron also waits for valid actions reserved before the five-minute cutoff. This migration depends on `leave_active_match` and the no-op hook from the preceding Multiplayer migration. Both migrations must be applied together before deploying the updated Edge Functions and frontend; they are pending and have not been applied to Production. Test them on an isolated Supabase database first.
 
-## Pending NoCountIt round palette migration
+## Applied NoCountIt round palette migration
 
-The AI task branch adds `20261112100000_no_count_it_round_palette.sql`. It replaces the NoCountIt public match snapshot function so it returns the distinct candy-color list and jar-interior background color, without exposing the private scene seed, object coordinates or correct count. This migration is pending and has not been applied to Production.
+Production records the NoCountIt palette migration as `no_count_it_round_palette` (version `20261112001255`). It replaces the public match snapshot so it returns the distinct candy-color list and jar-interior background color without exposing the private scene seed, object coordinates or correct count. The matching NoCountIt Edge Function is deployed. Continue to preserve this privacy boundary when changing scene generation or rendering.
 
-The matching `supabase/functions/no-count-it/index.ts` change generates the separate background color, excludes white from candy colors, and embeds the background inside the jar SVG. Deploy the Edge Function only after the migration is applied and verified. Neither the migration nor Edge Function has been deployed as part of this PR.
+## Pending NoCountIt early-exit migration
+
+The current Production audit found no `public.no_count_it_exit_early` function, while `public.no_count_it_prepare_next_round` still uses a four-second reveal guard. The task adds `20261112120000_no_count_it_early_exit.sql`, which installs the atomic early-exit RPC and updates the SQL reveal guard to six seconds. Apply and verify this migration before relying on the already-present Edge Function `early_exit` action. A source-code PR does not apply this migration or deploy an Edge Function.
 
 ## Baseline decision
 
