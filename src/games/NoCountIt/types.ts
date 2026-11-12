@@ -7,6 +7,8 @@
  */
 
 import { CANDY_GENERATION_CONFIG } from './generationConfig'
+import type { NoCountItCandyColor, NoCountItPaletteColor } from '../../../supabase/functions/_shared/no_count_it_scene/types.ts'
+export type { NoCountItCandyColor, NoCountItPaletteColor, NoCountItScene, NoCountItSceneObject } from '../../../supabase/functions/_shared/no_count_it_scene/types.ts'
 
 export const NO_COUNT_IT_GAME_ID = 'no-count-it' as const
 
@@ -48,40 +50,6 @@ export type NoCountItRoundPlayerStatus =
   | 'left'
 
 export type NoCountItMatchPlayerStatus = 'active' | 'left'
-
-export type NoCountItCandyColor =
-  | 'red'
-  | 'orange'
-  | 'yellow'
-  | 'green'
-  | 'blue'
-  | 'purple'
-  | 'pink'
-  | 'teal'
-  | 'brown'
-
-export type NoCountItPaletteColor = NoCountItCandyColor | 'white'
-
-/** Private server-only scene description. Never serialize this to clients pre-reveal. */
-export interface NoCountItScene {
-  version: 1
-  seed: string
-  generator: 'candy-jar'
-  objects: NoCountItSceneObject[]
-  targetColor: NoCountItCandyColor
-  backgroundColor: NoCountItPaletteColor
-  correctCount: number
-}
-
-export interface NoCountItSceneObject {
-  id: number
-  x: number
-  y: number
-  rotation: number
-  scale: number
-  color: NoCountItCandyColor
-  shape: 'round' | 'oval' | 'wrapped'
-}
 
 export interface NoCountItRoundPlayer {
   userId: string
