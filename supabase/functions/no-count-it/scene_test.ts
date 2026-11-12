@@ -43,7 +43,7 @@ function assertSceneInvariants(scene: ReturnType<typeof generateCandyJarScene>, 
     assert(candy.y <= previousY + 0.05, "Candies must be placed in bottom-up layer order");
     previousY = candy.y;
     assert(candy.scale >= 20 / 29 && candy.scale <= 90 / 29, "Candy scale is outside configured bounds");
-    assert(candy.color !== "white", "White must not be used for candies");
+    assert(String(candy.color) !== "white", "White must not be used for candies");
 
     const layerHalfWidth = halfWidth - radius - 3;
     const isEdge = Math.abs(Math.abs(candy.x - 500) - layerHalfWidth) <= radius * 1.6 * 0.6 + 0.05;
