@@ -1,6 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { NO_COUNT_IT_SERVER_TEXTS } from "./texts.ts";
+import { generateCandyJarScene } from "../_shared/no_count_it_scene/sceneGenerator.ts";
+import { renderCandyJarSvg } from "../_shared/no_count_it_scene/svgRenderer.ts";
+import type { NoCountItScene } from "../_shared/no_count_it_scene/types.ts";
+import { selectNoCountItBackground } from "./backgroundAssets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,77 +46,23 @@ async function verifyTelegram(initData: string, botToken: string): Promise<Teleg
   } catch { return null; }
 }
 
-type CandyColor = "red" | "orange" | "yellow" | "green" | "blue" | "purple" | "pink" | "teal" | "brown";
-type PaletteColor = CandyColor | "white";
-type Candy = { id: number; x: number; y: number; rotation: number; scale: number; color: CandyColor; shape: "round" | "oval" | "wrapped" };
-type Scene = { version: 1; seed: string; generator: "candy-jar"; objects: Candy[]; targetColor: CandyColor; backgroundColor: PaletteColor; correctCount: number };
-const COLORS: CandyColor[] = ["red","orange","yellow","green","blue","purple","pink","teal","brown"];
-const BACKGROUND_COLORS: PaletteColor[] = [...COLORS, "white"];
-const PALETTE: Record<PaletteColor, [string,string,string]> = {
-  red:["#D95755","#F28A7B","#983B43"], orange:["#E98C42","#F7B96F","#B95E32"],
-  yellow:["#E7C94E","#F7E58A","#B99736"], green:["#65A978","#9BD19A","#3F795B"],
-  blue:["#5B91C5","#9CC4E5","#3D638F"], purple:["#9675B7","#C0A1D8","#6B508E"],
-  pink:["#D77FA0","#F1B2C5","#A9567D"], teal:["#55AFA9","#91D5C9","#367D7B"],
-  white:["#E8E4D9","#FFFFFF","#B9B5AB"], brown:["#9C7055","#C49A78","#694A3B"],
-};
-function seeded(seed: string) {
-  let state = 2166136261;
-  for (const char of seed) { state ^= char.charCodeAt(0); state = Math.imul(state,16777619); }
-  return () => {
-    state += 0x6d2b79f5; let value=state;
-    value=Math.imul(value^(value>>>15),value|1); value^=value+Math.imul(value^(value>>>7),value|61);
-    return ((value^(value>>>14))>>>0)/4294967296;
-  };
-}
-function int(r:()=>number,min:number,max:number){return min+Math.floor(r()*(max-min+1));}
-function shuffle<T>(items:T[],r:()=>number){const a=[...items];for(let i=a.length-1;i>0;i--){const j=int(r,0,i);[a[i],a[j]]=[a[j],a[i]];}return a;}
-function halfWidth(y:number){if(y<145||y>930)return 0;if(y<245)return 250+(y-145)*.55;if(y<790)return 305;return 305-(y-790)*(45/140);}
-function generateScene(): Scene {
-  const seed=crypto.randomUUID(), r=seeded(seed), count=int(r,40,120), colorCount=int(r,4,Math.min(9,COLORS.length));
-  const selected=shuffle(COLORS,r).slice(0,colorCount), colors: CandyColor[]=[];
-  for(const c of selected)for(let i=0;i<3;i++)colors.push(c);
-  while(colors.length<count)colors.push(selected[int(r,0,selected.length-1)]);
-  const shuffled=shuffle(colors,r), targetColor=selected[int(r,0,selected.length-1)];
-  const availableBackgroundColors=BACKGROUND_COLORS.filter(c=>!selected.includes(c as CandyColor));
-  const backgroundColor=availableBackgroundColors[int(r,0,availableBackgroundColors.length-1)];
-  const objects:Candy[]=[];
-  for(let i=0;i<shuffled.length;i++){
-    let placed:Candy|null=null;
-    for(let attempt=0;attempt<700&&!placed;attempt++){
-      const radius=int(r,23,29),y=int(r,190,875),half=halfWidth(y)-radius-8;
-      if(half<=0)continue;
-      const x=int(r,500-half,500+half),inset=radius-4,edge=Math.abs(x-500)+inset;
-      if(edge>halfWidth(y)||edge>halfWidth(y-inset)||edge>halfWidth(y+inset))continue;
-      const candidate:Candy={id:i+1,x,y,rotation:int(r,-180,180),scale:radius/29,color:shuffled[i],shape:(["round","oval","wrapped"] as const)[int(r,0,2)]};
-      if(objects.every(o=>Math.hypot(x-o.x,y-o.y)>=(radius+29*o.scale)*.76))placed=candidate;
-    }
-    if(!placed)throw new Error("Scene placement failed; retry generation.");
-    objects.push(placed);
-  }
-  return {version:1,seed,generator:"candy-jar",objects,targetColor,backgroundColor,correctCount:objects.filter(o=>o.color===targetColor).length};
-}
-function renderSvg(scene:Scene):string{
-  const candies=scene.objects.map(o=>{
-    const [base,light,dark]=PALETTE[o.color],id=`c${o.id}`,shape=o.shape==="oval"
-      ?'<ellipse cx="0" cy="0" rx="29" ry="22"/>'
-      :o.shape==="wrapped"
-      ?'<path d="M-29 -11 L-22 -6 L-22 6 L-29 11 L-25 0 Z M29 -11 L22 -6 L22 6 L29 11 L25 0 Z"/><rect x="-22" y="-15" width="44" height="30" rx="14"/>'
-      :'<circle cx="0" cy="0" r="29"/>';
-    return `<g transform="translate(${o.x} ${o.y}) rotate(${o.rotation}) scale(${o.scale})"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${light}"/><stop offset=".56" stop-color="${base}"/><stop offset="1" stop-color="${dark}"/></linearGradient></defs><g fill="url(#${id})" stroke="#654B45" stroke-opacity=".2" stroke-width="2">${shape}</g><ellipse cx="-9" cy="-11" rx="8" ry="4" fill="#fff" opacity=".22"/></g>`;
-  }).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><clipPath id="inside"><path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z"/></clipPath></defs><g clip-path="url(#inside)"><rect x="175" y="80" width="650" height="850" fill="${PALETTE[scene.backgroundColor][0]}"/>${candies}</g><path d="M255 145 Q255 115 290 115 H710 Q745 115 745 145 L790 215 Q825 270 825 340 V790 Q825 900 715 920 H285 Q175 900 175 790 V340 Q175 270 210 215 Z" fill="#D9ECEA" fill-opacity=".08" stroke="#A8C9CB" stroke-opacity=".72" stroke-width="13"/><path d="M260 105 Q260 80 292 80 H708 Q740 80 740 105 V135 Q740 155 710 155 H290 Q260 155 260 135 Z" fill="#D8E6E3" fill-opacity=".65" stroke="#A8C9CB" stroke-width="11"/><path d="M465 82 C430 25 385 48 420 92 C445 115 470 100 500 90 C530 100 555 115 580 92 C615 48 570 25 535 82" fill="#D98A9D" stroke="#A95F76" stroke-width="7"/><circle cx="500" cy="91" r="17" fill="#E9A7B5" stroke="#A95F76" stroke-width="6"/></svg>`;
-}
+type Scene = NoCountItScene;
+
 async function uploadScene(db:SupabaseClient,roomId:string,round:number){
- let scene:Scene|undefined;
- let lastError:unknown;
- for(let attempt=0;attempt<5&&!scene;attempt++){
-  try{scene=generateScene();}catch(error){lastError=error;}
- }
- if(!scene)throw lastError??new Error("Could not generate a valid candy scene.");
- const path=`${roomId}/round-${round}/${crypto.randomUUID()}.svg`;
- const {error}=await db.storage.from("no-count-it-scenes").upload(path,new Blob([renderSvg(scene)],{type:"image/svg+xml"}),{contentType:"image/svg+xml",upsert:false});
- if(error)throw error;
- return {scene,path};
+  let scene:Scene|undefined;
+  let lastError:unknown;
+  for(let attempt=0;attempt<5&&!scene;attempt++){
+    try{scene=generateCandyJarScene({seed:crypto.randomUUID()});}catch(error){lastError=error;}
+  }
+  if(!scene)throw lastError??new Error("Could not generate a valid candy scene.");
+  const background=selectNoCountItBackground(scene.seed);
+  const svg=renderCandyJarSvg(scene,{backgroundImageDataUri:background.dataUri});
+  const blob=new Blob([svg],{type:"image/svg+xml"});
+  if(blob.size>1_048_576)throw new Error("Generated NoCountIt scene exceeds the Storage bucket size limit.");
+  const path=`${roomId}/round-${round}/${crypto.randomUUID()}.svg`;
+  const {error}=await db.storage.from("no-count-it-scenes").upload(path,blob,{contentType:"image/svg+xml",upsert:false});
+  if(error)throw error;
+  return {scene,path};
 }
 async function finishSharedGame(db:SupabaseClient,roomId:string,startedAt:string){
  const {data,error}=await db.rpc("multiplayer_execute_action",{p_action:"finish_game",p_user_id:"__game_server__",p_display_name:"Game server",p_payload:{roomId,gameId:"no-count-it",startedAt}});
