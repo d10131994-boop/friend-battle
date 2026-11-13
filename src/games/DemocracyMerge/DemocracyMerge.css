@@ -891,7 +891,7 @@
   inset:-10%;
   z-index:2;
   pointer-events:none;
-  background:url('/democracy-merge/picture/v3/wooden-frame-floral.png') center / 100% 100% no-repeat;
+  background:url('/democracy-merge/picture/v3/wooden-frame-floral.png') center / 100% 97% no-repeat;
 }
 .dm-solo-screen .dm-solo-layout .dm-board > .dm-cell {
   position:relative;
