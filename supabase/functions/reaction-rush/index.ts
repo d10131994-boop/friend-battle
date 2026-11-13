@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     if (!body || typeof body !== "object" || Array.isArray(body)) return fail("Invalid request body", 400);
     const action = body.action;
-    if (!["start_match", "tap", "finish_round", "get_match", "leaderboard", "return_to_room"].includes(action)) {
+    if (!["start_match", "tap", "finish_round", "get_match", "leaderboard", "return_to_room", "solo_enter", "solo_start", "solo_tap", "solo_finish", "solo_snapshot"].includes(action)) {
       return fail("Unknown Reaction Rush action", 400);
     }
     const initData = typeof body.initData === "string" ? body.initData : "";
@@ -111,17 +111,56 @@ Deno.serve(async (req: Request) => {
 
     const telegramId = String(user.id);
     const displayName = user.first_name?.trim().slice(0, 100) || "Игрок";
+    const username = (user.username?.trim() ? `@${user.username.trim()}` : displayName).slice(0, 100);
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    // Refresh the current player's username when they enter either game mode.
+    // Only existing top-ten entries are updated; no zero-score record is inserted.
+    if (action === "get_match" || action === "start_match") {
+      const { error: nameError } = await supabase.rpc("reaction_rush_refresh_username", {
+        p_telegram_id: telegramId, p_username: username,
+      });
+      if (nameError) return errorResponse(nameError);
+    }
+
+    if (action === "solo_enter" || action === "solo_start" || action === "solo_tap" ||
+        action === "solo_finish" || action === "solo_snapshot") {
+      if (action === "solo_enter") {
+        const { error } = await supabase.rpc("reaction_rush_refresh_username", {
+          p_telegram_id: telegramId, p_username: username,
+        });
+        if (error) return errorResponse(error);
+        const { data: record, error: recordError } = await supabase
+          .from("games_reaction_rush_records").select("score")
+          .eq("telegram_id", telegramId).maybeSingle();
+        if (recordError) return errorResponse(recordError);
+        const { data: session, error: sessionError } = await supabase
+          .from("games_reaction_rush_solo_sessions").select("rounds_played")
+          .eq("telegram_id", telegramId).maybeSingle();
+        if (sessionError) return errorResponse(sessionError);
+        return respond({ best: record?.score ?? 0, roundsPlayed: session?.rounds_played ?? 0 });
+      }
+      const actionName = action === "solo_start" ? "start"
+        : action === "solo_tap" ? "tap" : action === "solo_finish" ? "finish" : "snapshot";
+      const { data, error } = await supabase.rpc("reaction_rush_solo_action", {
+        p_action: actionName,
+        p_telegram_id: telegramId,
+        p_username: username,
+        p_session_id: typeof body.sessionId === "string" ? body.sessionId : null,
+      });
+      if (error) return errorResponse(error);
+      return respond(data);
+    }
+
     if (action === "leaderboard") {
       const { data, error } = await supabase
-        .from("games_reaction_rush_leaderboard")
-        .select("display_name, wins, matches_played, best_match_score")
-        .order("wins", { ascending: false })
-        .order("best_match_score", { ascending: false })
-        .limit(50);
+        .from("games_reaction_rush_records")
+        .select("telegram_id, username, score")
+        .order("score", { ascending: false })
+        .order("telegram_id", { ascending: true })
+        .limit(10);
       if (error) return errorResponse(error);
       return respond({ leaderboard: data ?? [] });
     }
