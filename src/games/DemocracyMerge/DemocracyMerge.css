@@ -850,3 +850,28 @@
   background-position:center;
   background-repeat:no-repeat;
 }
+
+/* Issue 008: fit the entire character inside one grass tile without cropping. */
+.dm-solo-screen .dm-solo-layout .dm-cell > .dm-character {
+  width:88%;
+  height:88%;
+  max-width:88%;
+  max-height:88%;
+  overflow:visible;
+  padding:0;
+}
+.dm-solo-screen .dm-solo-layout .dm-cell .dm-character-portrait {
+  width:100%;
+  height:100%;
+  min-width:0;
+  min-height:0;
+}
+.dm-solo-screen .dm-solo-layout .dm-cell .dm-character-portrait img {
+  display:block;
+  width:100%;
+  height:100%;
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  object-position:center;
+}
