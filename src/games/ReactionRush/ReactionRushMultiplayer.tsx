@@ -11,6 +11,9 @@ type ReactionRushResult = {
   userId: string
   displayName: string
   score: number
+  roundPoint?: number
+  totalTaps?: number
+  isWinner?: boolean
 }
 
 type ReactionRushMatch = {
@@ -423,11 +426,11 @@ export default function ReactionRushMultiplayer({
                   <h2>МАТЧ ЗАВЕРШЁН</h2>
                   {finalResults.map((result) => (
                     <p key={result.userId}>
-                      {result.userId === match.winnerUserId ? '🏆 ' : ''}
-                      {result.displayName}: <strong>{result.score}</strong>
+                      {result.isWinner || result.userId === match.winnerUserId ? '🏆 ' : ''}
+                      {result.displayName}: <strong>{result.score} {match.status === 'completed' ? 'очк. раундов' : 'нажатий'}</strong>
                     </p>
                   ))}
-                  <p>{match.winnerUserId ? 'Победитель получает победу в счёте комнаты!' : 'Ничья! В этот раз без победителя.'}</p>
+                  <p>{'Победу в счёте комнаты получает каждый игрок с максимальным количеством очков раундов.'}</p>
                   <button className="invite-button" onClick={() => setShowFinalResults(false)}>ЗАВЕРШИТЬ</button>
                   <button className="play-button" onClick={() => void toggleReady()} disabled={loading}>
                     {me?.isReady ? 'ОТМЕНИТЬ ГОТОВНОСТЬ' : 'РЕВАНШ — Я ГОТОВ'}
@@ -471,7 +474,7 @@ export default function ReactionRushMultiplayer({
           {room.status === 'playing' && match?.status === 'playing' && (
             <>
               <section className="stats">
-                <div className="stat-card"><span>⚡</span><div><small>ТВОИ ОЧКИ</small><strong>{myScore}</strong></div></div>
+                <div className="stat-card"><span>⚡</span><div><small>ТВОИ НАЖАТИЯ</small><strong>{myScore}</strong></div></div>
                 <div className="stat-card"><span>⏱️</span><div><small>ОСТАЛОСЬ</small><strong>{remaining}</strong></div></div>
                 <div className="stat-card"><span>🏁</span><div><small>РАУНД</small><strong>{match.roundNumber} / 3</strong></div></div>
               </section>
