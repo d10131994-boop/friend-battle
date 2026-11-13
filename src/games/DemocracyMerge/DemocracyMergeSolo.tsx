@@ -479,7 +479,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <div><small>МАКС. УРОВЕНЬ</small><strong>{profile.maxLevel}</strong></div>
           </div>
           <button className="dm-primary-button" onClick={startNewGame}>НОВАЯ ИГРА</button>
-          <button className="dm-secondary-button" onClick={() => setHistoryOpen(true)}>ИСТОРИЯ ПАРТИЙ ({profile.history.length})</button>
         </section>
         {historyOpen && (
           <div className="dm-modal-backdrop" onClick={() => setHistoryOpen(false)}>
@@ -550,7 +549,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <div><small>МАКС. УРОВЕНЬ</small><strong>{profile.maxLevel}</strong></div>
           </div>
           <button className="dm-primary-button" onClick={startNewGame}>НАЧАТЬ ЗАНОВО</button>
-          <button className="dm-secondary-button" onClick={() => setHistoryOpen(true)}>ИСТОРИЯ ПАРТИЙ</button>
           <button className="dm-secondary-button" onClick={leaveToMenu}>В ГЛАВНОЕ МЕНЮ</button>
         </section>
       ) : (
@@ -562,7 +560,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               <div><small>МОНЕТЫ</small><strong>🪙 {game.coins}</strong></div>
               <div className={game.score > profile.bestScore ? 'dm-record-highlight' : ''}><small>РЕКОРД</small><strong>{Math.max(profile.bestScore, game.score)}</strong></div>
             </div>
-            <button className="dm-primary-button" onClick={() => setShopOpen(true)} disabled={!canAct}>МАГАЗИН</button>
             <div className="dm-tools">
               {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
                 <button key={tool} title={toolDescriptions[tool]} className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
@@ -571,9 +568,8 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
                   <span className="dm-tool-count" aria-hidden="true">{game.inventory[tool]}</span>
                 </button>
               ))}
+              <button className="dm-shop-icon-button" type="button" onClick={() => setShopOpen(true)} disabled={!canAct} aria-label="Открыть магазин" title="Магазин"><img src="/democracy-merge/picture/v3/icon-gift-celebration.webp" alt="" draggable={false} /></button>
             </div>
-            <button className="dm-danger-button" onClick={() => setSurrenderConfirm(true)} disabled={!canAct}>СДАТЬСЯ</button>
-            <button className="dm-secondary-button" onClick={() => setHistoryOpen(true)}>ИСТОРИЯ</button>
           </aside>
 
           <section className="dm-board-section">
@@ -622,7 +618,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       {leaveConfirm && (
         <div className="dm-modal-backdrop"><section className="dm-confirm-modal" role="dialog" aria-modal="true">
           <h2>В главное меню?</h2><p>Сохранится последнее полностью завершённое состояние. Таймер продолжит идти.</p>
-          <div><button onClick={() => setLeaveConfirm(false)}>ОСТАТЬСЯ</button><button className="dm-danger-button" onClick={leaveToMenu}>ВЫЙТИ</button></div>
+          <div><button onClick={() => setLeaveConfirm(false)}>ОСТАТЬСЯ</button><button onClick={leaveToMenu}>ВЫЙТИ</button><button className="dm-danger-button" onClick={() => { setLeaveConfirm(false); setSurrenderConfirm(true) }}>СДАТЬСЯ</button></div>
         </section></div>
       )}
       {historyOpen && (
