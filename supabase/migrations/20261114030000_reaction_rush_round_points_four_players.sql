@@ -90,14 +90,14 @@ BEGIN
   -- one point to every player, consistently with the highest-taps rule.
   WITH player_round_scores AS (
     SELECT p.user_id, p.display_name, p.joined_at, p.id,
-           round_number,
+           rounds.round_number,
            COALESCE(s.score, 0) AS taps
     FROM public.common_multiplayer_players p
-    CROSS JOIN pg_catalog.generate_series(1, 3) AS round_number
+    CROSS JOIN pg_catalog.generate_series(1, 3) AS rounds(round_number)
     LEFT JOIN public.games_reaction_rush_scores s
       ON s.match_id = p_match_id
      AND s.user_id = p.user_id
-     AND s.round_number = round_number
+     AND s.round_number = rounds.round_number
     WHERE p.room_id = p_room_id
   ), round_ranked AS (
     SELECT *, pg_catalog.max(taps) OVER (PARTITION BY round_number) AS most_taps
@@ -120,10 +120,10 @@ BEGIN
   ) ORDER BY round_points DESC, total_taps DESC, joined_at, id), '[]'::jsonb)
   INTO v_totals FROM match_ranked;
 
-  SELECT COALESCE(pg_catalog.jsonb_agg(player->'userId'), '[]'::jsonb)
+  SELECT COALESCE(pg_catalog.jsonb_agg(player.value->'userId'), '[]'::jsonb)
   INTO v_winners
-  FROM pg_catalog.jsonb_array_elements(v_totals) AS player
-  WHERE (player->>'isWinner')::boolean;
+  FROM pg_catalog.jsonb_array_elements(v_totals) AS player(value)
+  WHERE (player.value->>'isWinner')::boolean;
 
   -- Keep the legacy single-winner field compatible for non-tied matches.
   -- Multi-winner outcomes are persisted in final_results[*].isWinner.
@@ -145,8 +145,8 @@ BEGIN
   -- The shared top-ten uses actual taps rather than 0-3 match points.
   -- This keeps solo and multiplayer records on the same scale.
   FOR v_player IN
-    SELECT item->>'userId' AS user_id, (item->>'totalTaps')::integer AS total_taps
-    FROM pg_catalog.jsonb_array_elements(v_totals) AS item
+    SELECT item.value->>'userId' AS user_id, (item.value->>'totalTaps')::integer AS total_taps
+    FROM pg_catalog.jsonb_array_elements(v_totals) AS item(value)
   LOOP
     PERFORM public.reaction_rush_save_record(v_player.user_id, NULL, v_player.total_taps);
   END LOOP;
