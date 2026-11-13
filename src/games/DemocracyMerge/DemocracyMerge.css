@@ -944,3 +944,33 @@
   padding:7% 7%;
   box-sizing:border-box;
 }
+
+/* Issue 008: tool icons stay fully opaque in every state; inventory is visible. */
+.dm-solo-screen .dm-solo-layout .dm-tool-button,
+.dm-solo-screen .dm-solo-layout .dm-tool-button:disabled {
+  opacity:1 !important;
+  filter:none !important;
+}
+.dm-solo-screen .dm-solo-layout .dm-tool-button {
+  position:relative;
+  overflow:visible;
+}
+.dm-solo-screen .dm-solo-layout .dm-tool-count {
+  position:absolute;
+  right:-2px;
+  bottom:-2px;
+  z-index:2;
+  display:grid;
+  place-items:center;
+  min-width:20px;
+  height:20px;
+  padding:0 4px;
+  border:2px solid #75411e;
+  border-radius:12px;
+  background:#fff0b9;
+  color:#4b2a16;
+  font:800 13px/1 'Nunito',sans-serif;
+  box-shadow:0 2px 2px #3d220b66;
+  box-sizing:border-box;
+  pointer-events:none;
+}
