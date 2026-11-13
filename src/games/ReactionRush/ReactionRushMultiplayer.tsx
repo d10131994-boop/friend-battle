@@ -427,10 +427,11 @@ export default function ReactionRushMultiplayer({
                   {finalResults.map((result) => (
                     <p key={result.userId}>
                       {result.isWinner || result.userId === match.winnerUserId ? '🏆 ' : ''}
-                      {result.displayName}: <strong>{result.score} {match.status === 'completed' ? 'очк. раундов' : 'нажатий'}</strong>
+                      {result.displayName}: <strong>{result.score} очк. раундов</strong>
+                      {typeof result.totalTaps === 'number' ? ` · ${result.totalTaps} нажатий` : ''}
                     </p>
                   ))}
-                  <p>{'Победу в счёте комнаты получает каждый игрок с максимальным количеством очков раундов.'}</p>
+                  <p>Победу в счёте комнаты получает каждый игрок с максимальным количеством очков раундов.</p>
                   <button className="invite-button" onClick={() => setShowFinalResults(false)}>ЗАВЕРШИТЬ</button>
                   <button className="play-button" onClick={() => void toggleReady()} disabled={loading}>
                     {me?.isReady ? 'ОТМЕНИТЬ ГОТОВНОСТЬ' : 'РЕВАНШ — Я ГОТОВ'}
@@ -481,7 +482,12 @@ export default function ReactionRushMultiplayer({
               {roundResults.length > 0 && (
                 <section className="game-card">
                   <h2>РАУНД {match.roundNumber - 1}</h2>
-                  {roundResults.map((result) => <p key={result.userId}>{result.displayName}: <strong>{result.score}</strong></p>)}
+                  {roundResults.map((result) => (
+                    <p key={result.userId}>
+                      {result.displayName}: <strong>{result.score} нажатий</strong>
+                      {' · '}{result.roundPoint === 1 ? '🏅 +1 очко раунда' : '0 очков раунда'}
+                    </p>
+                  ))}
                 </section>
               )}
               <section className="game-card">
