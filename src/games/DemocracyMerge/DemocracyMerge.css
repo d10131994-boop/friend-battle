@@ -891,7 +891,7 @@
   inset:-10%;
   z-index:2;
   pointer-events:none;
-  background:url('/democracy-merge/picture/v3/wooden-frame-floral.png') center / 100% 100% no-repeat;
+  background:url('/democracy-merge/picture/v3/wooden-frame-floral.png') center / 100% 97% no-repeat;
 }
 .dm-solo-screen .dm-solo-layout .dm-board > .dm-cell {
   position:relative;
@@ -899,4 +899,48 @@
 }
 @media(max-width:600px) {
   .dm-solo-screen .dm-solo-layout .dm-board {padding:7%;}
+}
+
+/* Issue 008: compact next-character preview and timer sized to its text. */
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame,
+.dm-solo-screen .dm-solo-layout .dm-current-card .dm-v3-next-character-frame:has(.dm-character-art) {
+  width:clamp(68px,12vw,94px);
+  height:clamp(68px,12vw,94px);
+  min-width:0;
+  min-height:0;
+  padding:0;
+}
+.dm-solo-screen .dm-solo-layout .dm-next-character {
+  gap:clamp(8px,2vw,18px);
+}
+.dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer {
+  box-sizing:border-box;
+  width:max-content;
+  min-width:0;
+  height:auto;
+  padding:5px 9px;
+  border-radius:11px;
+}
+.dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer small {
+  font-size:10px;
+  line-height:1.1;
+  margin:0 0 2px;
+}
+.dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer strong {
+  font-size:clamp(22px,4vw,30px);
+  line-height:1.05;
+  white-space:nowrap;
+}
+
+/* Issue 008: approved simple wooden tool plank; preserve source proportions. */
+.dm-solo-screen .dm-solo-layout .dm-tools {
+  background-image:url('/democracy-merge/picture/v3/tools-plank.png');
+  background-size:contain;
+  background-position:center;
+  background-repeat:no-repeat;
+  aspect-ratio: 3 / 1;
+  width:100%;
+  min-height:0;
+  padding:7% 7%;
+  box-sizing:border-box;
 }
