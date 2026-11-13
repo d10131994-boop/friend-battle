@@ -116,6 +116,15 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    // Refresh the current player's username when they enter either game mode.
+    // Only existing top-ten entries are updated; no zero-score record is inserted.
+    if (action === "get_match" || action === "start_match") {
+      const { error: nameError } = await supabase.rpc("reaction_rush_refresh_username", {
+        p_telegram_id: telegramId, p_username: username,
+      });
+      if (nameError) return errorResponse(nameError);
+    }
+
     if (action === "solo_enter" || action === "solo_start" || action === "solo_tap" ||
         action === "solo_finish" || action === "solo_snapshot") {
       if (action === "solo_enter") {
