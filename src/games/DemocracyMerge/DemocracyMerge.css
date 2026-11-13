@@ -931,3 +931,16 @@
   line-height:1.05;
   white-space:nowrap;
 }
+
+/* Issue 008: approved simple wooden tool plank; preserve source proportions. */
+.dm-solo-screen .dm-solo-layout .dm-tools {
+  background-image:url('/democracy-merge/picture/v3/tools-plank.png');
+  background-size:contain;
+  background-position:center;
+  background-repeat:no-repeat;
+  aspect-ratio: 3 / 1;
+  width:100%;
+  min-height:0;
+  padding:7% 7%;
+  box-sizing:border-box;
+}
