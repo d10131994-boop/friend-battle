@@ -38,12 +38,9 @@ export default function ReactionRushMatch({
   const [myScore, setMyScore] = useState(0)
   const [roundResults, setRoundResults] = useState<ReactionRushResult[]>([])
   const [leaderboard, setLeaderboard] = useState<Array<{
-    user_id: string
-    display_name: string
-    wins: number
-    matches_played: number
-    total_taps: number
-    best_match_score: number
+    telegram_id: string
+    username: string
+    score: number
   }>>([])
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const finishRequestedRef = useRef<string | null>(null)
@@ -253,10 +250,10 @@ export default function ReactionRushMatch({
       {showLeaderboard && (
         <section className="game-card">
           <h2>ЛИДЕРБОРД REACTION RUSH</h2>
-          {leaderboard.length === 0 && <p>Пока нет завершённых матчей.</p>}
+          {leaderboard.length === 0 && <p>Рекордов пока нет.</p>}
           {leaderboard.map((player, index) => (
-            <p key={player.user_id}>
-              {index + 1}. {player.display_name} — {player.wins} побед · лучший счёт {player.best_match_score}
+            <p key={player.telegram_id}>
+              {index + 1}. {player.username} — <strong>{player.score}</strong>
             </p>
           ))}
           <button className="invite-button" onClick={() => setShowLeaderboard(false)}>ЗАКРЫТЬ</button>
