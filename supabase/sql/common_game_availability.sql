@@ -35,7 +35,7 @@ INSERT INTO public.common_game_availability (
   sort_order
 )
 VALUES
-  ('reaction-rush', false, true, 2, 4, true, 10),
+  ('reaction-rush', true, true, 2, 4, true, 10),
   ('brain-battle', false, true, 2, 2, true, 20),
   ('no-count-it', false, true, 2, 4, true, 30),
   ('rock-paper-scissors', true, true, 2, 2, true, 40)
