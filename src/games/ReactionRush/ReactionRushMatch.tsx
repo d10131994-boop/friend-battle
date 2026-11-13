@@ -248,7 +248,7 @@ export default function ReactionRushMatch({
           {finalResults.map((result) => (
             <p key={result.userId}>
               {result.isWinner || result.userId === match.winnerUserId ? '🏆 ' : ''}
-              {result.displayName}: <strong>{result.score} очк. раундов</strong>
+              {result.displayName}: <strong>{result.score} {typeof result.totalTaps === 'number' ? 'очк. раундов' : 'нажатий'}</strong>
               {typeof result.totalTaps === 'number' ? ` · ${result.totalTaps} нажатий` : ''}
             </p>
           ))}
