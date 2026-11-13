@@ -853,10 +853,10 @@
 
 /* Issue 008: fit the entire character inside one grass tile without cropping. */
 .dm-solo-screen .dm-solo-layout .dm-cell > .dm-character {
-  width:88%;
-  height:88%;
-  max-width:88%;
-  max-height:88%;
+  width:74%;
+  height:74%;
+  max-width:74%;
+  max-height:74%;
   overflow:visible;
   padding:0;
 }
