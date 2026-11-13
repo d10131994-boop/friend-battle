@@ -44,7 +44,7 @@ const toolDescriptions: Record<ToolType, string> = {
 }
 const GRASS_VARIANTS = [1, 4, 2, 6, 3, 5, 3, 1, 5, 2, 6, 4, 6, 3, 4, 1, 5, 2, 2, 5, 1, 4, 3, 6, 4, 2, 6, 5, 1, 3, 5, 6, 3, 2, 4, 1] as const
 
-const obstacleLabels = { barricade: 'Заграждение', police: 'Полицейский', rock: 'Камень' }
+const obstacleLabels = { barricade: 'Колючий куст', police: 'Старая бабка', rock: 'Камень' }
 
 function formatTime(milliseconds: number): string {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000))
@@ -586,7 +586,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
                     ? `персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}`}>
                   {cell === null ? '' : cell.kind === 'character'
                     ? <span className={`dm-character dm-level-${cell.level}`}><CharacterPortrait level={cell.level} /></span>
-                    : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}><img src={`/democracy-merge/obstacles/${cell.obstacleType}.svg`} alt="" aria-hidden="true" draggable={false} /></span>}
+                    : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}><img src={`/democracy-merge/obstacles/${cell.obstacleType}.png`} alt="" aria-hidden="true" draggable={false} /></span>}
                 </button>
               ))}
             </div>
