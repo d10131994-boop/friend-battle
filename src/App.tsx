@@ -32,7 +32,7 @@ function AppContent() {
   const userUsername = user?.username
   const userPhoto = user?.photo_url
 
-  const { score, rounds, best, playing, time, startSoloGame, tap } = useReactionRush()
+  const { score, rounds, best } = useReactionRush()
 
   function startSelectedSoloGame(gameId: GameId) {
     if (gameId === 'reaction-rush') {
