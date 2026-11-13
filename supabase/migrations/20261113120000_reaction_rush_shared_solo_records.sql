@@ -261,3 +261,8 @@ BEGIN
 END;
 $function$
 ;
+
+-- Expose the newly implemented solo mode through the existing availability registry.
+UPDATE public.common_game_availability
+SET is_solo_enabled = true, updated_at = now()
+WHERE game_id = 'reaction-rush';
