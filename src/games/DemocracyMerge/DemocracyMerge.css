@@ -875,3 +875,28 @@
   object-fit:contain;
   object-position:center;
 }
+
+/* Issue 008: approved floral log frame, independent from the grass grid.
+   The PNG has a transparent center; the outer overlay cannot intercept clicks. */
+.dm-solo-screen .dm-solo-layout .dm-board {
+  position:relative;
+  isolation:isolate;
+  padding:7%;
+  background-image:none;
+  overflow:visible;
+}
+.dm-solo-screen .dm-solo-layout .dm-board::after {
+  content:'';
+  position:absolute;
+  inset:-10%;
+  z-index:2;
+  pointer-events:none;
+  background:url('/democracy-merge/picture/v3/wooden-frame-floral.png') center / 100% 100% no-repeat;
+}
+.dm-solo-screen .dm-solo-layout .dm-board > .dm-cell {
+  position:relative;
+  z-index:1;
+}
+@media(max-width:600px) {
+  .dm-solo-screen .dm-solo-layout .dm-board {padding:7%;}
+}
