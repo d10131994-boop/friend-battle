@@ -3,7 +3,14 @@ import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
 import { telegramUser } from '../../services/telegram'
 
-type ReactionRushResult = { userId: string; displayName: string; score: number }
+type ReactionRushResult = {
+  userId: string
+  displayName: string
+  score: number
+  roundPoint?: number
+  totalTaps?: number
+  isWinner?: boolean
+}
 type ReactionRushMatchState = {
   matchId: string
   roundNumber: number
@@ -214,14 +221,19 @@ export default function ReactionRushMatch({
       {match?.status === 'playing' && room.status === 'playing' && (
         <>
           <section className="stats">
-            <div className="stat-card"><span>⚡</span><div><small>ТВОИ ОЧКИ</small><strong>{myScore}</strong></div></div>
+            <div className="stat-card"><span>⚡</span><div><small>ТВОИ НАЖАТИЯ</small><strong>{myScore}</strong></div></div>
             <div className="stat-card"><span>⏱️</span><div><small>ОСТАЛОСЬ</small><strong>{remaining}</strong></div></div>
             <div className="stat-card"><span>🔁</span><div><small>РАУНД</small><strong>{match.roundNumber} / 3</strong></div></div>
           </section>
           {roundResults.length > 0 && (
             <section className="game-card">
               <h2>РЕЗУЛЬТАТЫ РАУНДА</h2>
-              {roundResults.map((result) => <p key={result.userId}>{result.displayName}: <strong>{result.score}</strong></p>)}
+              {roundResults.map((result) => (
+                <p key={result.userId}>
+                  {result.displayName}: <strong>{result.score} нажатий</strong>
+                  {' · '}{result.roundPoint === 1 ? '🏅 +1 очко раунда' : '0 очков раунда'}
+                </p>
+              ))}
             </section>
           )}
           <section className="game-card">
@@ -234,9 +246,13 @@ export default function ReactionRushMatch({
         <section className="game-card">
           <h2>МАТЧ ЗАВЕРШЁН</h2>
           {finalResults.map((result) => (
-            <p key={result.userId}>{result.userId === match.winnerUserId ? '🏆 ' : ''}{result.displayName}: <strong>{result.score}</strong></p>
+            <p key={result.userId}>
+              {result.isWinner || result.userId === match.winnerUserId ? '🏆 ' : ''}
+              {result.displayName}: <strong>{result.score} очк. раундов</strong>
+              {typeof result.totalTaps === 'number' ? ` · ${result.totalTaps} нажатий` : ''}
+            </p>
           ))}
-          <p>{match.winnerUserId ? 'Победитель получает победу в общем счёте комнаты!' : 'Ничья! В этот раз без победителя.'}</p>
+          <p>Победу в счёте комнаты получает каждый игрок с максимальным количеством очков раундов.</p>
           <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
           <button className="play-button" onClick={() => void finishAndReturn()} disabled={loading}>ВЕРНУТЬСЯ В КОМНАТУ</button>
         </section>
