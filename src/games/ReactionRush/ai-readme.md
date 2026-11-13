@@ -24,10 +24,10 @@ The routed `ReactionRushSolo.tsx` uses server-owned 10-second sessions and serve
 
 ## 3. Multiplayer client integration
 
-`ReactionRushMatch.tsx` uses:
-- `createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })` for shared room operations;
-- `createMultiplayerRoomSession` for the room JWT, heartbeat and private Realtime watcher;
-- `database.invokeFunction('reaction-rush', ...)` for game-specific actions.
+The routed multiplayer flow uses:
+- `MultiplayerRoomMenu.tsx` with `createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })` for shared room operations;
+- `MultiplayerRoomMenu.tsx` with `createMultiplayerRoomSession` for the room token, heartbeat and private Realtime watcher;
+- `ReactionRushMatch.tsx` with `database.invokeFunction('reaction-rush', ...)` for game-specific actions.
 
 The client flow is:
 - create a room with `maxPlayers: 4`;
