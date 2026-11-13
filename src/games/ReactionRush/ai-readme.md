@@ -10,7 +10,8 @@ Relevant client files:
 - `ReactionRushMenu.tsx`: menu with solo, multiplayer and back callbacks.
 - `ReactionRush.tsx`: reusable gameplay presentation component.
 - `useReactionRush.ts`: solo game state, timer and local best/round counters.
-- `ReactionRushMultiplayer.tsx`: multiplayer room, match, round, results and leaderboard UI.
+- `ReactionRushMatch.tsx`: routed multiplayer game UI; the shared room is owned by `src/menus/MultiplayerRoomMenu.tsx`.
+- `ReactionRushMultiplayer.tsx`: legacy standalone room/game implementation, not routed by `App.tsx`.
 
 Server files:
 - `supabase/functions/reaction-rush/index.ts`: Telegram-authenticated game API.
@@ -19,13 +20,11 @@ Server files:
 
 ## 2. Solo mode
 
-The solo hook `useReactionRush` manages a 10-second local round, score and playing state. It persists personal `best` and `rounds` counters in browser `localStorage` under `friendBattleBest` and `friendBattleRounds`. The `onSaveScore` callback is supplied by its caller.
-
-This local state is for solo play only. Do not use localStorage or browser-calculated scores as authoritative multiplayer results.
+The routed `ReactionRushSolo.tsx` uses server-owned 10-second sessions and server-recorded taps through `solo_start`, `solo_tap`, `solo_finish` and `solo_snapshot`. On entry, `solo_enter` retrieves the player's best top-ten score when present and the number of completed solo rounds. The old `useReactionRush.ts` local hook remains for compatibility with profile stats; it is not authoritative for the current solo game.
 
 ## 3. Multiplayer client integration
 
-`ReactionRushMultiplayer.tsx` uses:
+`ReactionRushMatch.tsx` uses:
 - `createDatabaseMultiplayerAdapter({ functionName: 'multiplayer' })` for shared room operations;
 - `createMultiplayerRoomSession` for the room JWT, heartbeat and private Realtime watcher;
 - `database.invokeFunction('reaction-rush', ...)` for game-specific actions.
@@ -50,6 +49,8 @@ The `reaction-rush` Edge Function accepts POST actions:
 - `finish_round`
 - `get_match`
 - `leaderboard`
+- `return_to_room`
+- `solo_enter`, `solo_start`, `solo_tap`, `solo_finish`, `solo_snapshot`
 
 It verifies Telegram initData server-side with `TELEGRAM_BOT_TOKEN`, including HMAC and auth-date validation (maximum age one hour; future tolerance 30 seconds). The acting Telegram ID and display name are derived from the verified user. It uses a service-role Supabase client for game operations.
 
@@ -76,10 +77,10 @@ Each accepted request increments that player's score by one. The per-round score
 
 The client sends `roomId`, `matchId` and `roundNumber`. SQL verifies the match is active, the round number is current and at least 10 seconds have elapsed.
 
-- Rounds 1 and 2 produce round results and advance to the next round using a server timestamp.
-- Round 3 computes final totals and winner/tie, updates common room stats and the Reaction Rush leaderboard, and marks the game match completed with `completed_at`. The shared room remains `playing` during the results screen; the game Edge Function calls Multiplayer `finish_game` only after a member requests `return_to_room` or the 60-second results timeout expires.
+- Every round awards one `roundPoint` to each player tied for the most taps, including zero-tap ties. Rounds 1 and 2 return these round results and advance to the next round using a server timestamp.
+- Round 3 calculates the number of round points won by each player. Each player tied for the most round points is a match winner, and each receives one common room win. The persisted `final_results` entries contain `score` (0–3 round points), `totalTaps` (raw tap sum), and `isWinner` (boolean). The legacy `winner_user_id` is set only for a unique winner. The Edge Function returns `winnerUserIds` for all winners. Room stats and the shared tap leaderboard are updated, and the match is marked completed with `completed_at`. The shared room remains `playing` during the results screen; the game Edge Function calls Multiplayer `finish_game` only after a member requests `return_to_room` or the 60-second results timeout expires.
 
-The Edge Function broadcasts `round_finished` or `match_finished` after a successful SQL call. **Known authorization gap:** the current `finish_round` path does not check that the Telegram-authenticated caller is a member of the room (nor that the caller is host). The SQL RPC validates the match/room identifiers, active state, current round and deadline, but it receives no caller ID and therefore cannot verify membership. A caller with valid Telegram initData who knows the room and match IDs may be able to trigger round completion after the deadline. Do not describe this as membership-authorized; it needs a separately scoped security fix.
+The Edge Function broadcasts `round_finished` or `match_finished` after a successful SQL call. `reaction_rush_finish_round` receives the verified Telegram ID and checks the caller's room membership, the active match/session, current round and elapsed deadline under room-first locking. Any current room member may finalize an elapsed round.
 
 ### get_match
 
@@ -87,19 +88,19 @@ The Edge Function calls `reaction_rush_match_snapshot`, which checks room member
 
 ### leaderboard
 
-The Edge Function reads up to 50 rows from `games_reaction_rush_leaderboard`, ordered by wins and then best match score. The request is Telegram-authenticated; the query runs server-side using the service-role client.
+The Edge Function reads up to ten rows from `games_reaction_rush_records`, ordered by highest recorded taps. This is a shared top-ten ranking for solo (single-round taps) and multiplayer (total taps across a match), and it does not rank by match round points. It is queried server-side under verified Telegram initData.
 
 ## 5. Multiplayer rules and persistence
 
 The current SQL uses:
 - `games_reaction_rush_matches`;
 - `games_reaction_rush_scores`;
-- `games_reaction_rush_leaderboard`;
+- `games_reaction_rush_records` (shared top-ten tap records);
 - shared `common_multiplayer_room_stats`.
 
-A match has three rounds. Each round lasts 10 seconds. Every accepted tap adds one point, with a maximum of 1000 per player per round. Final match score is the sum across rounds. A unique highest total wins; a tie has no winner. Common room wins/matches and the game-specific leaderboard are updated when round 3 completes. The SQL then deletes that match's per-round rows from `games_reaction_rush_scores`; the completed match's final results remain in `games_reaction_rush_matches.final_results`.
+A match has three 10-second rounds. A tap increases the current round's tap count, capped at 1000 taps per player per round. The highest tap count in each round awards one round point to every tied leader; zero-score ties are valid. The match score is the number of round points (0–3), **not** the sum of taps. All players tied for the highest round-point total receive a room win. The shared top-ten record still saves raw tap totals, not round points. At completion, the SQL deletes per-round rows from `games_reaction_rush_scores`; `games_reaction_rush_matches.final_results` retains each player's round points, raw total taps and `isWinner` flag. Historical completed results without `totalTaps` retain their old score meaning.
 
-Game availability and player limits are configured in `public.common_game_availability`. Reaction Rush is currently registered as multiplayer-only and requires exactly two players (`min_players = 2`, `max_players = 2`). The shared Multiplayer RPC and room-capacity trigger read this catalog; client-side checks are presentation only. Do not register new games in the legacy `common_multiplayer_game_rules` table.
+Game availability and player limits are configured in `public.common_game_availability`. Reaction Rush is registered for solo and multiplayer play, with 2–4 participants in multiplayer (`min_players = 2`, `max_players = 4`). The shared Multiplayer RPC and room-capacity trigger read this catalog; client-side checks are presentation only. Do not register new games in the legacy `common_multiplayer_game_rules` table.
 
 ## 6. Realtime and synchronization
 
@@ -114,10 +115,7 @@ The client uses `finishRequestedRef` keyed by `matchId:roundNumber` to avoid rep
 
 ## 7. Known documentation and SQL discrepancies
 
-The current `README.md` is stale in at least these areas:
-- it names `public.reaction_rush_scores`, while the reviewed multiplayer SQL uses `public.games_reaction_rush_scores`;
-- it describes the older score-store wording and does not enumerate the current Edge Function action contract;
-- it says to apply `multiplayer_game_lifecycle.sql` followed by `reaction_rush_multiplayer.sql`, while `universal_lobby_reaction_rush.sql` contains the earlier universal room schema, game-rule registry and an alternative `multiplayer_execute_action` implementation.
+The human `README.md` has been updated for the current scoring rules, shared records and deployment migration. Older baseline SQL files may still document superseded score or multiplayer lifecycle behavior; the latest migrations and deployed routines are authoritative.
 
 There are two checked-in definitions of `public.multiplayer_execute_action` with materially different behavior: `universal_lobby_reaction_rush.sql` and `multiplayer_game_lifecycle.sql`. The latter currently requires `gameId` at room creation, omits `select_game`, uses a different capacity check and has different mid-match leave behavior. See `src/multiplayer/ai-readme.md`. Do not assume a file's presence proves that it is deployed, or apply SQL patches without confirming the actual database state and intended order.
 
@@ -135,7 +133,7 @@ The legacy `duels` table/function references in older code/README are not the cu
 
 ## 9. Verification
 
-Test solo mode separately. Multiplayer verification should cover create/join/select, exactly 2 players (catalog min/max are both 2), readiness, host start, accepted/rejected taps, 1000-point round cap, round deadline, concurrent finish requests, round advancement, final totals, winner/tie, leaderboard, common room stats, finish, results return/timeout, leave during match and reconnect.
+Test solo mode separately. Multiplayer verification should cover 2, 3 and 4 players; readiness and host start; valid/rejected taps; 1000-tap limit and server deadlines; one or multiple round leaders (including 0–0 ties); three-round aggregation; single or multiple match winners; one room win for each tied leader; raw-tap shared records; double finish requests; results return/timeout; leaving mid-match and reconnect.
 
 A successful build does not prove that the Edge Function, SQL, Realtime policies or live multi-device flow are deployed and working. Report source/build checks, SQL/deployment state and real multi-client tests separately.
 
