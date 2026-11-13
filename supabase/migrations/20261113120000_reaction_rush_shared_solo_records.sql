@@ -123,3 +123,141 @@ REVOKE ALL ON FUNCTION public.reaction_rush_solo_action(text,text,text,uuid) FRO
 GRANT EXECUTE ON FUNCTION public.reaction_rush_save_record(text,text,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.reaction_rush_refresh_username(text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.reaction_rush_solo_action(text,text,text,uuid) TO service_role;
+
+-- Preserve the multiplayer lifecycle while directing its final scores to the new shared leaderboard.
+CREATE OR REPLACE FUNCTION public.reaction_rush_finish_round(p_room_id uuid, p_match_id uuid, p_round_number integer, p_user_id text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
+  v_match public.games_reaction_rush_matches%ROWTYPE;
+  v_results jsonb;
+  v_totals jsonb;
+  v_winner text;
+  v_round_started_at timestamptz;
+  v_completed_at timestamptz;
+  v_player record;
+BEGIN
+  IF p_user_id IS NULL OR pg_catalog.btrim(p_user_id) = '' THEN
+    RAISE EXCEPTION 'Authenticated player is required' USING ERRCODE = '22023';
+  END IF;
+
+  -- Match Multiplayer mutation lock order: room first, then match.
+  -- This serializes round completion with leave_room and membership changes.
+  SELECT * INTO v_room
+  FROM public.common_multiplayer_rooms
+  WHERE id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_room.game_id IS DISTINCT FROM 'reaction-rush'
+     OR v_room.status <> 'playing' THEN
+    RAISE EXCEPTION 'Reaction Rush match is not active in this room' USING ERRCODE = '55000';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.common_multiplayer_players
+    WHERE room_id = p_room_id AND user_id = p_user_id
+  ) THEN
+    RAISE EXCEPTION 'Player is not a member of this room' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT * INTO v_match
+  FROM public.games_reaction_rush_matches
+  WHERE id = p_match_id AND room_id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Match not found' USING ERRCODE = 'P0002'; END IF;
+  IF v_match.started_at IS DISTINCT FROM v_room.started_at THEN
+    RAISE EXCEPTION 'Match does not belong to the active room session' USING ERRCODE = '55000';
+  END IF;
+  IF v_match.status <> 'playing' THEN RAISE EXCEPTION 'Match is not active' USING ERRCODE = '55000'; END IF;
+  IF p_round_number <> v_match.current_round THEN
+    RAISE EXCEPTION 'Round has already advanced' USING ERRCODE = '55000';
+  END IF;
+  IF pg_catalog.clock_timestamp() < v_match.round_started_at + interval '10 seconds' THEN
+    RAISE EXCEPTION 'Round has not ended yet' USING ERRCODE = '55000';
+  END IF;
+
+  SELECT COALESCE(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+    'userId', p.user_id, 'displayName', p.display_name, 'score', COALESCE(s.score, 0)
+  ) ORDER BY p.joined_at, p.id), '[]'::jsonb)
+  INTO v_results
+  FROM public.common_multiplayer_players p
+  LEFT JOIN public.games_reaction_rush_scores s
+    ON s.match_id = p_match_id AND s.user_id = p.user_id AND s.round_number = p_round_number
+  WHERE p.room_id = p_room_id;
+
+  IF p_round_number < 3 THEN
+    v_round_started_at := pg_catalog.clock_timestamp();
+    UPDATE public.games_reaction_rush_matches
+    SET current_round = current_round + 1, round_started_at = v_round_started_at
+    WHERE id = p_match_id;
+    RETURN pg_catalog.jsonb_build_object(
+      'completedRound', p_round_number, 'roundResults', v_results,
+      'roundNumber', p_round_number + 1, 'roundStartedAt', v_round_started_at,
+      'matchFinished', false
+    );
+  END IF;
+
+  SELECT COALESCE(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+    'userId', p.user_id, 'displayName', p.display_name,
+    'score', COALESCE(s.total_score, 0)
+  ) ORDER BY COALESCE(s.total_score, 0) DESC, p.joined_at, p.id), '[]'::jsonb)
+  INTO v_totals
+  FROM public.common_multiplayer_players p
+  LEFT JOIN (
+    SELECT user_id, sum(score)::integer AS total_score
+    FROM public.games_reaction_rush_scores WHERE match_id = p_match_id GROUP BY user_id
+  ) s ON s.user_id = p.user_id
+  WHERE p.room_id = p_room_id;
+
+  SELECT CASE WHEN count(*) FILTER (WHERE total_score = max_score) = 1
+    THEN max(user_id) FILTER (WHERE total_score = max_score) ELSE NULL END
+  INTO v_winner
+  FROM (
+    SELECT user_id, sum(score)::integer AS total_score,
+      max(sum(score)::integer) OVER () AS max_score
+    FROM public.games_reaction_rush_scores
+    WHERE match_id = p_match_id
+    GROUP BY user_id
+  ) ranked;
+
+  INSERT INTO public.common_multiplayer_room_stats(room_id, user_id, wins, matches_played)
+  SELECT p_room_id, p.user_id, CASE WHEN p.user_id = v_winner THEN 1 ELSE 0 END, 1
+  FROM public.common_multiplayer_players p WHERE p.room_id = p_room_id
+  ON CONFLICT (room_id, user_id) DO UPDATE SET
+    wins = public.common_multiplayer_room_stats.wins + EXCLUDED.wins,
+    matches_played = public.common_multiplayer_room_stats.matches_played + 1,
+    updated_at = now();
+
+  -- Update shared records for every player, using verified Telegram usernames
+  -- when available; the current room name is not used as a username.
+  FOR v_player IN
+    SELECT p.user_id, COALESCE(s.total_score, 0) AS score
+    FROM public.common_multiplayer_players p
+    LEFT JOIN (
+      SELECT user_id, sum(score)::integer AS total_score
+      FROM public.games_reaction_rush_scores WHERE match_id = p_match_id GROUP BY user_id
+    ) s ON s.user_id = p.user_id
+    WHERE p.room_id = p_room_id
+  LOOP
+    PERFORM public.reaction_rush_save_record(v_player.user_id, NULL, v_player.score);
+  END LOOP;
+
+  UPDATE public.games_reaction_rush_matches
+  SET status = 'completed', completed_at = pg_catalog.clock_timestamp(),
+      final_results = v_totals, winner_user_id = v_winner
+  WHERE id = p_match_id
+  RETURNING completed_at INTO v_completed_at;
+  DELETE FROM public.games_reaction_rush_scores WHERE match_id = p_match_id;
+  RETURN pg_catalog.jsonb_build_object(
+    'completedRound', 3, 'roundResults', v_results, 'finalResults', v_totals,
+    'winnerUserId', v_winner, 'matchFinished', true,
+    'completedAt', v_completed_at,
+    'room', public.multiplayer_room_snapshot(p_room_id)
+  );
+END;
+$function$
+;
