@@ -974,3 +974,28 @@
   box-sizing:border-box;
   pointer-events:none;
 }
+
+/* Issue 008: compact gift shop shortcut, without changing tool spacing. */
+.dm-solo-screen .dm-solo-layout .dm-tools { position:relative; }
+.dm-solo-screen .dm-solo-layout .dm-shop-icon-button {
+  position:absolute;
+  right:2.5%;
+  bottom:3%;
+  z-index:3;
+  width:11%;
+  aspect-ratio:1;
+  min-width:0;
+  padding:0;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+}
+.dm-solo-screen .dm-solo-layout .dm-shop-icon-button img {
+  display:block;
+  width:100%;height:100%;object-fit:contain;
+}
+.dm-solo-screen .dm-solo-layout .dm-shop-icon-button:disabled {opacity:.5;cursor:default}
+.dm-solo-screen .dm-solo-layout .dm-shop-icon-button:focus-visible {outline:2px solid #ffe16a;border-radius:8px}
