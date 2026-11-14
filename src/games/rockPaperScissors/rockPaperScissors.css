@@ -378,3 +378,7 @@
   background-size: cover;
   background-position: center center;
 }
+
+/* Hand PNGs are pre-oriented for their respective corners. */
+.rps-my-hand { transform: none; object-fit: contain; }
+.rps-opponent-hand { transform: none; object-fit: contain; }
