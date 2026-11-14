@@ -1079,3 +1079,10 @@
   .dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer {padding:4px 7px 5px}
   .dm-solo-screen .dm-solo-layout .dm-tools .dm-home-icon-button {border-radius:9px}
 }
+
+/* Issue 008: home shortcut 1.5x smaller; keep it anchored at bottom-left. */
+.dm-solo-screen .dm-solo-layout .dm-tools .dm-home-icon-button {
+  width:7.3333%;
+  left:2.5%;
+  bottom:3%;
+}
