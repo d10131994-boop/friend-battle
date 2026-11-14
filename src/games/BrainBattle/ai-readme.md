@@ -107,7 +107,7 @@ Multiplayer score is calculated in SQL, not by the solo game engine:
 
 The SQL uses a floored speed bonus based on server-measured response time. Do not assume it is byte-for-byte identical to the solo `Math.round` formula.
 
-Final results include score, correct, incorrect and skipped counts. The unique highest total wins; a tie results in `winnerUserId: null`. Common room statistics are updated in `common_multiplayer_room_stats`.
+Final results include score, correct, incorrect and skipped counts. Every player tied for the highest total score receives one room win, including an all-zero tie. Each participant receives one match played. The final results contain `isWinner` per player; `winnerUserId` remains populated only for a unique winner, while the completion response includes `winnerUserIds` for all leaders. Common room statistics are updated in `common_multiplayer_room_stats`.
 
 ## 6. Realtime events and snapshots
 
@@ -144,7 +144,7 @@ The removal migration `20261107090000_remove_multiplayer_rematch.sql` drops the 
 
 ## 9. Verification
 
-Test solo mode separately from multiplayer. Multiplayer verification should cover create/join/select, exactly 2 players (catalog min/max are both 2), readiness, host start, question snapshots, answer validation, duplicate answers, deadlines, unanswered skips, score calculation, tie/winner, common stats, finish, results return/timeout, leave during match, disconnect/reconnect and concurrent answer/advance requests.
+Test solo mode separately from multiplayer. Multiplayer verification should cover create/join/select, 2–4 players (catalog min 2, max 4), readiness, host start, question snapshots, answer validation, duplicate answers, deadlines, unanswered skips, score calculation, single and tied winners (including zero-score ties), common stats, finish, results return/timeout, leave during match, disconnect/reconnect and concurrent answer/advance requests.
 
 A successful build does not prove that the Edge Function, SQL, Realtime policies or live multi-device flow are deployed and working. Report these checks separately.
 

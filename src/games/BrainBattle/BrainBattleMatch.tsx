@@ -17,6 +17,7 @@ type BrainBattlePlayerResult = {
   incorrectAnswers: number
   skippedQuestions: number
   answeredCurrentQuestion: boolean
+  isWinner?: boolean
 }
 type BrainBattleMatchState = {
   matchId: string
@@ -195,9 +196,9 @@ export default function BrainBattleMatch({
         <section className="game-card">
           <h2>БИТВА ЗАВЕРШЕНА</h2>
           {results.map((result) => (
-            <p key={result.userId}>{result.userId === match.winnerUserId ? '🏆 ' : ''}{result.displayName}: <strong>{result.score}</strong> очков</p>
+            <p key={result.userId}>{result.isWinner || result.userId === match.winnerUserId ? '🏆 ' : ''}{result.displayName}: <strong>{result.score}</strong> очков</p>
           ))}
-          <p>{match.winnerUserId ? 'Победитель получает победу в общем счёте комнаты!' : 'Ничья! В этот раз без победителя.'}</p>
+          <p>{'Каждый игрок с максимальным количеством очков получает победу в статистике комнаты.'}</p>
           <p>Если не вернуться вручную, через минуту после завершения матча вы автоматически вернётесь в комнату.</p>
           <button className="play-button" onClick={() => void finishAndReturn()} disabled={loading}>ВЕРНУТЬСЯ В КОМНАТУ</button>
         </section>
