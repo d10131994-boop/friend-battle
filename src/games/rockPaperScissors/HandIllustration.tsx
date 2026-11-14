@@ -1,12 +1,22 @@
 import type { RockPaperScissorsChoice } from './types'
 
 type Props = {
+  side?: 'player' | 'opponent'
+  setNumber?: number | null
   choice: RockPaperScissorsChoice
   className?: string
   label?: string
 }
 
-export function HandIllustration({ choice, className = '', label }: Props) {
+import { handSets } from './handSets'
+
+export function HandIllustration({ choice, className = '', label, side = 'player', setNumber }: Props) {
+  const image = setNumber == null ? undefined : handSets[side].get(setNumber)?.[choice]
+  if (image) return <img className={className} src={image} alt={label ?? (choice === 'rock' ? 'Камень' : choice === 'scissors' ? 'Ножницы' : 'Бумага')} draggable={false} />
+  return <FallbackHandIllustration choice={choice} className={className} label={label} />
+}
+
+function FallbackHandIllustration({ choice, className = '', label }: Props) {
   return (
     <svg
       className={className}
