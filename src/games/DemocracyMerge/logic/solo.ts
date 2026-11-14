@@ -172,7 +172,7 @@ export function placeSoloCharacter(
   assertActiveAndBeforeDeadline(source, now)
   const current = currentSoloCharacter(source)
   if (!current) throw new Error('The solo character sequence is exhausted.')
-  const placement = placeCharacter(source.board, cellIndex, current, source.level6MergeCount, 10)
+  const placement = placeCharacter(source.board, cellIndex, current, source.level6MergeCount, 6)
   let board = placement.board
   let coins = source.coins
   let inventory = source.inventory
@@ -266,7 +266,7 @@ export function applySoloTool(
     // Both swapped destinations can form groups. Resolve each against the updated board.
     for (const anchor of [options.firstCellIndex!, options.secondCellIndex!]) {
       if (board[anchor]?.kind !== 'character') continue
-      const resolved = resolveMerges(board, anchor, level6MergeCount, 10)
+      const resolved = resolveMerges(board, anchor, level6MergeCount, 6)
       board = resolved.board
       level6MergeCount = resolved.level6MergeCount
       scoreDelta += resolved.scoreDelta
