@@ -3,6 +3,7 @@ import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
 import { telegramUser } from '../../services/telegram'
 import { ChoiceIcon, HandIllustration } from './HandIllustration'
+import { chooseHandSet } from './handSets'
 import { CaveResultScene, RoundScene } from './RpsScenes'
 import type { RockPaperScissorsChoice, RockPaperScissorsMatch as MatchState, RockPaperScissorsSnapshot } from './types'
 import './rockPaperScissors.css'
@@ -25,6 +26,8 @@ export default function RockPaperScissorsMatch({
 }: Props) {
   const auth = useMemo(() => ({ initData: initData ?? '' }), [initData])
   const [match, setMatch] = useState<MatchState | null>(null)
+  const [playerHandSet] = useState(() => chooseHandSet('player'))
+  const [opponentHandSet] = useState(() => chooseHandSet('opponent'))
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [now, setNow] = useState(0)
@@ -177,7 +180,7 @@ export default function RockPaperScissorsMatch({
   const myChoice = myRoundPlayer?.choice ?? 'rock'
   const opponentChoice = round?.players.find((player) => player.userId !== userId)?.choice
   const remaining = match?.phase === 'choosing'
-    ? now === 0 ? 3 : Math.max(0, Math.ceil((Date.parse(match.phaseDeadline) - (now + serverOffset)) / 1_000))
+    ? now === 0 ? 3 : Math.max(0, Math.ceil((Date.parse(match.phaseDeadline) - (now + serverOffset)) / 1_500))
     : 0
   const isCompleted = match?.status === 'completed'
   const isWinner = Boolean(match?.winnerUserId && match.winnerUserId === userId)
@@ -196,7 +199,7 @@ export default function RockPaperScissorsMatch({
       </header>
 
       <section className="rps-arena">
-        <RoundScene seed={match?.matchId ?? roomId} />
+        <RoundScene seed={`${match?.matchId ?? roomId}-round-${match?.currentRound ?? 1}`} backgroundSeed={match?.matchId ?? roomId} />
         {!match && (
           <div className="rps-phase-message">
             {loading ? 'Запускаем игру…' : 'Подключаемся к матчу…'}
@@ -206,7 +209,7 @@ export default function RockPaperScissorsMatch({
         {match?.status === 'playing' && match.phase === 'choosing' && (
           <>
             <div className="rps-timer" aria-label={`Осталось ${remaining} секунд`}>{remaining}</div>
-            <HandIllustration choice={myChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
+            <HandIllustration side="player" setNumber={playerHandSet} choice={myChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
             <div className="rps-choice-pyramid" aria-label="Выбери жест">
               {(['rock'] as RockPaperScissorsChoice[]).map((choice) => (
                 <button
@@ -239,8 +242,8 @@ export default function RockPaperScissorsMatch({
 
         {match?.status === 'playing' && match.phase === 'revealing' && round && opponentChoice && (
           <>
-            <HandIllustration choice={opponentChoice} className="rps-hand rps-opponent-hand" label="Выбор соперника" />
-            <HandIllustration choice={myChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
+            <HandIllustration side="opponent" setNumber={opponentHandSet} choice={opponentChoice} className="rps-hand rps-opponent-hand" label="Выбор соперника" />
+            <HandIllustration side="player" setNumber={playerHandSet} choice={myChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
           </>
         )}
 

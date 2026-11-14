@@ -3,7 +3,7 @@ import './App.css'
 import DevMultiplayerSmokeTest from './multiplayer/DevSmokeTest'
 import SceneGeneratorPreview from './games/NoCountIt/SceneGeneratorPreview'
 import { useReactionRush } from './games/ReactionRush/useReactionRush'
-import ReactionRush from './games/ReactionRush/ReactionRush'
+import ReactionRushSolo from './games/ReactionRush/ReactionRushSolo'
 import BrainBattle from './games/BrainBattle/BrainBattle'
 import RockPaperScissorsSolo from './games/rockPaperScissors/RockPaperScissorsSolo'
 import DemocracyMergeSolo from './games/DemocracyMerge/DemocracyMergeSolo'
@@ -32,12 +32,11 @@ function AppContent() {
   const userUsername = user?.username
   const userPhoto = user?.photo_url
 
-  const { score, rounds, best, playing, time, startSoloGame, tap } = useReactionRush()
+  const { score, rounds, best } = useReactionRush()
 
   function startSelectedSoloGame(gameId: GameId) {
     if (gameId === 'reaction-rush') {
       setScreen('reaction-game')
-      startSoloGame()
     } else if (gameId === 'brain-battle') {
       setScreen('brain-game')
     } else if (gameId === 'rock-paper-scissors') {
@@ -85,17 +84,7 @@ function AppContent() {
       )}
 
       {screen === 'reaction-game' && (
-        <ReactionRush
-          score={score}
-          time={time}
-          playing={playing}
-          mode="solo"
-          onStart={startSoloGame}
-          onTap={tap}
-          onBack={() => {
-            if (!playing) setScreen('solo-room')
-          }}
-        />
+        <ReactionRushSolo onBack={() => setScreen('solo-room')} />
       )}
 
       {screen === 'brain-game' && <BrainBattle onBack={() => setScreen('solo-room')} />}

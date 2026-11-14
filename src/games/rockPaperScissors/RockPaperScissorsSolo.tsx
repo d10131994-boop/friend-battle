@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { telegramUser } from '../../services/telegram'
 import { getOpponentName, getRoundOutcome } from './logic/gameRules'
 import { ChoiceIcon, HandIllustration } from './HandIllustration'
+import { chooseHandSet } from './handSets'
 import { CaveResultScene, RoundScene } from './RpsScenes'
 import type { RockPaperScissorsChoice } from './types'
 import './rockPaperScissors.css'
@@ -46,6 +47,8 @@ type Props = { onBack: () => void }
 
 export default function RockPaperScissorsSolo({ onBack }: Props) {
   const [game, setGame] = useState<SoloState>(createInitialState)
+  const [playerHandSet] = useState(() => chooseHandSet('player'))
+  const [opponentHandSet] = useState(() => chooseHandSet('opponent'))
   const [sceneSeed] = useState(() => `solo-${Date.now()}-${Math.random()}`)
   const [now, setNow] = useState(0)
   const playerName = telegramUser?.first_name?.trim() || 'Ты'
@@ -57,7 +60,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
 
   useEffect(() => {
     if (game.phase === 'choosing') {
-      const deadline = game.phaseStartedAt + 3_000
+      const deadline = game.phaseStartedAt + 4_500
       const opponentChoice = CHOICES[Math.floor(Math.random() * CHOICES.length)]
       const timer = window.setTimeout(() => {
         const nextPhaseStartedAt = Date.now()
@@ -136,7 +139,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
 
   const remaining = now === 0
     ? 3
-    : Math.max(0, Math.ceil((game.phaseStartedAt + 3_000 - now) / 1_000))
+    : Math.max(0, Math.ceil((game.phaseStartedAt + 4_500 - now) / 1_500))
 
   const choose = (choice: RockPaperScissorsChoice) => {
     if (game.phase !== 'choosing' || remaining <= 0) return
@@ -154,11 +157,11 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
       </header>
 
       <section className="rps-arena">
-        <RoundScene seed={sceneSeed} />
+        <RoundScene seed={`${sceneSeed}-round-${game.roundNumber}`} backgroundSeed={sceneSeed} />
         {game.phase === 'choosing' && (
           <>
             <div className="rps-timer" aria-label={`Осталось ${remaining} секунд`}>{remaining}</div>
-            <HandIllustration choice={shownPlayerChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
+            <HandIllustration side="player" setNumber={playerHandSet} choice={shownPlayerChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
             <div className="rps-choice-pyramid" aria-label="Выбери жест">
               <button
                 type="button"
@@ -195,8 +198,8 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
 
         {game.phase === 'revealing' && game.playerChoice && game.opponentChoice && (
           <>
-            <HandIllustration choice={game.opponentChoice} className="rps-hand rps-opponent-hand" label="Выбор соперника" />
-            <HandIllustration choice={game.playerChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
+            <HandIllustration side="opponent" setNumber={opponentHandSet} choice={game.opponentChoice} className="rps-hand rps-opponent-hand" label="Выбор соперника" />
+            <HandIllustration side="player" setNumber={playerHandSet} choice={game.playerChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
           </>
         )}
 

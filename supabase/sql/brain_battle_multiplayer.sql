@@ -147,6 +147,7 @@ DECLARE
   v_winner text;
   v_max_score integer;
   v_top_count integer;
+  v_winner_ids jsonb;
   v_room_result jsonb;
 BEGIN
   SELECT * INTO v_match
@@ -239,36 +240,39 @@ BEGIN
   ) s ON s.user_id = p.user_id
   WHERE p.room_id = p_room_id;
 
-  SELECT max(total_score), count(*) FILTER (WHERE total_score = max_score)
-  INTO v_max_score, v_top_count
-  FROM (
-    SELECT user_id, sum(score)::integer AS total_score,
-      max(sum(score)::integer) OVER () AS max_score
-    FROM public.games_brain_battle_answers
-    WHERE match_id = p_match_id
-    GROUP BY user_id
-  ) ranked;
+  -- All players tied at the highest total score win, including all-zero matches.
+  -- The legacy winnerUserId is populated only for a unique winner.
+  SELECT COALESCE(max((item.value->>'score')::integer), 0)
+  INTO v_max_score
+  FROM pg_catalog.jsonb_array_elements(v_results) AS item(value);
 
+  SELECT COALESCE(pg_catalog.jsonb_agg(item.value->'userId'), '[]'::jsonb)
+  INTO v_winner_ids
+  FROM pg_catalog.jsonb_array_elements(v_results) AS item(value)
+  WHERE (item.value->>'score')::integer = v_max_score;
+
+  v_top_count := pg_catalog.jsonb_array_length(v_winner_ids);
   IF v_top_count = 1 THEN
-    SELECT user_id INTO v_winner
-    FROM (
-      SELECT user_id, sum(score)::integer AS total_score
-      FROM public.games_brain_battle_answers
-      WHERE match_id = p_match_id
-      GROUP BY user_id
-    ) scores
-    WHERE total_score = v_max_score
-    LIMIT 1;
+    v_winner := v_winner_ids->>0;
   END IF;
 
+  SELECT COALESCE(pg_catalog.jsonb_agg(
+    item.value || pg_catalog.jsonb_build_object(
+      'isWinner', (item.value->>'score')::integer = v_max_score
+    )
+  ), '[]'::jsonb)
+  INTO v_results
+  FROM pg_catalog.jsonb_array_elements(v_results) AS item(value);
+
   INSERT INTO public.common_multiplayer_room_stats(room_id, user_id, wins, matches_played)
-  SELECT p_room_id, p.user_id, CASE WHEN p.user_id = v_winner THEN 1 ELSE 0 END, 1
+  SELECT p_room_id, p.user_id,
+         CASE WHEN v_winner_ids @> pg_catalog.jsonb_build_array(p.user_id) THEN 1 ELSE 0 END, 1
   FROM public.common_multiplayer_players p
   WHERE p.room_id = p_room_id
   ON CONFLICT (room_id, user_id) DO UPDATE SET
     wins = public.common_multiplayer_room_stats.wins + EXCLUDED.wins,
     matches_played = public.common_multiplayer_room_stats.matches_played + 1,
-    updated_at = now();
+    updated_at = pg_catalog.now();
 
   UPDATE public.games_brain_battle_matches
   SET status = 'completed', completed_at = v_now,
@@ -284,6 +288,7 @@ BEGIN
     'matchFinished', true,
     'finalResults', v_results,
     'winnerUserId', v_winner,
+    'winnerUserIds', v_winner_ids,
     'room', v_room_result
   );
 END;

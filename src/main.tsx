@@ -15,7 +15,16 @@ const isSceneGeneratorPreview =
 const isRoundResultsPreview =
   import.meta.env.DEV && previewParams.get('no-count-it-round-results') === '1'
 
-if (isSceneGeneratorPreview) {
+const isRpsScenePreview = import.meta.env.DEV && window.location.pathname === '/dev/rps-scene'
+
+if (isRpsScenePreview) {
+  void import('./games/rockPaperScissors/DevRpsScene.tsx').then(({ default: DevRpsScene }) => {
+    root.render(<StrictMode><DevRpsScene /></StrictMode>)
+  }).catch((error: unknown) => {
+    console.error('Не удалось загрузить предпросмотр RPS:', error)
+    root.render(<div className="startup-error"><h1>Не удалось открыть предпросмотр</h1></div>)
+  })
+} else if (isSceneGeneratorPreview) {
   void import('./games/NoCountIt/SceneGeneratorPreview').then(({ default: SceneGeneratorPreview }) => {
     root.render(
       <StrictMode>
