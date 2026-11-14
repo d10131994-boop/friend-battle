@@ -10,6 +10,7 @@ SECURITY DEFINER
 SET search_path TO ''
 AS $function$
 DECLARE
+  v_room public.common_multiplayer_rooms%ROWTYPE;
   v_match public.games_brain_battle_matches%ROWTYPE;
   v_player_count integer;
   v_answered_count integer;
@@ -22,6 +23,13 @@ DECLARE
   v_winner_ids jsonb;
   v_room_result jsonb;
 BEGIN
+  -- Preserve the production room-first lock order (leave-room trigger safety).
+  SELECT * INTO v_room
+  FROM public.common_multiplayer_rooms
+  WHERE id = p_room_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE = 'P0002'; END IF;
+
   SELECT * INTO v_match
   FROM public.games_brain_battle_matches
   WHERE id = p_match_id AND room_id = p_room_id
@@ -30,11 +38,7 @@ BEGIN
   IF v_match.status <> 'playing' THEN
     RETURN pg_catalog.jsonb_build_object('status', v_match.status, 'matchFinished', v_match.status = 'completed');
   END IF;
-
-  IF NOT EXISTS (
-    SELECT 1 FROM public.common_multiplayer_rooms
-    WHERE id = p_room_id AND status = 'playing' AND started_at = v_match.started_at
-  ) THEN
+  IF v_room.status <> 'playing' OR v_room.started_at IS DISTINCT FROM v_match.started_at THEN
     RAISE EXCEPTION 'Match is no longer active' USING ERRCODE = '55000';
   END IF;
 
