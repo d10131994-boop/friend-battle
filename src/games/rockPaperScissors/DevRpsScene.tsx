@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { RoundScene, SCENE_LAYOUTS, sceneObjectCount, sceneBackgroundNames } from './RpsScenes'
-import type { SceneLayout, ScenePoint } from './RpsScenes'
+import { RoundScene } from './RpsScenes'
+import { SCENE_LAYOUTS } from './sceneLayouts'
+import type { SceneLayout, ScenePoint } from './sceneLayouts'
+import { sceneObjectCount, sceneBackgroundNames } from './sceneAssets'
 import './rockPaperScissors.css'
 
 const style = `
