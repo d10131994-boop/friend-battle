@@ -13,7 +13,7 @@ const backgrounds = entries(backgroundModules).map(([path,src]) => ({ name: path
 const objects = entries(objectModules).flatMap(([path,src]) => {
   const name = path.split('/').pop() ?? ''
   const match = /^obj[_-]?\d+[_-]size[_-]?(100|[1-9]\d?)\.(png|webp|jpg|jpeg)$/i.exec(name)
-  return match ? [{ name, src, size: Number(match[1]) }] : []
+  return match ? [{ name, src, size: Number(match[1]) }] : /^obj\d+\.(png|webp|jpg|jpeg)$/i.test(name) ? [{ name, src, size: 50 }] : []
 })
 const camps = entries(campModules).map(([,src]) => src)
 function random(seed: string, index: number) {
