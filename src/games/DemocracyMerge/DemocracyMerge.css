@@ -790,3 +790,60 @@
 }
 
 .dm-solo-screen .dm-visually-hidden {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+
+/* Issue 009 — approved compact HUD, plank scoreboard and corner navigation. */
+.dm-solo-screen .dm-solo-layout .dm-stats {
+  background:linear-gradient(180deg,#e8a35b 0%,#bb6b2d 47%,#9b4d1f 100%);
+  border:3px solid #713914;
+  border-radius:16px;
+  box-shadow:inset 0 3px #ffd28a, inset 0 -4px #713914,0 4px 0 #512b17;
+  padding:clamp(10px,2.4vw,20px) clamp(10px,3vw,26px);
+}
+.dm-solo-screen .dm-solo-layout .dm-stats > div {gap:3px}
+.dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer {
+  box-sizing:border-box;
+  min-width:0;
+  width:max-content;
+  align-self:center;
+  padding:5px 9px 7px;
+  border:2px solid #8a5729;
+  border-radius:14px;
+  line-height:1.05;
+}
+.dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer small {
+  display:block;
+  font-size:clamp(9px,1.8vw,11px);
+  line-height:1.15;
+}
+.dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer strong {
+  font-size:clamp(23px,4.5vw,32px);
+  line-height:1.05;
+}
+.dm-solo-screen .dm-solo-layout .dm-tools {position:relative}
+.dm-solo-screen .dm-solo-layout .dm-tools .dm-corner-action {
+  position:absolute;
+  z-index:3;
+  bottom:clamp(5px,1.5vw,13px);
+  display:grid;
+  place-items:center;
+  width:clamp(32px,7vw,48px);
+  height:clamp(32px,7vw,48px);
+  padding:6px;
+  color:#643716;
+  background:linear-gradient(#fff2cb,#e5bc74);
+  border:2px solid #905423;
+  border-radius:13px;
+  box-shadow:inset 0 2px #fff8,0 3px #5c311a;
+  cursor:pointer;
+}
+.dm-solo-screen .dm-solo-layout .dm-tools .dm-home-action {left:clamp(4px,1.2vw,12px)}
+.dm-solo-screen .dm-solo-layout .dm-tools .dm-shop-action {right:clamp(4px,1.2vw,12px)}
+.dm-solo-screen .dm-solo-layout .dm-tools .dm-corner-action svg {display:block;width:100%;height:100%}
+.dm-solo-screen .dm-solo-layout .dm-tools .dm-corner-action:focus-visible {outline:3px solid #ffe16a;outline-offset:2px}
+.dm-solo-screen .dm-solo-layout .dm-tools .dm-corner-action:disabled {opacity:.5;cursor:not-allowed}
+@media(max-width:600px) {
+  .dm-solo-screen .dm-solo-layout .dm-stats {padding:11px 9px}
+  .dm-solo-screen .dm-solo-layout .dm-next-character .dm-timer {min-width:0;padding:4px 7px 5px}
+  .dm-solo-screen .dm-solo-layout .dm-tools .dm-corner-action {width:32px;height:32px;padding:5px;border-radius:10px}
+}
