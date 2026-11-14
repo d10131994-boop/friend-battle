@@ -22,6 +22,7 @@ type BrainBattlePlayerResult = {
   incorrectAnswers: number
   skippedQuestions: number
   answeredCurrentQuestion: boolean
+  isWinner?: boolean
 }
 
 type BrainBattleMatch = {
@@ -377,11 +378,11 @@ export default function BrainBattleRoom({
                   <h2>БИТВА ЗАВЕРШЕНА</h2>
                   {results.map((result) => (
                     <p key={result.userId}>
-                      {result.userId === match.winnerUserId ? '🏆 ' : ''}
+                      {result.isWinner || result.userId === match.winnerUserId ? '🏆 ' : ''}
                       {result.displayName}: <strong>{result.score}</strong> очков
                     </p>
                   ))}
-                  <p>{match.winnerUserId ? 'Победитель получает победу в счёте комнаты!' : 'Ничья! В этот раз без победителя.'}</p>
+                  <p>{'Каждый игрок с максимальным количеством очков получает победу в статистике комнаты.'}</p>
                   <button className="invite-button" onClick={() => setShowFinalResults(false)}>ЗАКРЫТЬ РЕЗУЛЬТАТЫ</button>
                 </section>
               )}
