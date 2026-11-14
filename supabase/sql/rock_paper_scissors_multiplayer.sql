@@ -227,7 +227,7 @@ BEGIN
     room_id, started_at, status, current_round, phase, phase_started_at, phase_deadline
   )
   VALUES (
-    p_room_id, v_started_at, 'playing', 1, 'choosing', v_now, v_now + interval '3 seconds'
+    p_room_id, v_started_at, 'playing', 1, 'choosing', v_now, v_now + interval '4.5 seconds'
   )
   RETURNING id INTO v_match_id;
 
@@ -499,7 +499,7 @@ BEGIN
         SET current_round = v_next_round,
             phase = 'choosing',
             phase_started_at = v_now,
-            phase_deadline = v_now + interval '3 seconds'
+            phase_deadline = v_now + interval '4.5 seconds'
         WHERE id = v_match.id;
       END IF;
       v_advanced := true;

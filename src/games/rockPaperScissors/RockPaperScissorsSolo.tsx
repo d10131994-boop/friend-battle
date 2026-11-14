@@ -60,7 +60,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
 
   useEffect(() => {
     if (game.phase === 'choosing') {
-      const deadline = game.phaseStartedAt + 3_000
+      const deadline = game.phaseStartedAt + 4_500
       const opponentChoice = CHOICES[Math.floor(Math.random() * CHOICES.length)]
       const timer = window.setTimeout(() => {
         const nextPhaseStartedAt = Date.now()
@@ -139,7 +139,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
 
   const remaining = now === 0
     ? 3
-    : Math.max(0, Math.ceil((game.phaseStartedAt + 3_000 - now) / 1_000))
+    : Math.max(0, Math.ceil((game.phaseStartedAt + 4_500 - now) / 1_500))
 
   const choose = (choice: RockPaperScissorsChoice) => {
     if (game.phase !== 'choosing' || remaining <= 0) return

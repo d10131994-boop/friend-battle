@@ -180,7 +180,7 @@ export default function RockPaperScissorsMatch({
   const myChoice = myRoundPlayer?.choice ?? 'rock'
   const opponentChoice = round?.players.find((player) => player.userId !== userId)?.choice
   const remaining = match?.phase === 'choosing'
-    ? now === 0 ? 3 : Math.max(0, Math.ceil((Date.parse(match.phaseDeadline) - (now + serverOffset)) / 1_000))
+    ? now === 0 ? 3 : Math.max(0, Math.ceil((Date.parse(match.phaseDeadline) - (now + serverOffset)) / 1_500))
     : 0
   const isCompleted = match?.status === 'completed'
   const isWinner = Boolean(match?.winnerUserId && match.winnerUserId === userId)
