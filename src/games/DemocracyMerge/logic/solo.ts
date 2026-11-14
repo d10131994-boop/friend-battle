@@ -3,6 +3,7 @@ import {
   generateCharacterSequence,
   isBoardFull,
   placeCharacter,
+  resolveMerges,
   type Board,
   type CharacterLevel,
   type ObstacleType,
@@ -171,7 +172,7 @@ export function placeSoloCharacter(
   assertActiveAndBeforeDeadline(source, now)
   const current = currentSoloCharacter(source)
   if (!current) throw new Error('The solo character sequence is exhausted.')
-  const placement = placeCharacter(source.board, cellIndex, current, source.level6MergeCount)
+  const placement = placeCharacter(source.board, cellIndex, current, source.level6MergeCount, 10)
   let board = placement.board
   let coins = source.coins
   let inventory = source.inventory
@@ -231,6 +232,10 @@ export function applySoloTool(
   let storage = source.storage
   let coins = source.coins
   let toolsUsed = source.toolsUsed
+  let scoreDelta = 0
+  let level6MergeCount = source.level6MergeCount
+  let mergeCountDelta = 0
+  let chainReactionsDelta = 0
 
   if (tool === 'saw') {
     const result = applySaw(board, options.cellIndex ?? -1, inventory, coins)
@@ -258,6 +263,16 @@ export function applySoloTool(
     board = result.board
     inventory = result.inventory
     toolsUsed += 1
+    // Both swapped destinations can form groups. Resolve each against the updated board.
+    for (const anchor of [options.firstCellIndex!, options.secondCellIndex!]) {
+      if (board[anchor]?.kind !== 'character') continue
+      const resolved = resolveMerges(board, anchor, level6MergeCount, 10)
+      board = resolved.board
+      level6MergeCount = resolved.level6MergeCount
+      scoreDelta += resolved.scoreDelta
+      mergeCountDelta += resolved.merges.length
+      if (resolved.merges.length > 1) chainReactionsDelta += 1
+    }
   } else {
     const replaced = replaceCurrentCharacter(currentSoloCharacter(source) ?? 1, inventory)
     inventory = replaced.inventory
@@ -271,6 +286,11 @@ export function applySoloTool(
     storage,
     coins,
     toolsUsed,
+    score: source.score + scoreDelta,
+    level6MergeCount,
+    mergeCount: source.mergeCount + mergeCountDelta,
+    chainReactions: source.chainReactions + chainReactionsDelta,
+    maxLevel: Math.max(source.maxLevel, ...board.flatMap(cell => cell?.kind === 'character' ? [cell.level] : []), 1) as CharacterLevel,
   }, now)
 }
 

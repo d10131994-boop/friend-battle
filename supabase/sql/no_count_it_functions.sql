@@ -231,6 +231,7 @@ DECLARE
   v_room jsonb;
   v_match public.games_no_count_it_matches%ROWTYPE;
   v_round public.games_no_count_it_rounds%ROWTYPE;
+  v_candy_colors jsonb;
   v_players jsonb;
   v_round_players jsonb;
   v_all_answered boolean;
@@ -310,6 +311,15 @@ BEGIN
     WHERE rp.match_id = v_match.id AND rp.round_number = v_match.current_round;
   END IF;
 
+  IF v_round.id IS NOT NULL THEN
+    SELECT COALESCE(pg_catalog.jsonb_agg(color ORDER BY color), '[]'::jsonb)
+    INTO v_candy_colors
+    FROM (
+      SELECT DISTINCT candy.value->>'color' AS color
+      FROM pg_catalog.jsonb_array_elements(v_round.scene->'objects') AS candy(value)
+    ) AS colors;
+  END IF;
+
   RETURN pg_catalog.jsonb_build_object('room', v_room, 'match', jsonb_build_object(
     'matchId', v_match.id, 'startedAt', v_match.started_at, 'status', v_match.status,
     'currentRound', v_match.current_round, 'players', v_players,
@@ -317,6 +327,8 @@ BEGIN
     'round', CASE WHEN v_round.id IS NULL THEN NULL ELSE jsonb_build_object(
       'roundNumber', v_round.round_number, 'status', v_round.status,
       'targetColor', v_round.target_color,
+      'candyColors', COALESCE(v_candy_colors, '[]'::jsonb),
+      'backgroundColor', v_round.scene->>'backgroundColor',
       'preparationDeadline', v_round.preparation_deadline,
       'showStartedAt', v_round.show_started_at,
       'answerDeadline', v_round.answer_deadline,

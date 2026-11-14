@@ -168,7 +168,7 @@ export type DemocracyMergeHistoryRecord = {
   completedAt: string
   playerCount: number
   opponents: Array<{ displayName: string; status: 'active' | 'completed' | 'surrendered' | 'left' }>
-  status: 'completed' | 'surrendered'
+  status: 'completed' | 'surrendered' | 'left'
   score: number
   maxLevel: CharacterLevel
   mergeCount: number

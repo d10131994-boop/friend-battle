@@ -6,6 +6,10 @@
  * correct answer before the round enters its reveal phase.
  */
 
+import { CANDY_GENERATION_CONFIG } from './generationConfig'
+import type { NoCountItCandyColor, NoCountItPaletteColor } from '../../../supabase/functions/_shared/no_count_it_scene/types.ts'
+export type { NoCountItCandyColor, NoCountItPaletteColor, NoCountItScene, NoCountItSceneObject } from '../../../supabase/functions/_shared/no_count_it_scene/types.ts'
+
 export const NO_COUNT_IT_GAME_ID = 'no-count-it' as const
 
 export const NO_COUNT_IT_RULES = {
@@ -15,10 +19,10 @@ export const NO_COUNT_IT_RULES = {
   preparationWindowMs: 30_000,
   imageDisplayMs: 5_000,
   answerWindowMs: 10_000,
-  minCandies: 40,
-  maxCandies: 120,
+  minCandies: CANDY_GENERATION_CONFIG.minCandyCount,
+  maxCandies: CANDY_GENERATION_CONFIG.maxCandyCount,
   minColors: 4,
-  maxColors: 10,
+  maxColors: 9,
   minCandiesPerColor: 3,
 } as const
 
@@ -47,38 +51,6 @@ export type NoCountItRoundPlayerStatus =
 
 export type NoCountItMatchPlayerStatus = 'active' | 'left'
 
-export type NoCountItCandyColor =
-  | 'red'
-  | 'orange'
-  | 'yellow'
-  | 'green'
-  | 'blue'
-  | 'purple'
-  | 'pink'
-  | 'teal'
-  | 'white'
-  | 'brown'
-
-/** Private server-only scene description. Never serialize this to clients pre-reveal. */
-export interface NoCountItScene {
-  version: 1
-  seed: string
-  generator: 'candy-jar'
-  objects: NoCountItSceneObject[]
-  targetColor: NoCountItCandyColor
-  correctCount: number
-}
-
-export interface NoCountItSceneObject {
-  id: number
-  x: number
-  y: number
-  rotation: number
-  scale: number
-  color: NoCountItCandyColor
-  shape: 'round' | 'oval' | 'wrapped'
-}
-
 export interface NoCountItRoundPlayer {
   userId: string
   displayName: string
@@ -100,6 +72,8 @@ export interface NoCountItPublicRound {
   status: NoCountItRoundStatus
   imageUrl: string | null
   targetColor: NoCountItCandyColor | null
+  candyColors: NoCountItCandyColor[]
+  backgroundColor: NoCountItPaletteColor
   preparationDeadline: string | null
   showStartedAt: string | null
   answerDeadline: string | null

@@ -1,7 +1,7 @@
 export const BOARD_SIZE = 6
 export const BOARD_CELLS = BOARD_SIZE * BOARD_SIZE
 
-export type CharacterLevel = 1 | 2 | 3 | 4 | 5 | 6
+export type CharacterLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
 export type ObstacleType = 'barricade' | 'police' | 'rock'
 
 export type CharacterCell = { kind: 'character'; level: CharacterLevel }
@@ -31,6 +31,10 @@ const MERGE_POINTS: Record<CharacterLevel, number> = {
   4: 90,
   5: 270,
   6: 810,
+  7: 2430,
+  8: 7290,
+  9: 21870,
+  10: 65610,
 }
 
 function assertRandom(value: number): number {
@@ -60,7 +64,7 @@ export function assertBoard(board: Board): void {
   for (const cell of board) {
     if (cell === null) continue
     if (typeof cell !== 'object') throw new TypeError('Board contains an invalid cell.')
-    if (cell.kind === 'character' && Number.isInteger(cell.level) && cell.level >= 1 && cell.level <= 6) continue
+    if (cell.kind === 'character' && Number.isInteger(cell.level) && cell.level >= 1 && cell.level <= 10) continue
     if (cell.kind === 'obstacle' && ['barricade', 'police', 'rock'].includes(cell.obstacleType)) continue
     throw new TypeError('Board contains an invalid cell.')
   }
@@ -126,6 +130,7 @@ export function placeCharacter(
   index: number,
   level: CharacterLevel,
   previousLevel6MergeCount = 0,
+  maxLevel: CharacterLevel = 6,
 ): PlacementResult {
   assertBoard(source)
   if (!Number.isInteger(index) || index < 0 || index >= BOARD_CELLS) {
@@ -137,24 +142,37 @@ export function placeCharacter(
   if (!Number.isInteger(previousLevel6MergeCount) || previousLevel6MergeCount < 0) {
     throw new RangeError('Level 6 merge count cannot be negative.')
   }
+  if (!Number.isInteger(maxLevel) || maxLevel < 6 || maxLevel > 10) throw new RangeError('Invalid maximum character level.')
   if (source[index] !== null) throw new Error('The selected cell is occupied.')
 
   const board = cloneBoard(source)
   board[index] = { kind: 'character', level }
+  const resolved = resolveMerges(board, index, previousLevel6MergeCount, maxLevel)
+  return resolved
+}
+
+/** Resolve connected merges after placement or a tool action. */
+export function resolveMerges(source: Board, index: number, previousLevel6MergeCount = 0, maxLevel: CharacterLevel = 6): PlacementResult {
+  if (!Number.isInteger(maxLevel) || maxLevel < 6 || maxLevel > 10) throw new RangeError('Invalid maximum character level.')
+  const board = cloneBoard(source)
+  const start = board[index]
+  if (start?.kind !== 'character') throw new Error('Merge anchor must be a character.')
+  if (start.level > maxLevel) throw new Error('Character exceeds the mode level cap.')
   const merges: MergeEvent[] = []
-  let currentLevel = level
+  let currentLevel = start.level
   let level6MergeCount = previousLevel6MergeCount
 
   while (true) {
     const group = connectedCharacterGroup(board, index)
     if (group.length < 3) break
 
-    const nextLevel = currentLevel === 6 ? 6 : (currentLevel + 1) as CharacterLevel
+    const nextLevel = currentLevel >= maxLevel ? maxLevel : (currentLevel + 1) as CharacterLevel
     let points = MERGE_POINTS[nextLevel]
-    if (currentLevel === 6) {
+    if (currentLevel === maxLevel && maxLevel === 6) {
       level6MergeCount += 1
       if (level6MergeCount > 1) points = 2430
     }
+    points *= group.length - 1
 
     for (const cellIndex of group) {
       if (cellIndex !== index) board[cellIndex] = null

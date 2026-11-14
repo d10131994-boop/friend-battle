@@ -10,7 +10,7 @@ IF NOT FOUND THEN RAISE EXCEPTION 'Room not found' USING ERRCODE='P0002'; END IF
 SELECT * INTO v_match FROM public.games_no_count_it_matches WHERE id=p_match_id AND room_id=p_room_id FOR UPDATE;
 IF NOT FOUND OR v_match.status<>'playing' OR v_room.status<>'playing' OR v_room.started_at IS DISTINCT FROM v_match.started_at THEN RAISE EXCEPTION 'Match is no longer active' USING ERRCODE='55000'; END IF;
 SELECT * INTO v_round FROM public.games_no_count_it_rounds WHERE match_id=p_match_id AND round_number=v_match.current_round FOR UPDATE;
-IF NOT FOUND OR v_round.status<>'revealing' OR v_round.reveal_started_at>v_now-interval '4 seconds' THEN RAISE EXCEPTION 'Round reveal is still active' USING ERRCODE='55000'; END IF;
+IF NOT FOUND OR v_round.status<>'revealing' OR v_round.reveal_started_at>v_now-interval '6 seconds' THEN RAISE EXCEPTION 'Round reveal is still active' USING ERRCODE='55000'; END IF;
 IF v_match.current_round=3 THEN
  SELECT COALESCE(jsonb_agg(jsonb_build_object('userId',user_id,'displayName',display_name,'totalError',total_error) ORDER BY total_error,joined_at,user_id),'[]'::jsonb),
  min(total_error),count(*) FILTER(WHERE total_error=(SELECT min(total_error) FROM public.games_no_count_it_match_players WHERE match_id=p_match_id))

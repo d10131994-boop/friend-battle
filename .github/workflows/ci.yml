@@ -11,6 +11,12 @@ on:
       - 'friend-battle-03/**'
       - friend-battle-04-release
       - 'friend-battle-04/**'
+      - friend-battle-05-release
+      - 'friend-battle-05/**'
+      - friend-battle-06-release
+      - 'friend-battle-06/**'
+      # Skip PR validation when the target is a primary AI branch.
+      - '!**/*-AI'
   workflow_dispatch:
 
 permissions:
@@ -64,6 +70,8 @@ jobs:
           deno check --node-modules-dir=auto supabase/functions/reaction-rush/index.ts
           deno check --node-modules-dir=auto supabase/functions/brain-battle/index.ts
           deno check --node-modules-dir=auto supabase/functions/no-count-it/index.ts
+          deno check --node-modules-dir=auto supabase/functions/no-count-it-storage-cleanup/index.ts
+          deno test supabase/functions/no-count-it/scene_test.ts
           deno check --node-modules-dir=auto supabase/functions/rock-paper-scissors/index.ts
           deno check --node-modules-dir=auto supabase/functions/democracy-merge/index.ts
           deno test supabase/functions/_shared/errors_test.ts

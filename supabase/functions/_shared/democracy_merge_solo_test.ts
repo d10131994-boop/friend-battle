@@ -30,7 +30,7 @@ Deno.test('solo placement advances only after a successful placement and resolve
   board[1] = { kind: 'character', level: 1 }
   const prepared = { ...base, board }
   const result = placeSoloCharacter(prepared, 2, 2000, () => 0.9)
-  if (result.state.turnNumber !== 1 || result.state.score !== 10 ||
+  if (result.state.turnNumber !== 1 || result.state.score !== 20 ||
       result.state.board[2]?.kind !== 'character' || result.state.board[2].level !== 2) {
     throw new Error('Solo merge and turn advancement failed.')
   }
@@ -77,4 +77,18 @@ Deno.test('surrender and deadline preserve a result; history deletion does not c
   }
   const timedProfile = recordSoloResult(profile, timed)
   if (timedProfile.totalGames !== 2) throw new Error('Solo aggregate games count failed.')
+})
+
+Deno.test('solo swap resolves a connected triple and scores cleared cells', () => {
+  const base = createSoloGameState(1000, () => 0.1)
+  const board = [...base.board]
+  board[0] = { kind: 'character', level: 1 }
+  board[1] = { kind: 'character', level: 1 }
+  board[2] = { kind: 'character', level: 2 }
+  board[3] = { kind: 'character', level: 1 }
+  const prepared = { ...base, board, inventory: { ...base.inventory, swap: 1 } }
+  const swapped = applySoloTool(prepared, 'swap', { firstCellIndex: 2, secondCellIndex: 3 }, 2000)
+  if (swapped.score !== 20 || swapped.mergeCount !== 1 || swapped.board[2]?.kind !== 'character' || swapped.board[2].level !== 2) {
+    throw new Error('Swapping into a triple must merge and score two vanished cells.')
+  }
 })
