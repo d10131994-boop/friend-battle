@@ -365,3 +365,8 @@
   height: 100%;
   object-fit: contain;
 }
+
+/* Scene objects are sized by asset metadata rather than fixed slot dimensions. */
+.rps-round-scene .rps-scene-object {height:auto;max-height:none;object-fit:contain;}
+.rps-round-scene .rps-scene-campfire {z-index:15;}
+.rps-scene-point {position:absolute;z-index:20;transform:translate(-50%,-50%);border-radius:50%;background:#bd6844;color:white;padding:4px;}
