@@ -370,3 +370,11 @@
 .rps-round-scene .rps-scene-object {height:auto;max-height:none;object-fit:contain;}
 .rps-round-scene .rps-scene-campfire {z-index:15;}
 .rps-scene-point {position:absolute;z-index:20;transform:translate(-50%,-50%);border-radius:50%;background:#bd6844;color:white;padding:4px;}
+
+/* Preserve artwork proportions across tall and short mobile screens.
+   Cover fills the scene without stretching; the background is centered and
+   may be cropped on the long axis. Scene props remain percentage-positioned. */
+.rps-round-scene .rps-scene-background {
+  background-size: cover;
+  background-position: center center;
+}
