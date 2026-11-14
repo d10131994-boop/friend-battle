@@ -1,35 +1,32 @@
-import { useState } from 'react'
-
 type Props = {
   level: number
   className?: string
 }
 
-/**
- * Solo character artwork is kept separate from multiplayer artwork.
- * Show the original level number as a fallback if a PNG fails to load.
- */
-export default function CharacterPortrait({ level, className = '' }: Props) {
-  const [failedPath, setFailedPath] = useState<string | null>(null)
-  const path = `/democracy-merge/solo/level-${String(level).padStart(2, '0')}.png`
+const characterNames = [
+  'Дерзкий фермер с вилами и мешком',
+  'Уверенный фермер с картой поместья',
+  'Фермер-землевладелец с картой участка',
+  'Богатый дворянин-банкир с сокровищами',
+  'Рыцарь-землевладелец с картой владений',
+  'Король-завоеватель с королевским знаменем',
+] as const
 
+export default function CharacterPortrait({ level, className = '' }: Props) {
+  const validLevel = Number.isInteger(level) && level >= 1 && level <= 6
+  const filename = validLevel ? `level-${String(level).padStart(2, '0')}.png` : null
   return (
-    <span className={`dm-character-portrait ${className}`}>
-      {failedPath !== path && (
+    <span className={`dm-character-portrait ${className}`} aria-label={validLevel ? characterNames[level - 1] : `Уровень ${level}`}>
+      {filename ? (
         <img
-          key={path}
-          className="dm-character-art"
-          src={path}
-          alt=""
-          aria-hidden="true"
-          loading="eager"
-          draggable={false}
-          onError={() => setFailedPath(path)}
+          src={`/democracy-merge/characters/${filename}`}
+          alt={characterNames[level - 1]}
+          loading="lazy"
+          style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }}
+          onError={(event) => { event.currentTarget.hidden = true; event.currentTarget.nextElementSibling?.removeAttribute('hidden') }}
         />
-      )}
-      <span className="dm-character-fallback" aria-label={`Уровень ${level}`}>
-        {level}
-      </span>
+      ) : null}
+      <span className="dm-character-fallback" hidden={Boolean(filename)}>{level}</span>
     </span>
   )
 }
