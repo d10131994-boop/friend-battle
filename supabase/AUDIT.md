@@ -1,6 +1,8 @@
 # Friend Battle technical audit
 
-Audit snapshot: 2026-11-06. This document describes the integrated release branch and the observed Production state before task GAMES/COMMON issue-011. The rematch removal is being developed separately and is not reflected in this historical Production snapshot.
+Audit snapshot: 2026-11-06. This document describes the integrated release branch and the observed Production state before task GAMES/COMMON issue-011. It is a historical snapshot, not a live audit of the 2026-11-08 working branch.
+
+Since that snapshot, the app-wide rematch removal was applied to Production. The Democracy Merge work in release 04 is branch-only: its two SQL migrations, catalog registration and updated Edge Functions have not been applied to Production. Recheck the live schema and migration history before treating any finding below as current.
 
 ## Release state
 
@@ -110,3 +112,34 @@ The repository owner has also confirmed that scheduled room cleanup (cron) has b
 - The active integration target for this work is `friend-battle-03-release`.
 - The release branch is not protected by mandatory PR checks; the repository owner explicitly chose to leave this arrangement unchanged.
 - No change to `main` or Telegram publication is included in this audit.
+
+## 2026-11-08 working-branch audit (not Production)
+
+**Scope:** source review of `friend-battle-04/democracy-merge/issue-001-AI`, including app routing, game modules, database facade, Multiplayer Core, Supabase Edge Functions/SQL, GitHub Actions and backup workflow. This is not a live inspection of the deployed Supabase schema or Vercel runtime.
+
+### Verification
+
+- AI branch build: passed.
+- CI full source lint and production build: passed.
+- PostgreSQL SQL parser: passed, including the new shared-lifecycle boundary check.
+- Edge Function/Deno checks: passed on retry. The first attempt failed because GitHub Actions received HTTP 504 while downloading the Deno binary; the rerun completed successfully.
+- `supabase/tests/democracy_merge_lifecycle.sql` is present and covers countdown enforcement, action reservations, disconnect/deadline ordering, final departure, result history and aggregate preservation. It has **not** been executed against an isolated Supabase database.
+- No Production migration, Supabase Cron change, Vercel deployment, `main` update or PR merge was performed by this task.
+
+### Findings and remaining risks
+
+1. **Deployment blocker — database verification:** migrations `20261108100000_multiplayer_active_match_departure.sql` and `20261108113000_democracy_merge_multiplayer.sql` are branch-only. They must be applied in order to an isolated database and the lifecycle SQL test must pass before Production deployment. The frontend/Edge Functions must not be deployed ahead of those migrations.
+2. **Manual integration still required:** real Telegram testing on multiple devices is still needed for synchronized start, concurrent actions, reconnect cutoff, final departure, host transfer, history privacy and results return.
+3. **Legacy client debt:** `src/supabase.ts` remains as a second browser-side Supabase client alongside the `src/database` facade. New Democracy Merge and Multiplayer work uses the facade; continue migrating any remaining legacy consumers before removing the old client.
+4. **Error-mapping consistency:** NoCountIt still uses local fixed-message SQL error handling and maps several distinct database failures to HTTP 409. It does not expose raw SQL details, but should eventually use the shared `sqlErrorResponse` mapper.
+5. **Backup assurance:** the backup workflow encrypts artifacts and retains recent backups, but the earlier audit did not confirm a successful first artifact or a restore drill. Verify both operationally; an encrypted backup is not proven until it has been restored.
+6. **Accepted process risk:** release-branch protection/required status checks remain unchanged, as previously agreed. CI now targets current `friend-battle-*-release` and task branches, but branch protection is a separate GitHub setting.
+7. **Known historical operational debt:** Realtime policy initialization/performance warnings and unused-index recommendations from the 2026-11-06 Production snapshot have not been re-audited against live Production in this task.
+
+No critical or high-severity issue was identified in the reviewed branch source. That statement is limited to this source review and is not a Production security sign-off.
+
+### Integration state
+
+PR [#90](https://github.com/d10131994-boop/friend-battle/pull/90) proposes the AI branch into task branch `friend-battle-04/democracy-merge/issue-001`. The task branch is based on `friend-battle-03-release`, in accordance with the release workflow. The active `friend-battle-04-release` is 119 commits ahead of that base. A comparison found 13 overlapping paths between this PR and release 04: `.github/workflows/ci.yml`, `src/App.tsx`, `src/ai-readme.md`, `src/games/ai-readme.md`, `src/menus/MultiplayerRoomMenu.tsx`, `src/menus/SoloRoomMenu.tsx`, `src/menus/ai-readme.md`, `src/multiplayer/README.md`, `src/multiplayer/ai-readme.md`, `src/multiplayer/roomSession.ts`, `src/multiplayer/types.ts`, `supabase/sql/universal_lobby_reaction_rush.sql` and `supabase/tests/README.md`.
+
+After PR #90 is merged into the task branch, merge `friend-battle-04-release` into that task branch and resolve the overlaps by preserving both the Rock Paper Scissors/release-04 changes and Democracy Merge changes. Pay particular attention to app routing and both game menus, Multiplayer types/session handling, the canonical shared SQL RPC and CI checks. Run full CI again on the synchronized task branch before opening the release integration PR.

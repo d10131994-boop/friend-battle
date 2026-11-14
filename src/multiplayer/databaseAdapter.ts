@@ -133,12 +133,17 @@ function parseHeartbeat(value: unknown): MultiplayerHeartbeatResult {
   if (
     !isRecord(value) ||
     !isNonEmptyString(value.roomId) ||
-    !isTimestamp(value.lastSeenAt)
+    !isTimestamp(value.lastSeenAt) ||
+    (value.expired !== undefined && typeof value.expired !== 'boolean')
   ) {
     throw new MultiplayerError('Сервер вернул некорректное подтверждение heartbeat.')
   }
 
-  return value as unknown as MultiplayerHeartbeatResult
+  return {
+    roomId: value.roomId,
+    lastSeenAt: value.lastSeenAt,
+    ...(value.expired === true ? { expired: true } : {}),
+  }
 }
 
 function parseRoomToken(value: unknown): MultiplayerRoomToken {

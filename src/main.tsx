@@ -9,13 +9,56 @@ if (!rootElement) {
 }
 
 const root = createRoot(rootElement)
+const previewParams = new URLSearchParams(window.location.search)
+const isSceneGeneratorPreview =
+  import.meta.env.DEV && previewParams.get('no-count-it-generator') === '1'
+const isRoundResultsPreview =
+  import.meta.env.DEV && previewParams.get('no-count-it-round-results') === '1'
 
-if (import.meta.env.DEV && window.location.pathname === '/dev/rps-scene') {
+const isRpsScenePreview = import.meta.env.DEV && window.location.pathname === '/dev/rps-scene'
+
+if (isRpsScenePreview) {
   void import('./games/rockPaperScissors/DevRpsScene.tsx').then(({ default: DevRpsScene }) => {
     root.render(<StrictMode><DevRpsScene /></StrictMode>)
   }).catch((error: unknown) => {
     console.error('Не удалось загрузить предпросмотр RPS:', error)
     root.render(<div className="startup-error"><h1>Не удалось открыть предпросмотр</h1></div>)
+  })
+} else if (isSceneGeneratorPreview) {
+  void import('./games/NoCountIt/SceneGeneratorPreview').then(({ default: SceneGeneratorPreview }) => {
+    root.render(
+      <StrictMode>
+        <SceneGeneratorPreview />
+      </StrictMode>,
+    )
+  }).catch((error: unknown) => {
+    console.error('Не удалось загрузить генератор сцен NoCountIt:', error)
+    root.render(
+      <div className="startup-error" role="alert">
+        <div className="startup-error__content">
+          <h1>Не удалось загрузить генератор сцен</h1>
+          <p>Произошла ошибка при загрузке локального предпросмотра. Обнови страницу или проверь консоль разработчика.</p>
+        </div>
+      </div>,
+    )
+  })
+} else if (isRoundResultsPreview) {
+  void import('./games/NoCountIt/RoundResultsPreview').then(({ default: RoundResultsPreview }) => {
+    root.render(
+      <StrictMode>
+        <RoundResultsPreview />
+      </StrictMode>,
+    )
+  }).catch((error: unknown) => {
+    console.error('Не удалось загрузить предпросмотр итогов раунда NoCountIt:', error)
+    root.render(
+      <div className="startup-error" role="alert">
+        <div className="startup-error__content">
+          <h1>Не удалось загрузить предпросмотр итогов раунда</h1>
+          <p>Произошла ошибка при загрузке локального предпросмотра. Обнови страницу или проверь консоль разработчика.</p>
+        </div>
+      </div>,
+    )
   })
 } else {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
@@ -43,7 +86,11 @@ if (import.meta.env.DEV && window.location.pathname === '/dev/rps-scene') {
     )
   } else {
     void import('./App.tsx').then(({ default: App }) => {
-      root.render(<StrictMode><App /></StrictMode>)
+      root.render(
+        <StrictMode>
+          <App />
+        </StrictMode>,
+      )
     }).catch((error: unknown) => {
       console.error('Не удалось загрузить приложение:', error)
       root.render(

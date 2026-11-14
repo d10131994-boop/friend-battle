@@ -1,25 +1,28 @@
 # Reaction Rush
 
-Reaction Rush supports solo play and multiplayer play. Its ranking behavior is intentionally game-specific.
+Reaction Rush supports solo and multiplayer play. The shared top-ten leaderboard records the highest number of taps, not match round points.
 
 ## Solo mode
 
-- The player's current score, personal best, and number of completed rounds are kept in browser local storage.
-- Solo results are not uploaded to a cross-game or global leaderboard.
-- No global rating screen or global score endpoint is used.
+- A solo round lasts 10 seconds and its taps are counted by the trusted Supabase backend.
+- The solo best score and completed-round count come from the server; the leaderboard stores only the ten best records.
+- The solo ranking uses the same tap units as multiplayer records.
 
 ## Multiplayer mode
 
 - Room creation, invites, membership, readiness, heartbeats, and private Realtime snapshots use the shared Multiplayer Core.
-- Game-specific start, tap, finish, and leaderboard actions use the trusted `reaction-rush` Edge Function.
-- The server validates Telegram initData and counts taps in PostgreSQL. The browser never submits a final score.
-- Each match consists of three 10-second rounds.
-- Match scores and the game-specific ranking are stored in `public.games_reaction_rush_scores` and `public.games_reaction_rush_leaderboard`.
-- The in-game multiplayer leaderboard ranks Reaction Rush players by wins and best match score. It is independent of any other game's data.
+- Reaction Rush allows **2–4 players** (configured through `public.common_game_availability`).
+- The server verifies Telegram initData and counts every accepted tap in PostgreSQL.
+- Each match contains **three 10-second rounds**.
+- Each round awards **one round point to every player with the highest tap count**. Tied leaders all receive one point, including a 0–0 round.
+- The match winners are **all players tied for the highest number of round points** across the three rounds, regardless of total taps.
+- Every match winner receives **one win** in `public.common_multiplayer_room_stats`; each participant gets one match played.
+- The game persists `final_results` with `score` (round points), `totalTaps` (sum of taps), and `isWinner` for each participant. The legacy single `winner_user_id` is populated only for a unique winner.
+- The shared `games_reaction_rush_records` top-ten leaderboard continues to use **total taps** from multiplayer games and taps from solo games, keeping the same units.
+- Individual taps are authoritative only when accepted by the server; client score/winner values are never trusted.
 
-## Server setup
+## Deployment
 
-- Apply the canonical shared SQL in `supabase/sql/universal_lobby_reaction_rush.sql`.
-- Apply `supabase/sql/multiplayer_room_maintenance.sql` for shared room maintenance functions.
-- Apply `supabase/sql/reaction_rush_room_lifecycle.sql` for Reaction Rush-owned cleanup when a room is reset or closed.
-- Deploy `supabase/functions/multiplayer/index.ts` and `supabase/functions/reaction-rush/index.ts` together.
+- Apply `supabase/migrations/20261114030000_reaction_rush_round_points_four_players.sql` to the database before releasing the updated frontend.
+- The existing `reaction-rush` Edge Function requires no changes: it forwards the server's round/final results to clients.
+- Use the normal shared Multiplayer Core room lifecycle. The game does not add its own lobby state.

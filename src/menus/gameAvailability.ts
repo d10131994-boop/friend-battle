@@ -23,6 +23,10 @@ export const GAME_PRESENTATION = {
     title: 'NoCountIt',
     description: 'Три раунда на оценку количества конфет.',
   },
+  'democracy-merge': {
+    title: 'Democracy Merge',
+    description: 'Поле 6×6, независимые партии и общий зачёт.',
+  },
   'rock-paper-scissors': {
     title: 'Камень, ножницы, бумага',
     description: 'Классическая игра до трёх побед.',

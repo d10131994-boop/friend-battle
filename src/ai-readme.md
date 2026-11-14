@@ -227,6 +227,7 @@ DROP, TRUNCATE, массовый DELETE и другие необратимые �
 | `src/games/ReactionRush/ai-readme.md` | Реализация Reaction Rush: solo и multiplayer, раунды, taps, scoring, leaderboard и известные ограничения. |
 | `src/games/NoCountIt/ai-readme.md` | Реализация NoCountIt: multiplayer-раунды, генерация сцен, серверная оценка, Storage и ограничения. |
 | `src/games/rockPaperScissors/ai-readme.md` | Реализация Rock Paper Scissors: solo и multiplayer, выбор жестов, серверные фазы, счёт и результаты. |
+| `src/games/DemocracyMerge/ai-readme.md` | Реализация Democracy Merge: solo/multiplayer, поле и объединения, инструменты, экономика, серверные транзакции, история и дедлайны. |
 
 ### Порядок чтения
 

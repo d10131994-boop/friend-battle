@@ -83,6 +83,7 @@ export interface HeartbeatRoomParams {
 export interface MultiplayerHeartbeatResult {
   roomId: string
   lastSeenAt: string
+  expired?: boolean
 }
 
 export interface GetRoomTokenParams {

@@ -1,0 +1,7 @@
+project_id = "pzrwbxxhallmautkkqau"
+
+[functions.no-count-it]
+verify_jwt = false
+
+[functions.no-count-it-storage-cleanup]
+verify_jwt = false

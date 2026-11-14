@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import './App.css'
 import DevMultiplayerSmokeTest from './multiplayer/DevSmokeTest'
+import SceneGeneratorPreview from './games/NoCountIt/SceneGeneratorPreview'
 import { useReactionRush } from './games/ReactionRush/useReactionRush'
-import ReactionRush from './games/ReactionRush/ReactionRush'
+import ReactionRushSolo from './games/ReactionRush/ReactionRushSolo'
 import BrainBattle from './games/BrainBattle/BrainBattle'
 import RockPaperScissorsSolo from './games/rockPaperScissors/RockPaperScissorsSolo'
+import DemocracyMergeSolo from './games/DemocracyMerge/DemocracyMergeSolo'
 import { MainMenu, MultiplayerRoomMenu, SoloRoomMenu } from './menus'
 import type { GameId } from './menus'
 import BottomNavigation from './components/BottomNavigation/BottomNavigation'
 import PlayerProfile from './components/PlayerProfile/PlayerProfile'
 import { telegramUser, telegramInitData, telegramStartParam } from './services/telegram'
 
-type Screen = 'home' | 'solo-room' | 'reaction-game' | 'brain-game' | 'rock-paper-scissors' | 'multiplayer-room' | 'profile'
+type Screen = 'home' | 'solo-room' | 'reaction-game' | 'brain-game' | 'rock-paper-scissors' | 'democracy-solo' | 'multiplayer-room' | 'profile'
 
 function getInviteCode(startParam: string | undefined): string | undefined {
   if (!startParam) return undefined
@@ -21,7 +23,7 @@ function getInviteCode(startParam: string | undefined): string | undefined {
   return undefined
 }
 
-function App() {
+function AppContent() {
   const inviteCode = getInviteCode(telegramStartParam)
   const [screen, setScreen] = useState<Screen>(inviteCode ? 'multiplayer-room' : 'home')
 
@@ -30,16 +32,17 @@ function App() {
   const userUsername = user?.username
   const userPhoto = user?.photo_url
 
-  const { score, rounds, best, playing, time, startSoloGame, tap } = useReactionRush()
+  const { score, rounds, best } = useReactionRush()
 
   function startSelectedSoloGame(gameId: GameId) {
     if (gameId === 'reaction-rush') {
       setScreen('reaction-game')
-      startSoloGame()
     } else if (gameId === 'brain-battle') {
       setScreen('brain-game')
     } else if (gameId === 'rock-paper-scissors') {
       setScreen('rock-paper-scissors')
+    } else if (gameId === 'democracy-merge') {
+      setScreen('democracy-solo')
     } else {
       const unreachableGame: never = gameId
       throw new Error(`Solo game route is not implemented: ${unreachableGame}`)
@@ -81,22 +84,14 @@ function App() {
       )}
 
       {screen === 'reaction-game' && (
-        <ReactionRush
-          score={score}
-          time={time}
-          playing={playing}
-          mode="solo"
-          onStart={startSoloGame}
-          onTap={tap}
-          onBack={() => {
-            if (!playing) setScreen('solo-room')
-          }}
-        />
+        <ReactionRushSolo onBack={() => setScreen('solo-room')} />
       )}
 
       {screen === 'brain-game' && <BrainBattle onBack={() => setScreen('solo-room')} />}
 
       {screen === 'rock-paper-scissors' && <RockPaperScissorsSolo onBack={() => setScreen('solo-room')} />}
+
+      <div hidden={screen !== 'democracy-solo'}><DemocracyMergeSolo onBack={() => setScreen('solo-room')} /></div>
 
       {screen === 'profile' && (
         <main className="app">
@@ -120,4 +115,10 @@ function App() {
   )
 }
 
-export default App
+export default function App() {
+  const params = new URLSearchParams(window.location.search)
+  if (import.meta.env.DEV && params.get('no-count-it-generator') === '1') {
+    return <SceneGeneratorPreview />
+  }
+  return <AppContent />
+}
