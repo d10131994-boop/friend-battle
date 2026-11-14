@@ -48,7 +48,7 @@ export function RoundScene({seed, backgroundId, layouts = SCENE_LAYOUTS, objectC
   const selected = backgroundId ? layouts.find(l=>l.id===backgroundId) : layouts[Math.floor(random(seed,1)*layouts.length)]
   const layout = selected ?? layouts[0]
   const composition = useMemo(()=>layout ? generateScene(seed,layout,objectCount):[],[seed,layout,objectCount])
-  const background = backgrounds.find(b=>b.name.toLowerCase().startsWith(layout?.id.toLowerCase() ?? '---')) ?? backgrounds[0]
+  const background = backgrounds.find(b=>b.name.toLowerCase().replace(/[^a-z0-9]/g, '').startsWith(layout?.id.toLowerCase() ?? '---')) ?? backgrounds[0]
   const camp = camps[Math.floor(random(seed,501)*camps.length)]
   return <div className="rps-round-scene" aria-hidden="true">
     <div className="rps-scene-background" style={background ? {backgroundImage:`url("${background.src}")`}:undefined}/>
