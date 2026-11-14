@@ -44,7 +44,7 @@ const toolDescriptions: Record<ToolType, string> = {
 }
 const GRASS_VARIANTS = [1, 4, 2, 6, 3, 5, 3, 1, 5, 2, 6, 4, 6, 3, 4, 1, 5, 2, 2, 5, 1, 4, 3, 6, 4, 2, 6, 5, 1, 3, 5, 6, 3, 2, 4, 1] as const
 
-const obstacleLabels = { barricade: 'Заграждение', police: 'Полицейский', rock: 'Камень' }
+const obstacleLabels = { barricade: 'Колючий куст', police: 'Старая бабка', rock: 'Камень' }
 
 function formatTime(milliseconds: number): string {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000))
@@ -479,7 +479,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <div><small>МАКС. УРОВЕНЬ</small><strong>{profile.maxLevel}</strong></div>
           </div>
           <button className="dm-primary-button" onClick={startNewGame}>НОВАЯ ИГРА</button>
-          <button className="dm-secondary-button" onClick={() => setHistoryOpen(true)}>ИСТОРИЯ ПАРТИЙ ({profile.history.length})</button>
         </section>
         {historyOpen && (
           <div className="dm-modal-backdrop" onClick={() => setHistoryOpen(false)}>
@@ -524,9 +523,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
 
   return (
     <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}>
-      <header className="dm-header">
-        <button className="dm-secondary-button" onClick={() => setLeaveConfirm(true)}>В ГЛАВНОЕ МЕНЮ</button>
-      </header>
+
 
       {message && <span className="dm-visually-hidden" role="status" aria-live="polite">{message}</span>}
       {newRecordToast && <div className="dm-toast">Новый рекорд!</div>}
@@ -550,7 +547,6 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
             <div><small>МАКС. УРОВЕНЬ</small><strong>{profile.maxLevel}</strong></div>
           </div>
           <button className="dm-primary-button" onClick={startNewGame}>НАЧАТЬ ЗАНОВО</button>
-          <button className="dm-secondary-button" onClick={() => setHistoryOpen(true)}>ИСТОРИЯ ПАРТИЙ</button>
           <button className="dm-secondary-button" onClick={leaveToMenu}>В ГЛАВНОЕ МЕНЮ</button>
         </section>
       ) : (
@@ -562,17 +558,17 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               <div><small>МОНЕТЫ</small><strong>🪙 {game.coins}</strong></div>
               <div className={game.score > profile.bestScore ? 'dm-record-highlight' : ''}><small>РЕКОРД</small><strong>{Math.max(profile.bestScore, game.score)}</strong></div>
             </div>
-            <button className="dm-primary-button" onClick={() => setShopOpen(true)} disabled={!canAct}>МАГАЗИН</button>
             <div className="dm-tools">
+              <button className="dm-home-icon-button" type="button" onClick={() => setLeaveConfirm(true)} aria-label="В главное меню" title="В главное меню"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 11.5 12 3l10 8.5h-2.5V22h-6v-7h-3v7h-6V11.5H2Z" fill="currentColor" /></svg></button>
               {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
                 <button key={tool} title={toolDescriptions[tool]} className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
                   onClick={() => selectTool(tool)} aria-pressed={selectedTool === tool} aria-label={`${toolLabels[tool]}. В инвентаре ${game.inventory[tool]} из 3. Цена покупки ${TOOL_PRICES[tool]} монет. ${toolDescriptions[tool]}`} disabled={!canAct || game.inventory[tool] < 1}>
                   <span className="dm-tool-icon" aria-hidden="true"><img src={`/democracy-merge/picture/v3/tool-${tool}.webp`} alt="" draggable={false} onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = `/democracy-merge/tools/${tool}.svg` }} /></span>
+                  <span className="dm-tool-count" aria-hidden="true">{game.inventory[tool]}</span>
                 </button>
               ))}
+              <button className="dm-shop-icon-button" type="button" onClick={() => setShopOpen(true)} disabled={!canAct} aria-label="Открыть магазин" title="Магазин"><img src="/democracy-merge/picture/v3/icon-gift-celebration.webp" alt="" draggable={false} /></button>
             </div>
-            <button className="dm-danger-button" onClick={() => setSurrenderConfirm(true)} disabled={!canAct}>СДАТЬСЯ</button>
-            <button className="dm-secondary-button" onClick={() => setHistoryOpen(true)}>ИСТОРИЯ</button>
           </aside>
 
           <section className="dm-board-section">
@@ -585,7 +581,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
                     ? `персонаж уровня ${cell.level}` : obstacleLabels[cell.obstacleType]}`}>
                   {cell === null ? '' : cell.kind === 'character'
                     ? <span className={`dm-character dm-level-${cell.level}`}><CharacterPortrait level={cell.level} /></span>
-                    : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}><img src={`/democracy-merge/obstacles/${cell.obstacleType}.svg`} alt="" aria-hidden="true" draggable={false} /></span>}
+                    : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}><img src={`/democracy-merge/obstacles/${cell.obstacleType}.png`} alt="" aria-hidden="true" draggable={false} /></span>}
                 </button>
               ))}
             </div>
@@ -621,7 +617,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
       {leaveConfirm && (
         <div className="dm-modal-backdrop"><section className="dm-confirm-modal" role="dialog" aria-modal="true">
           <h2>В главное меню?</h2><p>Сохранится последнее полностью завершённое состояние. Таймер продолжит идти.</p>
-          <div><button onClick={() => setLeaveConfirm(false)}>ОСТАТЬСЯ</button><button className="dm-danger-button" onClick={leaveToMenu}>ВЫЙТИ</button></div>
+          <div><button onClick={() => setLeaveConfirm(false)}>ОСТАТЬСЯ</button><button onClick={leaveToMenu}>ВЫЙТИ</button><button className="dm-danger-button" onClick={() => { setLeaveConfirm(false); setSurrenderConfirm(true) }}>СДАТЬСЯ</button></div>
         </section></div>
       )}
       {historyOpen && (
