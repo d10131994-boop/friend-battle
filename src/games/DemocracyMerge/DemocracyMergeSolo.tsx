@@ -524,9 +524,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
 
   return (
     <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}>
-      <header className="dm-header">
-        <button className="dm-secondary-button" onClick={() => setLeaveConfirm(true)}>В ГЛАВНОЕ МЕНЮ</button>
-      </header>
+
 
       {message && <span className="dm-visually-hidden" role="status" aria-live="polite">{message}</span>}
       {newRecordToast && <div className="dm-toast">Новый рекорд!</div>}
@@ -562,8 +560,9 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
               <div><small>МОНЕТЫ</small><strong>🪙 {game.coins}</strong></div>
               <div className={game.score > profile.bestScore ? 'dm-record-highlight' : ''}><small>РЕКОРД</small><strong>{Math.max(profile.bestScore, game.score)}</strong></div>
             </div>
-            <button className="dm-primary-button" onClick={() => setShopOpen(true)} disabled={!canAct}>МАГАЗИН</button>
             <div className="dm-tools">
+              <button type="button" className="dm-corner-action dm-home-action" onClick={() => setLeaveConfirm(true)} aria-label="В главное меню" title="В главное меню"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 11.5 12 3l10 8.5h-2.5V22h-6v-7h-3v7h-6V11.5H2Z" fill="currentColor"/></svg></button>
+              <button type="button" className="dm-corner-action dm-shop-action" onClick={() => setShopOpen(true)} disabled={!canAct} aria-label="Магазин" title="Магазин"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 10h16v11H4zM3 4h18l1 6H2l1-6Zm6 17v-7h6v7M6 4l-1 6m7-6v6m6-6 1 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/></svg></button>
               {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
                 <button key={tool} title={toolDescriptions[tool]} className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
                   onClick={() => selectTool(tool)} aria-pressed={selectedTool === tool} aria-label={`${toolLabels[tool]}. В инвентаре ${game.inventory[tool]} из 3. Цена покупки ${TOOL_PRICES[tool]} монет. ${toolDescriptions[tool]}`} disabled={!canAct || game.inventory[tool] < 1}>
