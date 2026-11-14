@@ -1,23 +1,32 @@
 # RPS scene assets
 
-Place generated images in these directories:
+## Adding objects without code changes
 
-- `background/`: one round-scene background image (PNG or WebP). The first file in alphabetical order is used.
-- `objects/`: transparent PNG/WebP/JPG images for environment props. Up to six are selected per scene.
-- `objectsCamps/`: transparent PNG/WebP/JPG campfire variants. One is selected per session seed and rendered above ordinary props.
-- `hands/`: reserved for hand artwork; current hand-choice UI remains unchanged.
+Put transparent PNG/WebP/JPG images in `objects/` using the filename format
+`obj_001_size_35.png`. The numeric size must be an integer from **1 to 100**.
+Use a unique ID for each object. Files with invalid names are ignored by the new
+scene generator; the old trial files must be renamed as the artwork is replaced.
+Assets are discovered by Vite at build time, so deploy/rebuild after adding files.
 
-## Naming and sizing
+All object artwork should use a consistent perspective (~60 degrees above ground),
+similar tight transparent padding and consistent outline style. The numeric size
+is a relative visual size, not pixels. Actual screen width is computed from that
+size and the point's depthScale.
 
-Use descriptive, stable filenames, for example:
+## Backgrounds
 
-- `objects/backpack.png`
-- `objects/lantern.png`
-- `objects/kettle.png`
-- `objectsCamps/campfire-01.png`
+Put `background1.png` and `background2.png` (or .jpg/.webp) in `background/`.
+Each has twelve independently configurable positions in `../sceneLayouts.ts`.
+Until new backgrounds are supplied, the existing first background image is used
+as a temporary visual fallback for both layouts.
 
-Square 1024x1024 transparent PNGs are a good source format for individual props. Keep the subject centered with transparent padding. The renderer preserves image proportions and applies per-slot scale and rotation.
+Each point defines x/y (percent), minSize/maxSize (eligible object sizes),
+depthScale, rotate and layer. The generator chooses 7–12 unique objects, with
+empty points allowed; if insufficient compatible objects exist it places fewer.
+The campfire is a separate mandatory element with per-background position and
+a random image from `objectsCamps/`. The `hands/` folder remains reserved.
 
-The scene uses six fixed layout templates. The selected layout, prop subset, prop positions, rotations, and campfire variant are deterministic for a given session seed. Add or remove files to change the available random pool; no code changes are required.
-
-The `hands/` folder is intentionally prepared but not wired to new assets yet, so existing hand selection artwork and gameplay remain untouched.
+The development-only editor is at `/dev/rps-scene`. Drag points, edit numeric
+fields, switch backgrounds, regenerate, and copy the JSON configuration.
+Editor changes are ephemeral: copy the configuration back to `sceneLayouts.ts`
+to persist them. Gameplay and Supabase contracts are unchanged.
