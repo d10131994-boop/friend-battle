@@ -36,7 +36,7 @@ INSERT INTO public.common_game_availability (
 )
 VALUES
   ('reaction-rush', true, true, 2, 4, true, 10),
-  ('brain-battle', false, true, 2, 2, true, 20),
+  ('brain-battle', false, true, 2, 4, true, 20),
   ('no-count-it', false, true, 2, 4, true, 30),
   ('rock-paper-scissors', true, true, 2, 2, true, 40)
 ON CONFLICT (game_id) DO UPDATE SET
