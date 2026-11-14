@@ -382,3 +382,16 @@
 /* Hand PNGs are pre-oriented for their respective corners. */
 .rps-my-hand { transform: none; object-fit: contain; }
 .rps-opponent-hand { transform: none; object-fit: contain; }
+
+/* Third scene layer: pixel-aligned occluders above props and campfire,
+   while hands and game controls remain above the entire scene. */
+.rps-round-scene .rps-scene-foreground {
+  position: absolute;
+  z-index: 30;
+  inset: 0;
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+.rps-round-scene .rps-scene-point { z-index: 40; }
