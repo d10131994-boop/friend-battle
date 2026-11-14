@@ -157,7 +157,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
       </header>
 
       <section className="rps-arena">
-        <RoundScene seed={sceneSeed} />
+        <RoundScene seed={`${sceneSeed}-round-${game.roundNumber}`} backgroundSeed={sceneSeed} />
         {game.phase === 'choosing' && (
           <>
             <div className="rps-timer" aria-label={`Осталось ${remaining} секунд`}>{remaining}</div>

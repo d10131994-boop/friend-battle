@@ -2,11 +2,11 @@ import { useMemo } from 'react'
 import { SCENE_LAYOUTS } from './sceneLayouts'
 import type { SceneLayout } from './sceneLayouts'
 
-type SceneProps = { seed: string; backgroundId?: string; layouts?: SceneLayout[]; objectCount?: number; showPoints?: boolean }
+type SceneProps = { seed: string; backgroundSeed?: string; backgroundId?: string; layouts?: SceneLayout[]; objectCount?: number; showPoints?: boolean }
 import { backgrounds, foregrounds, camps, generateScene, random } from './sceneAssets'
 
-export function RoundScene({seed, backgroundId, layouts = SCENE_LAYOUTS, objectCount, showPoints = false}: SceneProps) {
-  const selected = backgroundId ? layouts.find(l=>l.id===backgroundId) : layouts[Math.floor(random(seed,1)*layouts.length)]
+export function RoundScene({seed, backgroundSeed, backgroundId, layouts = SCENE_LAYOUTS, objectCount, showPoints = false}: SceneProps) {
+  const selected = backgroundId ? layouts.find(l=>l.id===backgroundId) : layouts[Math.floor(random(backgroundSeed ?? seed,1)*layouts.length)]
   const layout = selected ?? layouts[0]
   const composition = useMemo(()=>layout ? generateScene(seed,layout,objectCount):[],[seed,layout,objectCount])
   const background = backgrounds.find(b=>b.name.toLowerCase().replace(/[^a-z0-9]/g, '').startsWith(layout?.id.toLowerCase() ?? '---')) ?? backgrounds[0]

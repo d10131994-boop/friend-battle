@@ -199,7 +199,7 @@ export default function RockPaperScissorsMatch({
       </header>
 
       <section className="rps-arena">
-        <RoundScene seed={match?.matchId ?? roomId} />
+        <RoundScene seed={`${match?.matchId ?? roomId}-round-${match?.currentRound ?? 1}`} backgroundSeed={match?.matchId ?? roomId} />
         {!match && (
           <div className="rps-phase-message">
             {loading ? 'Запускаем игру…' : 'Подключаемся к матчу…'}
