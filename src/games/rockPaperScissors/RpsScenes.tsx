@@ -7,9 +7,11 @@ export type { SceneLayout, ScenePoint } from './sceneLayouts'
 type SceneProps = { seed: string; backgroundId?: string; layouts?: SceneLayout[]; objectCount?: number; showPoints?: boolean }
 const objectModules = import.meta.glob('./assets/objects/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string,string>
 const campModules = import.meta.glob('./assets/objectsCamps/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string,string>
+const foregroundModules = import.meta.glob('./assets/background/*Foreground.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string,string>
 const backgroundModules = import.meta.glob('./assets/background/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string,string>
 const entries = (modules: Record<string,string>) => Object.entries(modules).sort(([a],[b]) => a.localeCompare(b))
-const backgrounds = entries(backgroundModules).map(([path,src]) => ({ name: path.split('/').pop() ?? '', src }))
+const foregrounds = entries(foregroundModules).map(([path,src]) => ({ name: path.split('/').pop() ?? '', src }))
+const backgrounds = entries(backgroundModules).filter(([path]) => !/foreground\.(png|webp|jpg|jpeg)$/i.test(path)).map(([path,src]) => ({ name: path.split('/').pop() ?? '', src }))
 const objects = entries(objectModules).flatMap(([path,src]) => {
   const name = path.split('/').pop() ?? ''
   const match = /^obj[_-]?\d+[_-]size[_-]?(100|[1-9]\d?)\.(png|webp|jpg|jpeg)$/i.exec(name)
@@ -49,6 +51,7 @@ export function RoundScene({seed, backgroundId, layouts = SCENE_LAYOUTS, objectC
   const layout = selected ?? layouts[0]
   const composition = useMemo(()=>layout ? generateScene(seed,layout,objectCount):[],[seed,layout,objectCount])
   const background = backgrounds.find(b=>b.name.toLowerCase().replace(/[^a-z0-9]/g, '').startsWith(layout?.id.toLowerCase() ?? '---')) ?? backgrounds[0]
+  const foreground = foregrounds.find(f => f.name.toLowerCase().startsWith(layout?.id.toLowerCase() ?? '---'))
   const camp = camps[Math.floor(random(seed,501)*camps.length)]
   return <div className="rps-round-scene" aria-hidden="true">
     <div className="rps-scene-background" style={background ? {backgroundImage:`url("${background.src}")`}:undefined}/>
@@ -57,6 +60,7 @@ export function RoundScene({seed, backgroundId, layouts = SCENE_LAYOUTS, objectC
         width:`${Math.round((15 + asset.size*.19)*point.depthScale)}%`,
         transform:`translate(-50%,-50%) rotate(${point.rotate}deg)`}}/>)}
     {camp && layout && <div className="rps-scene-campfire" style={{left:`${layout.campfire.x}%`,top:`${layout.campfire.y}%`,transform:`translate(-50%,-50%) scale(${layout.campfire.scale})`}}><img src={camp} alt="" draggable={false}/></div>}
+    {foreground && <div className="rps-scene-foreground" style={{backgroundImage:`url("${foreground.src}")`}} />}
     {showPoints && layout?.points.map(p=><div key={p.id} className="rps-scene-point" style={{left:`${p.x}%`,top:`${p.y}%`}}>{p.id}</div>)}
   </div>
 }
