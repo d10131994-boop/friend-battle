@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
 import { telegramUser } from '../../services/telegram'
-import { ChoiceIcon, HandIllustration } from './HandIllustration'
+import { ChoiceIcon, HandIllustration, chooseHandSet } from './HandIllustration'
 import { CaveResultScene, RoundScene } from './RpsScenes'
 import type { RockPaperScissorsChoice, RockPaperScissorsMatch as MatchState, RockPaperScissorsSnapshot } from './types'
 import './rockPaperScissors.css'
@@ -25,6 +25,8 @@ export default function RockPaperScissorsMatch({
 }: Props) {
   const auth = useMemo(() => ({ initData: initData ?? '' }), [initData])
   const [match, setMatch] = useState<MatchState | null>(null)
+  const [playerHandSet] = useState(() => chooseHandSet('player'))
+  const [opponentHandSet] = useState(() => chooseHandSet('opponent'))
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [now, setNow] = useState(0)
@@ -206,7 +208,7 @@ export default function RockPaperScissorsMatch({
         {match?.status === 'playing' && match.phase === 'choosing' && (
           <>
             <div className="rps-timer" aria-label={`Осталось ${remaining} секунд`}>{remaining}</div>
-            <HandIllustration choice={myChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
+            <HandIllustration side="player" setNumber={playerHandSet} choice={myChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
             <div className="rps-choice-pyramid" aria-label="Выбери жест">
               {(['rock'] as RockPaperScissorsChoice[]).map((choice) => (
                 <button
@@ -239,8 +241,8 @@ export default function RockPaperScissorsMatch({
 
         {match?.status === 'playing' && match.phase === 'revealing' && round && opponentChoice && (
           <>
-            <HandIllustration choice={opponentChoice} className="rps-hand rps-opponent-hand" label="Выбор соперника" />
-            <HandIllustration choice={myChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
+            <HandIllustration side="opponent" setNumber={opponentHandSet} choice={opponentChoice} className="rps-hand rps-opponent-hand" label="Выбор соперника" />
+            <HandIllustration side="player" setNumber={playerHandSet} choice={myChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
           </>
         )}
 
