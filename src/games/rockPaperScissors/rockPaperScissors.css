@@ -53,7 +53,7 @@
 }
 .rps-hand {
   position: absolute;
-  width: min(60%, 290px);
+  width: min(78%, 377px);
   height: auto;
   filter: drop-shadow(0 10px 7px rgba(58, 71, 90, .14));
 }
@@ -211,7 +211,7 @@
 @media (max-height: 640px) {
   .rps-arena { min-height: calc(100svh - 82px); }
   .rps-timer { width: 84px; height: 84px; font-size: 46px; border-width: 6px; }
-  .rps-hand { width: min(54%, 230px); }
+  .rps-hand { width: min(70.2%, 299px); }
   .rps-choice-button { width: 60px; height: 60px; }
 }
 
