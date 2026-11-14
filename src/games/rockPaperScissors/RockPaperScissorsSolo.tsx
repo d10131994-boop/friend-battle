@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { telegramUser } from '../../services/telegram'
 import { getOpponentName, getRoundOutcome } from './logic/gameRules'
-import { ChoiceIcon, HandIllustration } from './HandIllustration'
+import { ChoiceIcon, HandIllustration, chooseHandSet } from './HandIllustration'
 import { CaveResultScene, RoundScene } from './RpsScenes'
 import type { RockPaperScissorsChoice } from './types'
 import './rockPaperScissors.css'
@@ -46,6 +46,8 @@ type Props = { onBack: () => void }
 
 export default function RockPaperScissorsSolo({ onBack }: Props) {
   const [game, setGame] = useState<SoloState>(createInitialState)
+  const [playerHandSet] = useState(() => chooseHandSet('player'))
+  const [opponentHandSet] = useState(() => chooseHandSet('opponent'))
   const [sceneSeed] = useState(() => `solo-${Date.now()}-${Math.random()}`)
   const [now, setNow] = useState(0)
   const playerName = telegramUser?.first_name?.trim() || 'Ты'
@@ -158,7 +160,7 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
         {game.phase === 'choosing' && (
           <>
             <div className="rps-timer" aria-label={`Осталось ${remaining} секунд`}>{remaining}</div>
-            <HandIllustration choice={shownPlayerChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
+            <HandIllustration side="player" setNumber={playerHandSet} choice={shownPlayerChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
             <div className="rps-choice-pyramid" aria-label="Выбери жест">
               <button
                 type="button"
@@ -195,8 +197,8 @@ export default function RockPaperScissorsSolo({ onBack }: Props) {
 
         {game.phase === 'revealing' && game.playerChoice && game.opponentChoice && (
           <>
-            <HandIllustration choice={game.opponentChoice} className="rps-hand rps-opponent-hand" label="Выбор соперника" />
-            <HandIllustration choice={game.playerChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
+            <HandIllustration side="opponent" setNumber={opponentHandSet} choice={game.opponentChoice} className="rps-hand rps-opponent-hand" label="Выбор соперника" />
+            <HandIllustration side="player" setNumber={playerHandSet} choice={game.playerChoice} className="rps-hand rps-my-hand" label="Твой выбор" />
           </>
         )}
 
