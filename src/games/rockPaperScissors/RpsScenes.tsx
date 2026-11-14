@@ -1,104 +1,63 @@
 import { useMemo } from 'react'
+import { SCENE_LAYOUTS } from './sceneLayouts'
+import type { SceneLayout, ScenePoint } from './sceneLayouts'
+export { SCENE_LAYOUTS } from './sceneLayouts'
+export type { SceneLayout, ScenePoint } from './sceneLayouts'
 
-type SceneProps = { seed: string }
-
-function seededNumber(seed: string, index: number) {
-  let value = 2166136261
-  const source = `${seed}:${index}`
-  for (let i = 0; i < source.length; i += 1) {
-    value ^= source.charCodeAt(i)
-    value = Math.imul(value, 16777619)
+type SceneProps = { seed: string; backgroundId?: string; layouts?: SceneLayout[]; objectCount?: number; showPoints?: boolean }
+const objectModules = import.meta.glob('./assets/objects/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string,string>
+const campModules = import.meta.glob('./assets/objectsCamps/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string,string>
+const backgroundModules = import.meta.glob('./assets/background/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string,string>
+const entries = (modules: Record<string,string>) => Object.entries(modules).sort(([a],[b]) => a.localeCompare(b))
+const backgrounds = entries(backgroundModules).map(([path,src]) => ({ name: path.split('/').pop() ?? '', src }))
+const objects = entries(objectModules).flatMap(([path,src]) => {
+  const name = path.split('/').pop() ?? ''
+  const match = /^obj[_-]?\d+[_-]size[_-]?(100|[1-9]\d?)\.(png|webp|jpg|jpeg)$/i.exec(name)
+  return match ? [{ name, src, size: Number(match[1]) }] : []
+})
+const camps = entries(campModules).map(([,src]) => src)
+function random(seed: string, index: number) {
+  let n = 2166136261
+  for (const c of seed + ':' + index) { n ^= c.charCodeAt(0); n = Math.imul(n, 16777619) }
+  return (n >>> 0) / 4294967296
+}
+const shuffled = <T,>(items: T[], seed: string, offset: number) =>
+  items.map((value,i) => ({value, order: random(seed, offset+i)})).sort((a,b)=>a.order-b.order).map(item=>item.value)
+export const sceneObjectCount = objects.length
+export const sceneBackgroundNames = backgrounds.map(b => b.name)
+export function generateScene(seed: string, layout: SceneLayout, count?: number) {
+  const target = Math.max(7, Math.min(12, count ?? 7 + Math.floor(random(seed, 11)*6)))
+  const points = shuffled(layout.points, seed, 100)
+  const assets = shuffled(objects, seed, 200)
+  // Maximum-cardinality bipartite matching: narrow points cannot be starved by earlier choices.
+  const assigned = new Map<number, number>()
+  function match(pointIndex: number, visited: Set<number>): boolean {
+    const p = points[pointIndex]
+    for (let i=0; i<assets.length; i++) {
+      if (visited.has(i) || assets[i].size < p.minSize || assets[i].size > p.maxSize) continue
+      visited.add(i)
+      const owner = assigned.get(i)
+      if (owner === undefined || match(owner, visited)) { assigned.set(i,pointIndex); return true }
+    }
+    return false
   }
-  return (value >>> 0) / 4294967295
+  for (let i=0;i<points.length;i++) match(i,new Set())
+  return [...assigned].slice(0,target).map(([assetIndex,pointIndex]) => ({ asset: assets[assetIndex], point: points[pointIndex] }))
 }
-
-type LayoutSlot = { x: number; y: number; rotate: number; scale: number }
-
-const objectAssetModules = import.meta.glob('./assets/objects/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
-const campfireAssetModules = import.meta.glob('./assets/objectsCamps/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
-const backgroundAssetModules = import.meta.glob('./assets/background/*.{png,webp,jpg,jpeg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
-
-type ImageAsset = { name: string; src: string }
-const objectAssets: ImageAsset[] = Object.entries(objectAssetModules)
-  .sort(([a], [b]) => a.localeCompare(b))
-  .map(([path, src]) => ({ name: path.split('/').pop() ?? path, src }))
-const campfireAssets: ImageAsset[] = Object.entries(campfireAssetModules)
-  .sort(([a], [b]) => a.localeCompare(b))
-  .map(([path, src]) => ({ name: path.split('/').pop() ?? path, src }))
-const backgroundAsset = Object.entries(backgroundAssetModules)
-  .sort(([a], [b]) => a.localeCompare(b))[0]?.[1]
-
-const objectLayouts: LayoutSlot[][] = [
-  [{x:30,y:25,rotate:-12,scale:.78},{x:70,y:25,rotate:18,scale:1.12},{x:23,y:47,rotate:8,scale:.92},{x:77,y:48,rotate:-20,scale:1.16},{x:32,y:76,rotate:12,scale:1.02},{x:68,y:76,rotate:-8,scale:1.24}],
-  [{x:23,y:21,rotate:-20,scale:1.08},{x:74,y:30,rotate:16,scale:.76},{x:29,y:43,rotate:10,scale:1.2},{x:78,y:59,rotate:-15,scale:.92},{x:26,y:77,rotate:18,scale:.84},{x:72,y:82,rotate:-8,scale:1.1}],
-  [{x:20,y:25,rotate:-14,scale:1.16},{x:80,y:24,rotate:20,scale:.78},{x:20,y:49,rotate:12,scale:.94},{x:80,y:52,rotate:-22,scale:1.12},{x:20,y:77,rotate:8,scale:1.04},{x:80,y:78,rotate:-12,scale:.88}],
-  [{x:27,y:21,rotate:15,scale:.78},{x:73,y:29,rotate:-12,scale:1.24},{x:19,y:48,rotate:-18,scale:1.04},{x:74,y:57,rotate:22,scale:.84},{x:35,y:79,rotate:8,scale:1.18},{x:81,y:81,rotate:-10,scale:.94}],
-  [{x:15,y:23,rotate:-12,scale:1.26},{x:85,y:23,rotate:14,scale:1.2},{x:14,y:53,rotate:18,scale:1.04},{x:86,y:54,rotate:-16,scale:1.12},{x:20,y:83,rotate:-8,scale:1.22},{x:80,y:83,rotate:12,scale:1.16}],
-  [{x:20,y:30,rotate:-16,scale:.86},{x:43,y:19,rotate:10,scale:1.08},{x:75,y:28,rotate:18,scale:1.18},{x:22,y:75,rotate:12,scale:1.14},{x:52,y:84,rotate:-10,scale:.82},{x:80,y:72,rotate:-18,scale:1.04}],
-]
-
-function pickSeeded<T>(items: T[], seed: string, offset: number): T | undefined {
-  if (!items.length) return undefined
-  return items[Math.floor(seededNumber(seed, offset) * items.length)]
-}
-
-function SceneBackground() {
-  return <div
-    data-scene-layer="background"
-    className="rps-scene-background"
-    style={backgroundAsset ? { backgroundImage: `url("${backgroundAsset}")` } : undefined}
-  />
-}
-
-function CampfireLayer({ seed }: SceneProps) {
-  const campfire = pickSeeded(campfireAssets, seed, 501)
-  if (campfire) {
-    return <div data-scene-layer="campfires" className="rps-scene-campfire">
-      <img src={campfire.src} alt="" draggable={false}/>
-    </div>
-  }
-  return <svg data-scene-layer="campfires" className="rps-scene-campfire-fallback" viewBox="0 0 120 100" aria-hidden="true">
-    <g transform="translate(60 55)" stroke="#594237" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M-52 12 L-30 -8 L8 8 L44 -7 L59 14 L17 27 L-28 23Z" fill="#8e7358"/>
-      <path d="M-43 -4 L35 17 M-32 20 L42 -4" fill="none" stroke="#6b4b39" strokeWidth="9"/>
-      <path d="M-17 8 Q-38 -20 -18 -43 Q-22 -16 0 -38 Q-4 -13 17 -35 Q11 -10 30 3 Q8 -3 4 20Z" fill="#d28b54"/>
-      <path d="M-5 5 Q-17 -12 -5 -27 Q-5 -10 8 -23 Q7 -7 19 4 Q5 -1 5 13Z" fill="#e2b56e"/>
-    </g>
-  </svg>
-}
-
-export function RoundScene({ seed }: SceneProps) {
-  const composition = useMemo(() => {
-    const layoutIndex = Math.floor(seededNumber(seed, 100) * objectLayouts.length)
-    const shuffled = objectAssets
-      .map((asset, index) => ({ asset, order: seededNumber(seed, 200 + index) }))
-      .sort((a, b) => a.order - b.order)
-      .slice(0, Math.min(6, objectAssets.length))
-    return objectLayouts[layoutIndex].slice(0, shuffled.length).map((slot, index) => ({
-      ...slot,
-      asset: shuffled[index].asset,
-      rotate: slot.rotate + (seededNumber(seed, 300 + index) - .5) * 16,
-      scale: slot.scale * (.94 + seededNumber(seed, 400 + index) * .12),
-    }))
-  }, [seed])
-
+export function RoundScene({seed, backgroundId, layouts = SCENE_LAYOUTS, objectCount, showPoints = false}: SceneProps) {
+  const selected = backgroundId ? layouts.find(l=>l.id===backgroundId) : layouts[Math.floor(random(seed,1)*layouts.length)]
+  const layout = selected ?? layouts[0]
+  const composition = useMemo(()=>layout ? generateScene(seed,layout,objectCount):[],[seed,layout,objectCount])
+  const background = backgrounds.find(b=>b.name.toLowerCase().startsWith(layout?.id.toLowerCase() ?? '---')) ?? backgrounds[0]
+  const camp = camps[Math.floor(random(seed,501)*camps.length)]
   return <div className="rps-round-scene" aria-hidden="true">
-    <SceneBackground />
-    <div data-scene-layer="environment-objects" className="rps-scene-objects">
-      {composition.map((item) => <img
-        key={item.asset.name}
-        className="rps-scene-object"
-        src={item.asset.src}
-        alt=""
-        draggable={false}
-        style={{
-          left: `${item.x}%`,
-          top: `${item.y}%`,
-          transform: `translate(-50%, -50%) rotate(${item.rotate}deg) scale(${item.scale})`,
-        }}
-      />)}
-    </div>
-    <CampfireLayer seed={seed}/>
+    <div className="rps-scene-background" style={background ? {backgroundImage:`url("${background.src}")`}:undefined}/>
+    {composition.map(({asset,point})=><img key={asset.name} className="rps-scene-object" src={asset.src} alt="" draggable={false}
+      style={{left:`${point.x}%`,top:`${point.y}%`,zIndex:point.layer,
+        width:`${Math.round((15 + asset.size*.19)*point.depthScale)}%`,
+        transform:`translate(-50%,-50%) rotate(${point.rotate}deg)`}}/>)}
+    {camp && layout && <div className="rps-scene-campfire" style={{left:`${layout.campfire.x}%`,top:`${layout.campfire.y}%`,transform:`translate(-50%,-50%) scale(${layout.campfire.scale})`}}><img src={camp} alt="" draggable={false}/></div>}
+    {showPoints && layout?.points.map(p=><div key={p.id} className="rps-scene-point" style={{left:`${p.x}%`,top:`${p.y}%`}}>{p.id}</div>)}
   </div>
 }
 
