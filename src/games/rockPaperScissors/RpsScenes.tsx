@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { SCENE_LAYOUTS } from './sceneLayouts'
-import type { SceneLayout, ScenePoint } from './sceneLayouts'
+import type { SceneLayout } from './sceneLayouts'
 export { SCENE_LAYOUTS } from './sceneLayouts'
 export type { SceneLayout, ScenePoint } from './sceneLayouts'
 
