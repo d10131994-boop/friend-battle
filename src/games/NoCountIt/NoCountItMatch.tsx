@@ -69,24 +69,19 @@ function buildRevealLayout(
   const upperSpace = Math.max(170, upperPlayers.length * RESULT_ROW_GAP + 60)
   const lowerSpace = Math.max(170, lowerPlayers.length * RESULT_ROW_GAP + 60)
   const scaleHeight = upperSpace + centerBandHeight + lowerSpace
-  const upperMaxDeviation = Math.max(1, ...upperPlayers.map((player) => effectiveAnswer(player) - correctCount))
-  const lowerMaxDeviation = Math.max(1, ...lowerPlayers.map((player) => correctCount - effectiveAnswer(player)))
+  const maxDeviation = Math.max(1, ...incorrectPlayers.map((player) => Math.abs(effectiveAnswer(player) - correctCount)))
   const positioned = new Map<string, number>()
-  let previousUpperTop = Number.POSITIVE_INFINITY
   for (const player of [...upperPlayers].reverse()) {
-    const ratio = (effectiveAnswer(player) - correctCount) / upperMaxDeviation
+    const ratio = (effectiveAnswer(player) - correctCount) / maxDeviation
     const desiredTop = upperSpace - RESULT_MARKER_CLEARANCE - ratio * (upperSpace - RESULT_MARKER_CLEARANCE - RESULT_OUTER_MARGIN)
-    const top = Math.min(desiredTop, previousUpperTop - RESULT_ROW_GAP)
+    const top = desiredTop
     positioned.set(player.userId, top)
-    previousUpperTop = top
   }
-  let previousLowerTop = Number.NEGATIVE_INFINITY
   for (const player of lowerPlayers) {
-    const ratio = (correctCount - effectiveAnswer(player)) / lowerMaxDeviation
+    const ratio = (correctCount - effectiveAnswer(player)) / maxDeviation
     const desiredTop = upperSpace + centerBandHeight + RESULT_MARKER_CLEARANCE + ratio * (lowerSpace - RESULT_MARKER_CLEARANCE - RESULT_OUTER_MARGIN)
-    const top = Math.max(desiredTop, previousLowerTop + RESULT_ROW_GAP)
+    const top = desiredTop
     positioned.set(player.userId, top)
-    previousLowerTop = top
   }
   const sideById = new Map(incorrectPlayers.map((player, index) => [player.userId, index % 2 === 0 ? 'left' : 'right'] as const))
   const resultPlayers: PositionedRevealPlayer[] = incorrectPlayers.map((player) => ({
@@ -436,7 +431,7 @@ export default function NoCountItMatch({
             <section className="game-card no-count-it-reveal-card">
               <header className="no-count-it-reveal-heading">
                 <div className="no-count-it-reveal-round">{NO_COUNT_IT_TEXTS.match.round} {currentRound.roundNumber}</div>
-                <h2>{NO_COUNT_IT_TEXTS.match.roundResults}</h2>
+                <h2>{myRoundPlayer?.error ?? '—'} Баллов!</h2>
               </header>
               <div className="no-count-it-result-columns">
                 <span>{NO_COUNT_IT_TEXTS.match.playerAndAnswer}</span>
@@ -479,25 +474,25 @@ export default function NoCountItMatch({
                 })}
                 {revealLayout.correctPlayers.length > 0 && (
                   <>
-                    <div className="no-count-it-correct-player-list" style={{ top: revealLayout.correctGroupTop }}>
-                      {revealLayout.correctPlayers.map((player) => (
-                        <div className="no-count-it-correct-player" key={player.userId}>
-                          <span>{player.displayName}</span>
-                          <span className="no-count-it-correct-player-dot" style={{ background: player.nameColor }} />
+                    {(['left', 'right'] as const).map((side) => {
+                      const players = revealLayout.correctPlayers.filter((_, index) => index % 2 === (side === 'left' ? 0 : 1))
+                      return players.length > 0 ? (
+                        <div key={side} className={`no-count-it-correct-player-list${side === 'right' ? ' is-right' : ''}`} style={{ top: revealLayout.correctGroupTop }}>
+                          {players.map((player) => (
+                            <div className="no-count-it-correct-player" key={player.userId}>
+                              <span>{player.displayName}</span>
+                              <span className="no-count-it-correct-player-dot" style={{ background: player.nameColor }} />
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                    <div className="no-count-it-correct-zero" style={{ top: revealLayout.answerWindowTop }}>0</div>
+                      ) : null
+                    })}
                   </>
                 )}
                 <div className="no-count-it-correct-answer" style={{ top: revealLayout.answerWindowTop }}>
                   <span>{NO_COUNT_IT_TEXTS.match.correctShort}</span>
                   <strong>{currentRound.correctCount ?? 0}</strong>
                 </div>
-              </div>
-              <div className="no-count-it-result-legend">
-                <span><i className="is-higher" />{NO_COUNT_IT_TEXTS.match.moreThanCorrect}</span>
-                <span><i className="is-lower" />{NO_COUNT_IT_TEXTS.match.lessThanCorrect}</span>
               </div>
               <button className="play-button no-count-it-reveal-exit" onClick={() => void exitEarly()} disabled={loading}>
                 {NO_COUNT_IT_TEXTS.match.earlyExit}
@@ -524,7 +519,7 @@ export default function NoCountItMatch({
             : match.status === 'cancelled'
               ? <p>{NO_COUNT_IT_TEXTS.match.cancelledDetails}</p>
               : <>
-              {match.finalResults?.map((player) => (
+              {[...(match.finalResults ?? [])].sort((a, b) => a.totalError - b.totalError).map((player) => (
                 <p key={player.userId}>{player.userId === match.winnerUserId ? '🏆 ' : ''}{player.displayName}: <strong>{player.totalError}</strong> {NO_COUNT_IT_TEXTS.match.errorSuffix}</p>
               ))}
               <p>{match.winnerUserId ? NO_COUNT_IT_TEXTS.match.winner : NO_COUNT_IT_TEXTS.match.tie}</p>
