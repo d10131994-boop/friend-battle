@@ -12,7 +12,7 @@ Browser database transport must use `src/database`. Do not create another Supaba
 
 ## 2. Agreed game contract
 
-- Multiplayer supports 2–4 players. Solo uses a separate local client-only match with one player, three rounds, the same scene generator, 5-second display, 10-second answer and 6-second reveal. It requires no room or NoCountIt Edge Function; solo results are not persisted or counted in multiplayer statistics. The solo menu additionally requires `common_game_availability.is_solo_enabled = true` for `no-count-it` (a separate, explicitly approved production configuration change).
+- Multiplayer supports 2–4 players. Solo uses a separate local client-only match with one player, three rounds, the same scene generator, a 3-second prompt-only stage, 5-second display, 10-second answer and 6-second reveal. At answer timeout, the currently entered valid number is submitted automatically. Solo reveal uses the multiplayer-style result scale, with the player's name opposite their answer rather than an error value; solo final results show cumulative and per-round errors. It requires no room or NoCountIt Edge Function; solo results are not persisted or counted in multiplayer statistics. The solo menu additionally requires `common_game_availability.is_solo_enabled = true` for `no-count-it` (a separate, explicitly approved production configuration change).
 - Three rounds per match.
 - One shared image and target-color prompt per round.
 - 30 seconds to prepare/load the image; 5 seconds to show it; 10 seconds to answer; 6 seconds to display round results before advancing.
