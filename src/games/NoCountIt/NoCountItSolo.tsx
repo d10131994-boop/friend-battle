@@ -37,7 +37,8 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
   const target = NO_COUNT_IT_TEXTS.colors[round.scene.targetColor]
   const question = <>{NO_COUNT_IT_TEXTS.match.questionPrefix}<span style={{ color: CANDY_PALETTE[round.titleColor].base }}>{target}</span>»?</>
   const error = Math.abs((answer ?? 0) - round.scene.correctCount)
-  const scalePosition = Math.max(32, Math.min(330, 180 + ((answer ?? 0) - round.scene.correctCount) * -7))
+  const maxDeviation = Math.max(1, error)
+  const scalePosition = 180 + (round.scene.correctCount - (answer ?? 0)) / maxDeviation * 140
   const totalError = results.reduce((sum, result) => sum + result.error, 0)
   const keypadStyles = useMemo(() => {
     const colors = [...new Set([...round.scene.objects.map((candy) => candy.color), round.scene.backgroundColor])].sort()
@@ -138,7 +139,6 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
         <>
           {phase === 'prompt' && (
             <section className="game-card">
-              <div className="game-icon">🍬</div>
               <h2>{question}</h2>
               <p>Смотри внимательно · {remaining} сек.</p>
             </section>
@@ -160,7 +160,7 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
             <section className="game-card no-count-it-answer-card">
               <div className="no-count-it-answer-layout">
                 <div className="no-count-it-answer-top">
-                  <h2 className="no-count-it-answer-question">{NO_COUNT_IT_TEXTS.match.questionPrefix}{target}»?</h2>
+                  <h2 className="no-count-it-answer-question">{question}</h2>
                   <div className="no-count-it-answer-timer">{remaining} сек.</div>
                   <div className="no-count-it-answer-value">{draft || '0'}</div>
                 </div>
@@ -184,7 +184,7 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
             <section className="game-card no-count-it-reveal-card">
               <header className="no-count-it-reveal-heading">
                 <div className="no-count-it-reveal-round">{NO_COUNT_IT_TEXTS.match.round} {roundNumber}</div>
-                <h2>{NO_COUNT_IT_TEXTS.match.roundResults}</h2>
+                <h2>{error} Баллов!</h2>
               </header>
               <div className="no-count-it-result-columns"><span>Игрок</span><span>Ответ</span></div>
               <div className="no-count-it-result-scale" style={{ height: 390 }}>
