@@ -162,14 +162,46 @@ Deno.serve(async(req:Request)=>{
   const match=snapshot?.match;
   if(match?.round?.status==="revealing"){
     const {data:round}=await db.from("games_no_count_it_rounds").select("reveal_started_at").eq("match_id",activeMatchId).eq("round_number",match.currentRound).maybeSingle();
-    if(round?.reveal_started_at&&Date.now()-Date.parse(round.reveal_started_at)>=6000){
+    if(round?.reveal_started_at){
+      const revealFinished=Date.now()-Date.parse(round.reveal_started_at)>=6000;
       if(match.currentRound<3){
-        const {scene,path}=await uploadScene(db,roomId,match.currentRound+1);
-        const {data:progress,error:progressError}=await db.rpc("no_count_it_prepare_next_round",{p_room_id:roomId,p_match_id:activeMatchId,p_scene:scene,p_image_path:path});
-        if(progressError){await db.storage.from("no-count-it-scenes").remove([path]);}
-        else await broadcast(db,roomId,"round_updated");
-        if(progress?.status==="completed"){await broadcast(db,roomId,"match_finished");}
-      }else{
+        const nextRound=match.currentRound+1;
+        // Claim generation once across all polling players. Do not expose this private scene to clients.
+        const {data:staged,error:stageError}=await db.from("games_no_count_it_prefetched_scenes")
+          .select("state,scene,image_path").eq("match_id",activeMatchId).eq("round_number",nextRound).maybeSingle();
+        if(stageError)throw stageError;
+        let prepared=staged?.state==="ready"&&staged.scene&&staged.image_path
+          ? {scene:staged.scene,path:staged.image_path as string} : null;
+        if(!staged){
+          const {data:claimed,error:claimError}=await db.from("games_no_count_it_prefetched_scenes")
+            .upsert({match_id:activeMatchId,round_number:nextRound,state:"generating"},{onConflict:"match_id,round_number",ignoreDuplicates:true})
+            .select("match_id");
+          if(claimError)throw claimError;
+          if(claimed?.length){
+            try{
+              const generated=await uploadScene(db,roomId,nextRound);
+              const {error:saveError}=await db.from("games_no_count_it_prefetched_scenes")
+                .update({state:"ready",scene:generated.scene,image_path:generated.path})
+                .eq("match_id",activeMatchId).eq("round_number",nextRound);
+              if(saveError)throw saveError;
+              prepared=generated;
+            }catch(error){
+              await db.from("games_no_count_it_prefetched_scenes").delete()
+                .eq("match_id",activeMatchId).eq("round_number",nextRound).eq("state","generating");
+              throw error;
+            }
+          }
+        }
+        if(revealFinished&&prepared){
+          const {data:progress,error:progressError}=await db.rpc("no_count_it_prepare_next_round",
+            {p_room_id:roomId,p_match_id:activeMatchId,p_scene:prepared.scene,p_image_path:prepared.path});
+          if(!progressError){
+            await db.from("games_no_count_it_prefetched_scenes").delete().eq("match_id",activeMatchId).eq("round_number",nextRound);
+            await broadcast(db,roomId,"round_updated");
+          }
+          if(progress?.status==="completed")await broadcast(db,roomId,"match_finished");
+        }
+      }else if(revealFinished){
         const {data:progress,error:progressError}=await db.rpc("no_count_it_prepare_next_round",{p_room_id:roomId,p_match_id:activeMatchId,p_scene:{},p_image_path:""});
         if(!progressError&&progress?.status==="completed"){await broadcast(db,roomId,"match_finished");}
       }
