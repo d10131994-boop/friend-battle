@@ -22,7 +22,7 @@ export default function NoCountItKeypad({ value, styles, disabled = false, onDig
             className={`no-count-it-key${digit === '✓' ? ' no-count-it-key-submit' : digit === '⌫' ? ' no-count-it-key-delete' : ''}`}
             aria-label={digit === '⌫' ? 'Удалить последнюю цифру' : digit === '✓' ? 'Отправить ответ' : digit}
             disabled={disabled}
-            style={/^\\d$/.test(digit) ? styles[digit] : undefined}
+            style={/^\d$/.test(digit) ? styles[digit] : undefined}
             onClick={() => {
               if (digit === '✓') onSubmit()
               else if (digit === '⌫') onDelete()
