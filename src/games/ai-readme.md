@@ -20,6 +20,18 @@ Existing games have separate solo and multiplayer flows:
 
 Read the target game's `ai-readme.md` (once created) and source before modifying it. A neighboring game is a reference for integration patterns, not proof that its implementation is fully correct or a template to copy without review.
 
+## 1.1. Reuse between solo and multiplayer modes
+
+When a game supports both solo and multiplayer, design the two modes around shared game-specific presentation and reusable non-authoritative logic wherever their behavior is genuinely the same. Before implementing a second screen or mechanic, inspect the existing mode and identify components, visual layouts, input controls, formatting, animations and pure calculations that can be reused.
+
+- Prefer one shared component with explicit props/callbacks for identical UI (for example, a prompt, keypad, round visualization or result layout), instead of copying its JSX/CSS into separate solo and multiplayer screens.
+- Keep solo and multiplayer controllers separate where their responsibilities differ: local timers and state versus server snapshots, authentication, readiness, network retries and authoritative competitive outcomes.
+- Shared UI must not decide authoritative scores, deadlines, winners or player eligibility in multiplayer. Pass trusted server-derived data to presentation components.
+- Reuse pure game rules only when the same rule actually applies to both modes; do not force different mechanics into a generic abstraction or add a global game framework solely to avoid small duplication.
+- When changing a shared element, verify both modes. When deliberate differences are necessary, keep them explicit and document the reason in the game's `ai-readme.md`.
+
+Apply this principle from the initial design of new games, not only during later refactoring.
+
 ## 2. Responsibility boundaries
 
 ### Game module owns
