@@ -1,3 +1,4 @@
+import NoCountItRevealHeader from './NoCountItRevealHeader'
 import NoCountItAnswerHeader from './NoCountItAnswerHeader'
 import NoCountItKeypad from './NoCountItKeypad'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -162,10 +163,7 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
           )}
           {phase === 'revealing' && (
             <section className="game-card no-count-it-reveal-card">
-              <header className="no-count-it-reveal-heading">
-                <div className="no-count-it-reveal-round">{NO_COUNT_IT_TEXTS.match.round} {roundNumber}</div>
-                <h2>{error} Баллов!</h2>
-              </header>
+              <NoCountItRevealHeader roundNumber={roundNumber} error={error} />
               <div className="no-count-it-result-columns"><span>Игрок</span><span>Ответ</span></div>
               <div className="no-count-it-result-scale" style={{ height: 390 }}>
                 <div className="no-count-it-result-axis no-count-it-result-axis-upper" style={{ top: 12, height: 160 }} />
