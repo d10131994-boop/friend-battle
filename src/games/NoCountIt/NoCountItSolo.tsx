@@ -9,7 +9,7 @@ const BACKGROUNDS = import.meta.glob<string>('./backgrounds/*.{png,jpg,jpeg,webp
 })
 const COLORS = Object.keys(CANDY_PALETTE) as NoCountItPaletteColor[]
 const ROUND_COUNT = 3
-type Phase = 'showing' | 'answering' | 'revealing' | 'finished'
+type Phase = 'prompt' | 'showing' | 'answering' | 'revealing' | 'finished'
 type RoundResult = { answer: number | null; correct: number; error: number }
 
 function newRound() {
@@ -24,8 +24,8 @@ function newRound() {
 export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
   const [roundNumber, setRoundNumber] = useState(1)
   const [round, setRound] = useState(newRound)
-  const [phase, setPhase] = useState<Phase>('showing')
-  const [deadline, setDeadline] = useState(() => Date.now() + 5000)
+  const [phase, setPhase] = useState<Phase>('prompt')
+  const [deadline, setDeadline] = useState(() => Date.now() + 3000)
   const [now, setNow] = useState(Date.now)
   const [draft, setDraft] = useState('')
   const [answer, setAnswer] = useState<number | null>(null)
@@ -35,6 +35,7 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
   const remaining = Math.max(0, Math.ceil((deadline - now) / 1000))
   const target = NO_COUNT_IT_TEXTS.colors[round.scene.targetColor]
   const error = Math.abs((answer ?? 0) - round.scene.correctCount)
+  const scalePosition = Math.max(32, Math.min(330, 180 + ((answer ?? 0) - round.scene.correctCount) * -7))
   const totalError = results.reduce((sum, result) => sum + result.error, 0)
   const keypadStyles = useMemo(() => {
     const colors = [...new Set([...round.scene.objects.map((candy) => candy.color), round.scene.backgroundColor])].sort()
@@ -77,8 +78,8 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
     setDraft('')
     setAnswer(null)
     submitted.current = false
-    setPhase('showing')
-    setDeadline(Date.now() + 5000)
+    setPhase('prompt')
+    setDeadline(Date.now() + 3000)
   }
 
   useEffect(() => {
@@ -90,7 +91,10 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     if (phase === 'finished' || now < deadline) return
     const timeout = window.setTimeout(() => {
-      if (phase === 'showing') {
+      if (phase === 'prompt') {
+        setPhase('showing')
+        setDeadline(Date.now() + 5000)
+      } else if (phase === 'showing') {
         setPhase('answering')
         setDeadline(Date.now() + 10000)
       } else if (phase === 'answering') {
@@ -107,8 +111,8 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
   function restart() {
     setRoundNumber(1)
     setRound(newRound())
-    setPhase('showing')
-    setDeadline(Date.now() + 5000)
+    setPhase('prompt')
+    setDeadline(Date.now() + 3000)
     setNow(Date.now())
     setDraft('')
     setAnswer(null)
@@ -118,27 +122,36 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
 
   return (
     <main className={`app${phase === 'answering' ? ' no-count-it-answer-screen' : ''}`}>
-      <header className="topbar">
+      {phase !== 'showing' && phase !== 'answering' && <header className="topbar">
         <button type="button" className="leaderboard-button menu-back-button" onClick={onBack}>← НАЗАД</button>
         <div className="logo">NO COUNT <span>IT</span></div>
         <div className="player-level">ОДИНОЧНАЯ ИГРА</div>
-      </header>
+      </header>}
       {phase === 'finished' ? (
         <section className="game-card">
-          <h2>Игра завершена</h2>
-          <p>Сумма ошибок за три раунда: <strong>{totalError}</strong></p>
+          <div className="hero">
+            <div className="eyebrow">NO COUNT IT · ОДИНОЧНАЯ ИГРА</div>
+            <div className="game-icon">🍬</div>
+            <h1>ИГРА <span>ЗАВЕРШЕНА</span></h1>
+          </div>
+          <h2>{NO_COUNT_IT_TEXTS.match.totalErrors}</h2>
+          <div className="brain-room-player"><span>Ты</span><strong>{totalError}</strong></div>
+          <div className="no-count-it-result-columns"><span>Раунд</span><span>Ошибка</span></div>
           {results.map((result, index) => (
-            <p key={index}>Раунд {index + 1}: ответ {result.answer ?? 'нет ответа'}, правильный {result.correct}, ошибка {result.error}</p>
+            <div className="brain-room-player" key={index}><span>{index + 1}</span><strong>{result.error}</strong></div>
           ))}
           <button type="button" className="play-button" onClick={restart}>ИГРАТЬ ЕЩЁ</button>
-          <button type="button" className="play-button" onClick={onBack}>К ВЫБОРУ ИГР</button>
-        </section>
-      ) : (
+          <button type="button" className="play-button" onClick={onBack}>{NO_COUNT_IT_TEXTS.match.returnToRoom}</button>
+        </section>      ) : (
         <>
-          <section className="hero">
-            <div className="eyebrow">Раунд {roundNumber} из {ROUND_COUNT}</div>
-            <h1>СОСЧИТАЙ <span>КОНФЕТЫ</span></h1>
-          </section>
+          {phase === 'prompt' && (
+            <section className="game-card">
+              <div className="eyebrow">Раунд {roundNumber} из {ROUND_COUNT}</div>
+              <div className="game-icon">🍬</div>
+              <h2>{NO_COUNT_IT_TEXTS.match.questionPrefix}{target}»?</h2>
+              <p>Смотри внимательно · {remaining} сек.</p>
+            </section>
+          )}
           {phase === 'showing' && (
             <section className="game-card no-count-it-showing-card">
               <p>Запоминай! · {remaining} сек.</p>
@@ -149,7 +162,6 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
                 {round.background && <img src={round.background} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
                 <div style={{ position: 'relative', height: '100%', display: 'grid', placeItems: 'center' }} dangerouslySetInnerHTML={{ __html: round.svg }} />
               </div>
-              <h2>{NO_COUNT_IT_TEXTS.match.questionPrefix}{target}»?</h2>
             </section>
           )}
           {phase === 'answering' && (
@@ -178,13 +190,36 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
           )}
           {phase === 'revealing' && (
             <section className="game-card no-count-it-reveal-card">
-              <h2>Результат раунда {roundNumber}</h2>
-              <p>Правильный ответ: <strong>{round.scene.correctCount}</strong></p>
-              <p>Твой ответ: <strong>{answer ?? 'нет ответа'}</strong></p>
-              <p>Ошибка: <strong>{error}</strong></p>
-              <p>Сумма ошибок: <strong>{totalError}</strong></p>
-              <p>Следующий этап через {remaining} сек.</p>
-              <button type="button" className="play-button" onClick={onBack}>ВЫЙТИ ДОСРОЧНО</button>
+              <header className="no-count-it-reveal-heading">
+                <div className="no-count-it-reveal-round">{NO_COUNT_IT_TEXTS.match.round} {roundNumber}</div>
+                <h2>{NO_COUNT_IT_TEXTS.match.roundResults}</h2>
+              </header>
+              <div className="no-count-it-result-columns"><span>Игрок</span><span>Ответ</span></div>
+              <div className="no-count-it-result-scale" style={{ height: 390 }}>
+                <div className="no-count-it-result-axis no-count-it-result-axis-upper" style={{ top: 12, height: 160 }} />
+                <div className="no-count-it-result-axis no-count-it-result-axis-lower" style={{ top: 220, bottom: 12 }} />
+                {error === 0 && <div className="no-count-it-correct-highlight" style={{ top: 165, height: 65 }} />}
+                <div className="no-count-it-correct-answer" style={{ top: 165 }}>
+                  <span>{NO_COUNT_IT_TEXTS.match.correctShort}</span>
+                  <strong>{round.scene.correctCount}</strong>
+                </div>
+                <div className="no-count-it-result-player" style={{ top: scalePosition }}>
+                  <div className="no-count-it-result-player-label is-left">
+                    <span className="no-count-it-result-name" style={{ color: '#8962bd' }}>Ты</span>
+                  </div>
+                  <div className="no-count-it-result-score is-right" style={{ color: error === 0 ? '#388b43' : '#d34e43' }}>
+                    {answer ?? NO_COUNT_IT_TEXTS.match.noAnswer}
+                  </div>
+                  <span className="no-count-it-result-dot" style={{ background: '#8962bd' }} />
+                </div>
+              </div>
+              <div className="no-count-it-result-legend">
+                <span><i className="is-higher" />{NO_COUNT_IT_TEXTS.match.moreThanCorrect}</span>
+                <span><i className="is-lower" />{NO_COUNT_IT_TEXTS.match.lessThanCorrect}</span>
+              </div>
+              <button type="button" className="play-button no-count-it-reveal-exit" onClick={onBack}>
+                {NO_COUNT_IT_TEXTS.match.earlyExit}
+              </button>
             </section>
           )}
         </>
