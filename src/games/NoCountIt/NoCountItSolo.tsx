@@ -111,18 +111,6 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, deadline, phase, draft])
 
-  function restart() {
-    setRoundNumber(1)
-    setRound(newRound())
-    setPhase('prompt')
-    setDeadline(Date.now() + 3000)
-    setNow(Date.now())
-    setDraft('')
-    setAnswer(null)
-    setResults([])
-    submitted.current = false
-  }
-
   return (
     <main className={`app${phase === 'answering' ? ' no-count-it-answer-screen' : ''}`}>
       {phase !== 'showing' && phase !== 'answering' && <header className="topbar">
