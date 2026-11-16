@@ -1,3 +1,4 @@
+import NoCountItRevealHeader from './NoCountItRevealHeader'
 import NoCountItAnswerHeader from './NoCountItAnswerHeader'
 import NoCountItKeypad from './NoCountItKeypad'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
@@ -438,10 +439,7 @@ export default function NoCountItMatch({
 
           {isReveal && currentRound && revealLayout && (
             <section className="game-card no-count-it-reveal-card">
-              <header className="no-count-it-reveal-heading">
-                <div className="no-count-it-reveal-round">{NO_COUNT_IT_TEXTS.match.round} {currentRound.roundNumber}</div>
-                <h2>{myRoundPlayer?.error ?? '—'} Баллов!</h2>
-              </header>
+              <NoCountItRevealHeader roundNumber={currentRound.roundNumber} error={myRoundPlayer?.error ?? null} />
               <div className="no-count-it-result-columns">
                 <span>{NO_COUNT_IT_TEXTS.match.playerAndAnswer}</span>
                 
