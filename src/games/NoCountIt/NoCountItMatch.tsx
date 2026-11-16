@@ -440,7 +440,7 @@ export default function NoCountItMatch({
               </header>
               <div className="no-count-it-result-columns">
                 <span>{NO_COUNT_IT_TEXTS.match.playerAndAnswer}</span>
-                <span>{NO_COUNT_IT_TEXTS.match.errorsHeader}</span>
+                
               </div>
               <div className="no-count-it-result-scale" style={{ height: revealLayout.scaleHeight }}>
                 <div className="no-count-it-result-axis no-count-it-result-axis-upper" style={{ top: 12, height: Math.max(0, revealLayout.answerWindowTop - 12) }} />
