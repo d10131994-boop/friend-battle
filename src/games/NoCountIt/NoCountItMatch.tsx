@@ -1,3 +1,4 @@
+import NoCountItAnswerHeader from './NoCountItAnswerHeader'
 import NoCountItKeypad from './NoCountItKeypad'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { database } from '../../database'
@@ -406,13 +407,11 @@ export default function NoCountItMatch({
               )}
               {currentRound.status === 'answering' ? (
                 <div className="no-count-it-answer-layout">
-                  <div className="no-count-it-answer-top">
-                    <h2 className="no-count-it-answer-question">{question}</h2>
-                    <div className="no-count-it-answer-timer" aria-live="polite">{remaining} сек.</div>
+                  <NoCountItAnswerHeader question={question} remaining={remaining}>
                     {myRoundPlayer && myRoundPlayer.answer !== null ? (
                       <p className="no-count-it-answer-submitted">{NO_COUNT_IT_TEXTS.match.yourEstimateResult} {myRoundPlayer?.answer}. {NO_COUNT_IT_TEXTS.match.cannotChangeAnswer}</p>
                     ) : null}
-                  </div>
+                  </NoCountItAnswerHeader>
                   {myRoundPlayer?.status === 'active' && myRoundPlayer.answer === null && (
                     <NoCountItKeypad
                       value={answerInput}
