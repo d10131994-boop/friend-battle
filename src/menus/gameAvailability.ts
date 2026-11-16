@@ -34,7 +34,7 @@ export const GAME_PRESENTATION = {
 } as const
 
 export type MultiplayerGameId = keyof typeof GAME_PRESENTATION
-export type SoloGameId = Exclude<MultiplayerGameId, 'no-count-it'>
+export type SoloGameId = MultiplayerGameId
 export type GameMode = 'solo' | 'multiplayer'
 
 export async function loadGameAvailability(mode: GameMode): Promise<GameAvailability[]> {
