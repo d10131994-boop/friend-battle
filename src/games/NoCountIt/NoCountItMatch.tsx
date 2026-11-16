@@ -383,11 +383,18 @@ export default function NoCountItMatch({
         <>
           {currentRound.status === 'preparing' && (
             <section className="game-card">
-              <h2>{NO_COUNT_IT_TEXTS.match.preparingImage}</h2>
-              <p>{NO_COUNT_IT_TEXTS.match.imagePreparationInfo}</p>
+              <h2>Подготовка</h2>
               {currentRound.imageUrl && <img src={currentRound.imageUrl} alt={NO_COUNT_IT_TEXTS.match.imageAlt} onLoad={() => void confirmRoundReady()} onError={() => setMessage(NO_COUNT_IT_TEXTS.match.imageLoadFailed)} style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />}
-              <p>{roundReady ? NO_COUNT_IT_TEXTS.match.imageReadyWaiting : NO_COUNT_IT_TEXTS.match.loadingScene}</p>
-              <p>{NO_COUNT_IT_TEXTS.match.playersReady} {currentRound.players.filter((player) => player.status === 'ready').length} / {currentRound.players.length}</p>
+              <div className="no-count-it-preparation-players">
+                {currentRound.players.map((player) => (
+                  <div key={player.userId} className="brain-room-player">
+                    <span>{player.displayName}{player.userId === telegramId ? ' (ты)' : ''}</span>
+                    <strong aria-label={player.status === 'ready' || (player.userId === telegramId && roundReady) ? 'Готов' : 'Ожидание'}>
+                      {player.status === 'ready' || (player.userId === telegramId && roundReady) ? '✓' : 'Ожидание'}
+                    </strong>
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 
@@ -448,7 +455,7 @@ export default function NoCountItMatch({
               </header>
               <div className="no-count-it-result-columns">
                 <span>{NO_COUNT_IT_TEXTS.match.playerAndAnswer}</span>
-                <span>{NO_COUNT_IT_TEXTS.match.errorsHeader}</span>
+                
               </div>
               <div className="no-count-it-result-scale" style={{ height: revealLayout.scaleHeight }}>
                 <div className="no-count-it-result-axis no-count-it-result-axis-upper" style={{ top: 12, height: Math.max(0, revealLayout.answerWindowTop - 12) }} />
