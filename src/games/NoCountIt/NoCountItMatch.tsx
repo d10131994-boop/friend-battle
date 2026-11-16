@@ -479,25 +479,25 @@ export default function NoCountItMatch({
                 })}
                 {revealLayout.correctPlayers.length > 0 && (
                   <>
-                    <div className="no-count-it-correct-player-list" style={{ top: revealLayout.correctGroupTop }}>
-                      {revealLayout.correctPlayers.map((player) => (
-                        <div className="no-count-it-correct-player" key={player.userId}>
-                          <span>{player.displayName}</span>
-                          <span className="no-count-it-correct-player-dot" style={{ background: player.nameColor }} />
+                    {(['left', 'right'] as const).map((side) => {
+                      const players = revealLayout.correctPlayers.filter((_, index) => index % 2 === (side === 'left' ? 0 : 1))
+                      return players.length > 0 ? (
+                        <div key={side} className={`no-count-it-correct-player-list${side === 'right' ? ' is-right' : ''}`} style={{ top: revealLayout.correctGroupTop }}>
+                          {players.map((player) => (
+                            <div className="no-count-it-correct-player" key={player.userId}>
+                              <span>{player.displayName}</span>
+                              <span className="no-count-it-correct-player-dot" style={{ background: player.nameColor }} />
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                    <div className="no-count-it-correct-zero" style={{ top: revealLayout.answerWindowTop }}>0</div>
+                      ) : null
+                    })}
                   </>
                 )}
                 <div className="no-count-it-correct-answer" style={{ top: revealLayout.answerWindowTop }}>
                   <span>{NO_COUNT_IT_TEXTS.match.correctShort}</span>
                   <strong>{currentRound.correctCount ?? 0}</strong>
                 </div>
-              </div>
-              <div className="no-count-it-result-legend">
-                <span><i className="is-higher" />{NO_COUNT_IT_TEXTS.match.moreThanCorrect}</span>
-                <span><i className="is-lower" />{NO_COUNT_IT_TEXTS.match.lessThanCorrect}</span>
               </div>
               <button className="play-button no-count-it-reveal-exit" onClick={() => void exitEarly()} disabled={loading}>
                 {NO_COUNT_IT_TEXTS.match.earlyExit}
