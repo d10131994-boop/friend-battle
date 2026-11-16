@@ -411,8 +411,6 @@ export default function NoCountItMatch({
                     <div className="no-count-it-answer-timer" aria-live="polite">{remaining} сек.</div>
                     {myRoundPlayer && myRoundPlayer.answer !== null ? (
                       <p className="no-count-it-answer-submitted">{NO_COUNT_IT_TEXTS.match.yourEstimateResult} {myRoundPlayer?.answer}. {NO_COUNT_IT_TEXTS.match.cannotChangeAnswer}</p>
-                    ) : myRoundPlayer?.status === 'active' ? (
-
                     ) : null}
                   </div>
                   {myRoundPlayer?.status === 'active' && myRoundPlayer.answer === null && (
