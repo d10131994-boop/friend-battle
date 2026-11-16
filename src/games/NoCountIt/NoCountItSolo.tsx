@@ -146,7 +146,6 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
         <>
           {phase === 'prompt' && (
             <section className="game-card">
-              <div className="eyebrow">Раунд {roundNumber} из {ROUND_COUNT}</div>
               <div className="game-icon">🍬</div>
               <h2>{NO_COUNT_IT_TEXTS.match.questionPrefix}{target}»?</h2>
               <p>Смотри внимательно · {remaining} сек.</p>
@@ -154,7 +153,7 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
           )}
           {phase === 'showing' && (
             <section className="game-card no-count-it-showing-card">
-              <p>Запоминай! · {remaining} сек.</p>
+              <p>{remaining} сек.</p>
               <div className="no-count-it-round-image" style={{
                 position: 'relative', aspectRatio: '3 / 4', maxWidth: 420, margin: 'auto',
                 background: CANDY_PALETTE[round.scene.backgroundColor].base,
