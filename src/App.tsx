@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import DevMultiplayerSmokeTest from './multiplayer/DevSmokeTest'
 import SceneGeneratorPreview from './games/NoCountIt/SceneGeneratorPreview'
+import NoCountItSolo from './games/NoCountIt/NoCountItSolo'
 import { useReactionRush } from './games/ReactionRush/useReactionRush'
 import ReactionRushSolo from './games/ReactionRush/ReactionRushSolo'
 import BrainBattle from './games/BrainBattle/BrainBattle'
@@ -13,7 +14,7 @@ import BottomNavigation from './components/BottomNavigation/BottomNavigation'
 import PlayerProfile from './components/PlayerProfile/PlayerProfile'
 import { telegramUser, telegramInitData, telegramStartParam } from './services/telegram'
 
-type Screen = 'home' | 'solo-room' | 'reaction-game' | 'brain-game' | 'rock-paper-scissors' | 'democracy-solo' | 'multiplayer-room' | 'profile'
+type Screen = 'home' | 'solo-room' | 'reaction-game' | 'brain-game' | 'rock-paper-scissors' | 'democracy-solo' | 'no-count-it-solo' | 'multiplayer-room' | 'profile'
 
 function getInviteCode(startParam: string | undefined): string | undefined {
   if (!startParam) return undefined
@@ -41,6 +42,8 @@ function AppContent() {
       setScreen('brain-game')
     } else if (gameId === 'rock-paper-scissors') {
       setScreen('rock-paper-scissors')
+    } else if (gameId === 'no-count-it') {
+      setScreen('no-count-it-solo')
     } else if (gameId === 'democracy-merge') {
       setScreen('democracy-solo')
     } else {
@@ -86,6 +89,8 @@ function AppContent() {
       {screen === 'reaction-game' && (
         <ReactionRushSolo onBack={() => setScreen('solo-room')} />
       )}
+
+      {screen === 'no-count-it-solo' && <NoCountItSolo onBack={() => setScreen('solo-room')} />}
 
       {screen === 'brain-game' && <BrainBattle onBack={() => setScreen('solo-room')} />}
 
