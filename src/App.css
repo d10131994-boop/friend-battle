@@ -1063,3 +1063,14 @@ h1 span {
   .no-count-it-result-score { font-size: 20px; }
   .no-count-it-correct-player { font-size: 12px; }
 }
+
+.no-count-it-correct-player-list.is-right {
+  left: auto;
+  right: 8px;
+  align-items: flex-start;
+}
+.no-count-it-correct-player-list.is-right .no-count-it-correct-player {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  text-align: left;
+}
