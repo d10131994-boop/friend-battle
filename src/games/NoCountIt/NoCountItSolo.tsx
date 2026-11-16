@@ -96,7 +96,7 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
     const timeout = window.setTimeout(() => {
       if (phase === 'prompt') {
         setPhase('showing')
-        setDeadline(Date.now() + 5000)
+        setDeadline(Date.now() + 3000)
       } else if (phase === 'showing') {
         setPhase('answering')
         setDeadline(Date.now() + 10000)
