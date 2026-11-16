@@ -1,3 +1,4 @@
+import NoCountItAnswerHeader from './NoCountItAnswerHeader'
 import NoCountItKeypad from './NoCountItKeypad'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { generateCandyJarScene, createSeededRandom } from './scene/sceneGenerator'
@@ -148,10 +149,7 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
           {phase === 'answering' && (
             <section className="game-card no-count-it-answer-card">
               <div className="no-count-it-answer-layout">
-                <div className="no-count-it-answer-top">
-                  <h2 className="no-count-it-answer-question">{question}</h2>
-                  <div className="no-count-it-answer-timer">{remaining} сек.</div>
-                </div>
+                <NoCountItAnswerHeader question={question} remaining={remaining} />
                 <NoCountItKeypad
                   value={draft}
                   styles={keypadStyles}
