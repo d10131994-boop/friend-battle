@@ -1,6 +1,6 @@
 # NoCountIt
 
-NoCountIt is a multiplayer estimation game for 2–4 players. There is no solo mode.
+NoCountIt is an estimation game with multiplayer for 2–4 players and a separate local solo mode. Solo plays three rounds using the shared scene generator, 5-second scene display, 10-second answer and 6-second reveal. It scores the sum of absolute errors and does not persist results or use a multiplayer room. Solo menu visibility additionally requires `common_game_availability.is_solo_enabled = true` for `no-count-it` in the target database.
 
 ## Match rules
 
