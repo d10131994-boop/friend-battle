@@ -1,3 +1,6 @@
+import NoCountItRevealHeader from './NoCountItRevealHeader'
+import NoCountItAnswerHeader from './NoCountItAnswerHeader'
+import NoCountItKeypad from './NoCountItKeypad'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { generateCandyJarScene, createSeededRandom } from './scene/sceneGenerator'
 import { CANDY_PALETTE, renderCandyJarSvg } from './scene/svgRenderer'
@@ -147,33 +150,20 @@ export default function NoCountItSolo({ onBack }: { onBack: () => void }) {
           {phase === 'answering' && (
             <section className="game-card no-count-it-answer-card">
               <div className="no-count-it-answer-layout">
-                <div className="no-count-it-answer-top">
-                  <h2 className="no-count-it-answer-question">{question}</h2>
-                  <div className="no-count-it-answer-timer">{remaining} сек.</div>
-                  <div className="no-count-it-answer-value">{draft || '0'}</div>
-                </div>
-                <div className="no-count-it-keypad">
-                  {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map((digit) => (
-                    <button key={digit} type="button"
-                      className={`no-count-it-key${digit === '✓' ? ' no-count-it-key-submit' : digit === '⌫' ? ' no-count-it-key-delete' : ''}`}
-                      style={/^\d$/.test(digit) ? keypadStyles[digit] : undefined}
-                      aria-label={digit === '⌫' ? 'Удалить последнюю цифру' : digit === '✓' ? 'Отправить ответ' : digit}
-                      onClick={() => {
-                        if (digit === '✓') submit(draft)
-                        else if (digit === '⌫') setDraft((value) => value.slice(0, -1))
-                        else setDraft((value) => value.length < 15 ? value + digit : value)
-                      }}>{digit}</button>
-                  ))}
-                </div>
+                <NoCountItAnswerHeader question={question} remaining={remaining} />
+                <NoCountItKeypad
+                  value={draft}
+                  styles={keypadStyles}
+                  onDigit={(digit) => setDraft((value) => value.length < 15 ? value + digit : value)}
+                  onDelete={() => setDraft((value) => value.slice(0, -1))}
+                  onSubmit={() => submit(draft)}
+                />
               </div>
             </section>
           )}
           {phase === 'revealing' && (
             <section className="game-card no-count-it-reveal-card">
-              <header className="no-count-it-reveal-heading">
-                <div className="no-count-it-reveal-round">{NO_COUNT_IT_TEXTS.match.round} {roundNumber}</div>
-                <h2>{error} Баллов!</h2>
-              </header>
+              <NoCountItRevealHeader roundNumber={roundNumber} error={error} />
               <div className="no-count-it-result-columns"><span>Игрок</span><span>Ответ</span></div>
               <div className="no-count-it-result-scale" style={{ height: 390 }}>
                 <div className="no-count-it-result-axis no-count-it-result-axis-upper" style={{ top: 12, height: 160 }} />

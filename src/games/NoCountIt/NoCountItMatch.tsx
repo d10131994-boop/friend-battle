@@ -1,3 +1,6 @@
+import NoCountItRevealHeader from './NoCountItRevealHeader'
+import NoCountItAnswerHeader from './NoCountItAnswerHeader'
+import NoCountItKeypad from './NoCountItKeypad'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
@@ -405,33 +408,20 @@ export default function NoCountItMatch({
               )}
               {currentRound.status === 'answering' ? (
                 <div className="no-count-it-answer-layout">
-                  <div className="no-count-it-answer-top">
-                    <h2 className="no-count-it-answer-question">{question}</h2>
-                    <div className="no-count-it-answer-timer" aria-live="polite">{remaining} сек.</div>
+                  <NoCountItAnswerHeader question={question} remaining={remaining}>
                     {myRoundPlayer && myRoundPlayer.answer !== null ? (
                       <p className="no-count-it-answer-submitted">{NO_COUNT_IT_TEXTS.match.yourEstimateResult} {myRoundPlayer?.answer}. {NO_COUNT_IT_TEXTS.match.cannotChangeAnswer}</p>
-                    ) : myRoundPlayer?.status === 'active' ? (
-                      <div className="no-count-it-answer-value" aria-live="polite">{answerInput || '0'}</div>
                     ) : null}
-                  </div>
+                  </NoCountItAnswerHeader>
                   {myRoundPlayer?.status === 'active' && myRoundPlayer.answer === null && (
-                    <div className="no-count-it-keypad">
-                      {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map((digit) => (
-                        <button
-                          key={digit}
-                          type="button"
-                          className={`no-count-it-key${digit === '✓' ? ' no-count-it-key-submit' : digit === '⌫' ? ' no-count-it-key-delete' : ''}`}
-                          aria-label={digit === '⌫' ? 'Удалить последнюю цифру' : digit === '✓' ? 'Отправить ответ' : digit}
-                          disabled={loading || remaining <= 0}
-                          style={/^\d$/.test(digit) ? keypadStyles[digit] : undefined}
-                          onClick={() => {
-                            if (digit === '✓') void submitAnswer()
-                            else if (digit === '⌫') setAnswerDraft({ roundKey, value: answerInput.slice(0, -1) })
-                            else appendDigit(digit)
-                          }}
-                        >{digit}</button>
-                      ))}
-                    </div>
+                    <NoCountItKeypad
+                      value={answerInput}
+                      styles={keypadStyles}
+                      disabled={loading || remaining <= 0}
+                      onDigit={appendDigit}
+                      onDelete={() => setAnswerDraft({ roundKey, value: answerInput.slice(0, -1) })}
+                      onSubmit={() => void submitAnswer()}
+                    />
                   )}
                 </div>
               ) : (
@@ -449,10 +439,7 @@ export default function NoCountItMatch({
 
           {isReveal && currentRound && revealLayout && (
             <section className="game-card no-count-it-reveal-card">
-              <header className="no-count-it-reveal-heading">
-                <div className="no-count-it-reveal-round">{NO_COUNT_IT_TEXTS.match.round} {currentRound.roundNumber}</div>
-                <h2>{myRoundPlayer?.error ?? '—'} Баллов!</h2>
-              </header>
+              <NoCountItRevealHeader roundNumber={currentRound.roundNumber} error={myRoundPlayer?.error ?? null} />
               <div className="no-count-it-result-columns">
                 <span>{NO_COUNT_IT_TEXTS.match.playerAndAnswer}</span>
                 
