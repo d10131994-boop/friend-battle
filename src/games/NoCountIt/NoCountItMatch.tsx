@@ -26,6 +26,9 @@ type RevealLayout = {
   answerWindowTop: number
 }
 
+const PROMPT_DURATION_MS = 3000
+const IMAGE_DURATION_MS = 3000
+
 const RESULT_ROW_GAP = 58
 const RESULT_ROW_HEIGHT = 42
 const RESULT_MARKER_CLEARANCE = 28
@@ -128,6 +131,7 @@ export default function NoCountItMatch({
   const [answerDraft, setAnswerDraft] = useState<{ roundKey: string | null; value: string }>({ roundKey: null, value: '' })
   const [remaining, setRemaining] = useState(0)
   const [imageRemaining, setImageRemaining] = useState(0)
+  const [promptRemaining, setPromptRemaining] = useState(0)
   const [readyRoundKey, setReadyRoundKey] = useState<string | null>(null)
   const startAttemptRef = useRef(false)
   const readyAttemptRef = useRef<string | null>(null)
@@ -222,6 +226,14 @@ export default function NoCountItMatch({
     return styles
   }, [match?.matchId, currentRound?.roundNumber, currentRound?.candyColors, currentRound?.backgroundColor])
 
+  const titleColor = useMemo(() => {
+    const colors = Object.keys(CANDY_PALETTE) as NoCountItPaletteColor[]
+    if (!match || !currentRound) return colors[0]
+    const random = createSeededRandom(`${match.matchId}:${currentRound.roundNumber}:title-color`)
+    return colors[Math.floor(random() * colors.length)]
+  }, [match?.matchId, currentRound?.roundNumber])
+  const question = <>{NO_COUNT_IT_TEXTS.match.questionPrefix}<span style={{ color: CANDY_PALETTE[titleColor].base }}>{currentRound?.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}</span>»?</>
+
   const roundReady = readyRoundKey === roundKey
   const answerInput = answerDraft.roundKey === roundKey ? answerDraft.value : ''
 
@@ -246,7 +258,8 @@ export default function NoCountItMatch({
       const now = Date.now()
       const showAt = showStartedAt ? Date.parse(showStartedAt) : null
       const deadline = answerDeadline ? Date.parse(answerDeadline) : null
-      setImageRemaining(showAt ? Math.max(0, Math.ceil((showAt + 5000 - now) / 1000)) : 0)
+      setPromptRemaining(showAt ? Math.max(0, Math.ceil((showAt + PROMPT_DURATION_MS - now) / 1000)) : 0)
+      setImageRemaining(showAt ? Math.max(0, Math.ceil((showAt + PROMPT_DURATION_MS + IMAGE_DURATION_MS - now) / 1000)) : 0)
       setRemaining(deadline ? Math.max(0, Math.ceil((deadline - now) / 1000)) : 0)
     }
     update()
@@ -380,13 +393,13 @@ export default function NoCountItMatch({
 
           {(currentRound.status === 'showing' || currentRound.status === 'answering') && (
             <section className={`game-card${isAnswering ? ' no-count-it-answer-card' : ' no-count-it-showing-card'}`}>
-              {currentRound.status === 'showing' && currentRound.imageUrl && (
+              {currentRound.status === 'showing' && promptRemaining === 0 && currentRound.imageUrl && (
                 <img src={currentRound.imageUrl} alt={NO_COUNT_IT_TEXTS.match.imageAlt} className="no-count-it-round-image" />
               )}
               {currentRound.status === 'answering' ? (
                 <div className="no-count-it-answer-layout">
                   <div className="no-count-it-answer-top">
-                    <h2 className="no-count-it-answer-question">{NO_COUNT_IT_TEXTS.match.questionPrefix}{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
+                    <h2 className="no-count-it-answer-question">{question}</h2>
                     <div className="no-count-it-answer-timer" aria-live="polite">{remaining} сек.</div>
                     {myRoundPlayer && myRoundPlayer.answer !== null ? (
                       <p className="no-count-it-answer-submitted">{NO_COUNT_IT_TEXTS.match.yourEstimateResult} {myRoundPlayer?.answer}. {NO_COUNT_IT_TEXTS.match.cannotChangeAnswer}</p>
@@ -417,7 +430,7 @@ export default function NoCountItMatch({
               ) : (
                 <>
                   <h2>{NO_COUNT_IT_TEXTS.match.questionPrefix}{currentRound.targetColor ? NO_COUNT_IT_TEXTS.colors[currentRound.targetColor] : '…'}»?</h2>
-                  {currentRound.status === 'showing' && <p>{NO_COUNT_IT_TEXTS.match.rememberPrompt} · {imageRemaining} сек.</p>}
+                  {currentRound.status === 'showing' && <p>{NO_COUNT_IT_TEXTS.match.rememberPrompt} · {promptRemaining > 0 ? promptRemaining : imageRemaining} сек.</p>}
                 </>
               )}
               {currentRound.status === 'answering' && myRoundPlayer?.status === 'excluded_not_ready' && (
