@@ -1,3 +1,4 @@
+import NoCountItKeypad from './NoCountItKeypad'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { database } from '../../database'
 import type { MultiplayerRoom } from '../../multiplayer'
@@ -411,27 +412,18 @@ export default function NoCountItMatch({
                     {myRoundPlayer && myRoundPlayer.answer !== null ? (
                       <p className="no-count-it-answer-submitted">{NO_COUNT_IT_TEXTS.match.yourEstimateResult} {myRoundPlayer?.answer}. {NO_COUNT_IT_TEXTS.match.cannotChangeAnswer}</p>
                     ) : myRoundPlayer?.status === 'active' ? (
-                      <div className="no-count-it-answer-value" aria-live="polite">{answerInput || '0'}</div>
+
                     ) : null}
                   </div>
                   {myRoundPlayer?.status === 'active' && myRoundPlayer.answer === null && (
-                    <div className="no-count-it-keypad">
-                      {['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map((digit) => (
-                        <button
-                          key={digit}
-                          type="button"
-                          className={`no-count-it-key${digit === '✓' ? ' no-count-it-key-submit' : digit === '⌫' ? ' no-count-it-key-delete' : ''}`}
-                          aria-label={digit === '⌫' ? 'Удалить последнюю цифру' : digit === '✓' ? 'Отправить ответ' : digit}
-                          disabled={loading || remaining <= 0}
-                          style={/^\d$/.test(digit) ? keypadStyles[digit] : undefined}
-                          onClick={() => {
-                            if (digit === '✓') void submitAnswer()
-                            else if (digit === '⌫') setAnswerDraft({ roundKey, value: answerInput.slice(0, -1) })
-                            else appendDigit(digit)
-                          }}
-                        >{digit}</button>
-                      ))}
-                    </div>
+                    <NoCountItKeypad
+                      value={answerInput}
+                      styles={keypadStyles}
+                      disabled={loading || remaining <= 0}
+                      onDigit={appendDigit}
+                      onDelete={() => setAnswerDraft({ roundKey, value: answerInput.slice(0, -1) })}
+                      onSubmit={() => void submitAnswer()}
+                    />
                   )}
                 </div>
               ) : (
