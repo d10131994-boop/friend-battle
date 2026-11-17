@@ -26,6 +26,11 @@ This module now contains pure combat, shared selection/match state, a standalone
 ## Integration rules
 Read `src/ai-readme.md`, `src/games/ai-readme.md`, `src/multiplayer/ai-readme.md`, and `src/database/ai-readme.md` before integration. Reuse shared UI and pure combat logic between solo/multiplayer, but keep the multiplayer server authoritative. Do not duplicate room/ready/invite UI.
 
+## Multiplayer transport (not yet enabled)
+- `duelProtocol.ts` validates two distinct actions and carries room ID, match ID and exchange number. It never accepts client-computed HP, winner or score.
+- `duelApi.ts` invokes the future `duel` Edge Function through the shared Database facade; it intentionally returns `unknown` until a strict server snapshot parser exists. It does **not** mean the backend is deployed or the multiplayer mode is playable.
+- No availability flags are changed here; the user will enable solo and multiplayer manually after publication. Multiplayer manual testing is explicitly deferred until after merging to main and publication.
+
 ## Standalone test pages
 - `/duel-play.html`: uninterrupted solo match against random opponent; automatic 15-second selection, two-second waiting phase, best-of-three rounds, draw replay. The current timeout behavior fills missing choices automatically, a provisional solo-only behavior.
 - `/duel-prototype.html`: manual combat/choreography lab with arbitrary HP and actions; do not embed its debug controls in the routed game.
