@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { planDuel } from './duelEngine'
-import DuelBoard, { type DuelDuelPose } from './DuelBoard'
+import DuelBoard, { type DuelPose } from './DuelBoard'
 import { CHOICE_SECONDS, WAIT_AFTER_BOTH_READY_MS, choiceRemainingSeconds, completeChoice, lockChoice, randomChoice, toggleChoice, type ChoiceState } from './duelChoice'
 import { advanceDuelMatch, newDuelMatch, type MatchState } from './duelMatch'
 import './DuelSolo.css'
