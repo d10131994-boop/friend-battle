@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { choiceRemainingSeconds, lockChoice, randomChoice, toggleChoice, type ChoiceState } from './duelChoice.js'
+import { choiceRemainingSeconds, completeChoice, lockChoice, randomChoice, toggleChoice, type ChoiceState } from './duelChoice.js'
 import type { Action } from './duelEngine.js'
 
 const attack: Action = { kind: 'attack', zone: 'head' }
@@ -37,4 +37,23 @@ test('choice timer counts down from 15 and never becomes negative', () => {
   assert.equal(choiceRemainingSeconds(1000, 2000), 14)
   assert.equal(choiceRemainingSeconds(1000, 16000), 0)
   assert.equal(choiceRemainingSeconds(1000, 99999), 0)
+})
+
+test('timeout preserves an existing action and fills remaining slot', () => {
+  const result = completeChoice({ selected: [attack], locked: false }, () => 0)
+  assert.equal(result.locked, true)
+  assert.deepEqual(result.selected[0], attack)
+  assert.notDeepEqual(result.selected[1], attack)
+})
+
+test('timeout fills two distinct actions from empty selection', () => {
+  const result = completeChoice({ selected: [], locked: false }, () => 0)
+  assert.equal(result.selected.length, 2)
+  assert.notDeepEqual(result.selected[0], result.selected[1])
+  assert.equal(result.locked, true)
+})
+
+test('timeout does not mutate locked selection', () => {
+  const state = { selected: [attack, defense], locked: true }
+  assert.equal(completeChoice(state), state)
 })
