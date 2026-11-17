@@ -1,4 +1,4 @@
-import { ZONES, type Action, type Selection } from './duelEngine'
+import { ZONES, type Action, type Selection } from './duelEngine.js'
 
 /** Shared between solo and multiplayer. This models only local input, never server authority. */
 export const CHOICE_SECONDS = 15
