@@ -1,7 +1,7 @@
 # Duel — AI development notes (prototype)
 
 ## Scope
-This module now contains pure combat, shared selection/match state, a standalone solo play page (`/duel-play.html`), and a separate choreography lab (`/duel-prototype.html`); it is **not yet a routed Friend Battle game**. No multiplayer Edge Function, database schema, production animations, or menu registration exists yet. The standalone page is for functional testing and is not a production integration. Do not enable it in game availability.
+This module now contains pure combat, shared selection/match state, a standalone solo play page (`/duel-play.html`), and a separate choreography lab (`/duel-prototype.html`); it is **not yet registered in Friend Battle menus**. A React solo preview is available in development at `/?duel-preview=1` through `DuelSolo.tsx`. No multiplayer Edge Function, database schema, production animations, or menu registration exists yet. The standalone page is for functional testing and is not a production integration. Do not enable it in game availability.
 
 ## Rules
 - Two fighters, each starting a round with three HP.
@@ -30,3 +30,8 @@ Read `src/ai-readme.md`, `src/games/ai-readme.md`, `src/multiplayer/ai-readme.md
 - `/duel-play.html`: uninterrupted solo match against random opponent; automatic 15-second selection, two-second waiting phase, best-of-three rounds, draw replay. The current timeout behavior fills missing choices automatically, a provisional solo-only behavior.
 - `/duel-prototype.html`: manual combat/choreography lab with arbitrary HP and actions; do not embed its debug controls in the routed game.
 - Both pages import `duelEngine.ts`, `duelChoice.ts`, and `duelMatch.ts` as appropriate. These modules must remain independent of React and transport; future React game UI should share its presentation between modes, with distinct solo/server controllers.
+
+## React preview
+- `DuelSolo.tsx` + `DuelSolo.css` provide a dev-only React game screen, currently entered via `/?duel-preview=1` in `App.tsx`.
+- Keep gameplay rules in `duelEngine`, `duelChoice`, `duelMatch`; do not copy the pure rules into the component.
+- This is a visual/functional preview, not evidence of successful browser testing, production routing, or multiplayer support.
