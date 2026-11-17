@@ -1,7 +1,7 @@
 # Duel — AI development notes (prototype)
 
 ## Scope
-This module is currently a **pure combat-resolution and preliminary choreography prototype**, not a routed game. No multiplayer Edge Function, database schema, production animations, or menu registration exists yet. Do not enable it in game availability.
+This module now contains pure combat, shared selection/match state, a standalone solo play page (`/duel-play.html`), and a separate choreography lab (`/duel-prototype.html`); it is **not yet a routed Friend Battle game**. No multiplayer Edge Function, database schema, production animations, or menu registration exists yet. The standalone page is for functional testing and is not a production integration. Do not enable it in game availability.
 
 ## Rules
 - Two fighters, each starting a round with three HP.
@@ -25,3 +25,8 @@ This module is currently a **pure combat-resolution and preliminary choreography
 
 ## Integration rules
 Read `src/ai-readme.md`, `src/games/ai-readme.md`, `src/multiplayer/ai-readme.md`, and `src/database/ai-readme.md` before integration. Reuse shared UI and pure combat logic between solo/multiplayer, but keep the multiplayer server authoritative. Do not duplicate room/ready/invite UI.
+
+## Standalone test pages
+- `/duel-play.html`: uninterrupted solo match against random opponent; automatic 15-second selection, two-second waiting phase, best-of-three rounds, draw replay. The current timeout behavior fills missing choices automatically, a provisional solo-only behavior.
+- `/duel-prototype.html`: manual combat/choreography lab with arbitrary HP and actions; do not embed its debug controls in the routed game.
+- Both pages import `duelEngine.ts`, `duelChoice.ts`, and `duelMatch.ts` as appropriate. These modules must remain independent of React and transport; future React game UI should share its presentation between modes, with distinct solo/server controllers.
