@@ -54,7 +54,6 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
     const before = [...matchRef.current.health] as [number, number]
     const step = advanceDuelMatch(matchRef.current, selection.selected, opponent)
     matchRef.current = step.match
-    setMatch(step.match)
     setPhaseNow('combat')
     setMessage('Бой!')
     for (const beat of planDuel(step.resolution, before).beats) {
@@ -69,6 +68,7 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
       await wait(beat.kind === 'fall' ? 650 : 520)
     }
     if (id !== generation.current) return
+    setMatch(step.match)
     setPhaseNow(step.match.finished ? 'finished' : 'intermission')
     setMessage(step.match.finished ? (step.match.winner === 0 ? 'Вы выиграли матч!' : 'Противник выиграл матч!') : step.roundResult === 'draw' ? 'Ничья — переигровка раунда' : step.roundEnded ? 'Раунд завершён' : 'Обмен ударами завершён')
     if (!step.match.finished) { await wait(900); if (id === generation.current) beginChoice() }
