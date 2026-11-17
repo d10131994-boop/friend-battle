@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { choiceRemainingSeconds, lockChoice, randomChoice, toggleChoice } from './duelChoice.js'
+import { choiceRemainingSeconds, lockChoice, randomChoice, toggleChoice, type ChoiceState } from './duelChoice.js'
 import type { Action } from './duelEngine.js'
 
 const attack: Action = { kind: 'attack', zone: 'head' }
@@ -8,7 +8,7 @@ const defense: Action = { kind: 'defend', zone: 'head' }
 const third: Action = { kind: 'attack', zone: 'legs' }
 
 test('two distinct actions; attack and defense of same zone are valid', () => {
-  let state = { selected: [] as Action[], locked: false }
+  let state: ChoiceState = { selected: [], locked: false }
   state = toggleChoice(state, attack)
   state = toggleChoice(state, defense)
   assert.deepEqual(state.selected, [attack, defense])
