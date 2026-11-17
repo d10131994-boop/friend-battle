@@ -1,4 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, it } from 'node:test'
+import assert from 'node:assert/strict'
+const expect = (actual: unknown) => ({
+  toBe(expected: unknown) { assert.equal(actual, expected) },
+  toEqual(expected: unknown) { assert.deepEqual(actual, expected) },
+  toHaveLength(expected: number) { assert.equal((actual as { length: number }).length, expected) },
+})
 import { ZONES, planDuel, resolveDuel, type Action } from './duelEngine'
 
 const allActions: Action[] = ZONES.flatMap(zone => [
