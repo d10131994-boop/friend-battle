@@ -10,16 +10,16 @@ main{max-width:1000px;margin:auto;padding:24px}h1{margin-bottom:4px}p{color:#b7c
 .layout{display:grid;grid-template-columns:1fr 1fr;gap:16px}label{display:block;margin:10px 0 4px}
 select,input,button{font:inherit;background:#142030;color:white;border:1px solid #71839a;border-radius:7px;padding:8px}
 select{max-width:100%;width:100%}button{cursor:pointer;background:#346c88;margin:14px 8px 0 0}
-#arena{margin-top:18px;position:relative;overflow:hidden;min-height:265px;background:linear-gradient(#385b70 0 66%,#52644d 66%);border:3px solid #a1aab0;border-radius:14px;display:flex;justify-content:space-around;align-items:flex-end;padding:18px 12px 20px}
-.fighter{position:relative;width:150px;height:205px;transform-origin:bottom center;transition:transform .4s,filter .3s}.fighter.right{transform:scaleX(-1)}
+#arena{margin-top:18px;position:relative;overflow:hidden;min-height:265px;background:linear-gradient(#385b70 0 66%,#52644d 66%);border:3px solid #a1aab0;border-radius:14px;display:flex;justify-content:center;gap:34px;align-items:flex-end;padding:18px 12px 20px}
+.fighter{position:relative;width:150px;height:205px;transform-origin:bottom center;transition:transform .24s,filter .2s}.fighter.right{transform:scaleX(-1)}
 .fighter .head{position:absolute;width:47px;height:47px;border-radius:50%;background:#e6bd88;left:55px;top:14px;border:4px solid #293341}
 .fighter .body{position:absolute;left:48px;top:63px;width:62px;height:82px;background:#b4bec8;border:5px solid #293341;border-radius:18px}
 .fighter .legs{position:absolute;left:58px;top:140px;width:44px;height:64px;border-left:14px solid #303c51;border-right:14px solid #303c51}
-.fighter .shield{position:absolute;left:9px;top:78px;width:50px;height:64px;border-radius:45% 45% 50% 50%;background:#a47c43;border:6px solid #e7c78a;transform-origin:center;transition:transform .28s}
-.fighter .sword{position:absolute;left:117px;top:36px;width:9px;height:120px;background:linear-gradient(90deg,#71879d,#f6fbff,#71879d);border-radius:7px;transform:rotate(28deg);transform-origin:50% 92%;transition:transform .3s}
+.fighter .shield{position:absolute;left:9px;top:78px;width:50px;height:64px;border-radius:45% 45% 50% 50%;background:#a47c43;border:6px solid #e7c78a;transform-origin:center;transition:transform .18s}
+.fighter .sword{position:absolute;left:117px;top:36px;width:9px;height:120px;background:linear-gradient(90deg,#71879d,#f6fbff,#71879d);border-radius:7px;transform:rotate(28deg);transform-origin:50% 92%;transition:transform .2s}
 .fighter .sword:after{content:'';position:absolute;bottom:14px;left:-12px;width:33px;height:7px;background:#c39b4f}
 .fighter.defending .shield{transform:translate(20px,-20px) rotate(-20deg)}
-.fighter.attacking .sword{transform:rotate(-68deg)}
+.fighter.attacking .sword{transform:rotate(-100deg)}
 .fighter.attacking{filter:brightness(1.25)}
 .fighter.hit{filter:drop-shadow(0 0 16px #ff3030)}
 .fighter.fallen{transform:rotate(80deg) translateY(26px)}
@@ -78,7 +78,7 @@ async function play(){
   const token=++playbackToken
   resetFighters()
   $('arenaStatus').textContent='Подготовка к бою'
-  await sleep(400)
+  await sleep(200)
   for(const [index,beat] of activePlan.beats.entries()){
     if(token!==playbackToken)return
     resetFighters()
@@ -98,7 +98,7 @@ async function play(){
       }
     }
     if(beat.kind==='fall')for(const i of beat.fighters)$('fighter'+i).classList.add('fallen')
-    await sleep(beat.kind==='fall'?1250:1050)
+    await sleep(beat.kind==='fall'?650:520)
   }
   if(token===playbackToken)$('arenaStatus').textContent='Анимация завершена'
 }
