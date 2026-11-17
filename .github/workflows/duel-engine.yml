@@ -24,7 +24,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Compile isolated duel tests
-        run: npx tsc --ignoreConfig --target es2022 --module nodenext --moduleResolution nodenext --types node --skipLibCheck --outDir /tmp/duel-tests src/games/Duel/duelEngine.ts src/games/Duel/duelEngine.test.ts src/games/Duel/duelMatch.ts src/games/Duel/duelMatch.test.ts src/games/Duel/duelChoice.ts src/games/Duel/duelChoice.test.ts src/games/Duel/duelPresentation.ts src/games/Duel/duelPresentation.test.ts
+        run: npx tsc --ignoreConfig --target es2022 --module nodenext --moduleResolution nodenext --types node --skipLibCheck --outDir /tmp/duel-tests src/games/Duel/duelEngine.ts src/games/Duel/duelEngine.test.ts src/games/Duel/duelMatch.ts src/games/Duel/duelMatch.test.ts src/games/Duel/duelChoice.ts src/games/Duel/duelChoice.test.ts src/games/Duel/duelPresentation.ts src/games/Duel/duelPresentation.test.ts src/games/Duel/duelProtocol.ts src/games/Duel/duelProtocol.test.ts
       - name: Run exhaustive combat tests
         run: |
           echo '{"type":"module"}' > /tmp/duel-tests/package.json
