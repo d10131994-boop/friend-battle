@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { planDuel } from './duelEngine'
-import DuelBoard, { type DuelPose } from './DuelBoard'
+import DuelBoard from './DuelBoard'
+import { posesForBeat, type DuelPose } from './duelPresentation'
 import { CHOICE_SECONDS, WAIT_AFTER_BOTH_READY_MS, choiceRemainingSeconds, completeChoice, lockChoice, randomChoice, toggleChoice, type ChoiceState } from './duelChoice'
 import { advanceDuelMatch, newDuelMatch, type MatchState } from './duelMatch'
 import './DuelSolo.css'
@@ -58,13 +59,7 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
     setMessage('Бой!')
     for (const beat of planDuel(step.resolution, before).beats) {
       if (id !== generation.current) return
-      const next: [DuelPose, DuelPose] = [{ kind: '' }, { kind: '' }]
-      if (beat.kind === 'unused-defense') next[beat.fighter] = { kind: 'defending', zone: beat.zone }
-      if (beat.kind === 'clash') { next[0] = { kind: 'attacking', zone: beat.zone }; next[1] = { kind: 'attacking', zone: beat.zone } }
-      if (beat.kind === 'shield-block') { next[beat.attacker] = { kind: 'attacking', zone: beat.zone }; next[beat.defender] = { kind: 'defending', zone: beat.zone } }
-      if (beat.kind === 'strike') for (const hit of beat.hits) { next[hit.source] = { kind: 'attacking', zone: hit.zone }; next[hit.target] = { kind: 'hit' } }
-      if (beat.kind === 'fall') for (const fighter of beat.fighters) next[fighter] = { kind: 'fallen' }
-      setDuelPoses(next)
+      setDuelPoses([...posesForBeat(beat)])
       await wait(beat.kind === 'fall' ? 650 : 520)
     }
     if (id !== generation.current) return
