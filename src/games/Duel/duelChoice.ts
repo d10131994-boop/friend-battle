@@ -41,3 +41,18 @@ export function randomChoice(random: () => number = Math.random): Selection {
 export function choiceRemainingSeconds(startedAt: number, now: number): number {
   return Math.max(0, Math.ceil((CHOICE_SECONDS * 1000 - Math.max(0, now - startedAt)) / 1000))
 }
+
+/** Solo timeout fallback. Preserve deliberate choices and fill only missing slots. */
+export function completeChoice(state: ChoiceState, random: () => number = Math.random): ChoiceState {
+  if (state.locked || state.selected.length === 2) return lockChoice(state)
+  const pool: Action[] = ZONES.flatMap(zone => [
+    { kind: 'attack' as const, zone },
+    { kind: 'defend' as const, zone },
+  ]).filter(action => !state.selected.some(selected => sameAction(selected, action)))
+  const selected = [...state.selected]
+  while (selected.length < 2) {
+    const index = Math.min(pool.length - 1, Math.max(0, Math.floor(random() * pool.length)))
+    selected.push(...pool.splice(index, 1))
+  }
+  return { selected: [selected[0], selected[1]] as Selection, locked: true }
+}

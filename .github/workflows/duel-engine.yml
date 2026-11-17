@@ -1,12 +1,15 @@
 name: Duel engine tests
 on:
   pull_request:
+    branches:
+      - '**'
+      - '!**/*-AI'
     paths:
       - 'src/games/Duel/**'
       - '.github/workflows/duel-engine.yml'
   push:
     branches:
-      - 'friend-battle-07/duel/**'
+      - 'friend-battle-07/duel/*-AI'
     paths:
       - 'src/games/Duel/**'
       - '.github/workflows/duel-engine.yml'
