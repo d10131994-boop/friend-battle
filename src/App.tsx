@@ -8,6 +8,7 @@ import ReactionRushSolo from './games/ReactionRush/ReactionRushSolo'
 import BrainBattle from './games/BrainBattle/BrainBattle'
 import RockPaperScissorsSolo from './games/rockPaperScissors/RockPaperScissorsSolo'
 import DemocracyMergeSolo from './games/DemocracyMerge/DemocracyMergeSolo'
+import DuelSolo from './games/Duel/DuelSolo'
 import { MainMenu, MultiplayerRoomMenu, SoloRoomMenu } from './menus'
 import type { GameId } from './menus'
 import BottomNavigation from './components/BottomNavigation/BottomNavigation'
@@ -122,6 +123,9 @@ function AppContent() {
 
 export default function App() {
   const params = new URLSearchParams(window.location.search)
+  if (import.meta.env.DEV && params.get('duel-preview') === '1') {
+    return <DuelSolo onBack={() => { window.location.href = window.location.pathname }} />
+  }
   if (import.meta.env.DEV && params.get('no-count-it-generator') === '1') {
     return <SceneGeneratorPreview />
   }
