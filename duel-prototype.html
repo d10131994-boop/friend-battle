@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duel — choreography lab</title>
+<style>
+:root{font:16px system-ui;color:#f2e9d8;background:#18212d}*{box-sizing:border-box}
+main{max-width:1000px;margin:auto;padding:24px}h1{margin-bottom:4px}p{color:#b7c6d5}
+.panel{background:#273547;border:1px solid #45546a;border-radius:14px;padding:18px}
+.layout{display:grid;grid-template-columns:1fr 1fr;gap:16px}label{display:block;margin:10px 0 4px}
+select,input,button{font:inherit;background:#142030;color:white;border:1px solid #71839a;border-radius:7px;padding:8px}
+select{max-width:100%;width:100%}button{cursor:pointer;background:#346c88;margin:14px 8px 0 0}
+#timeline{margin-top:20px}.beat{display:grid;grid-template-columns:50px 1fr 1fr;gap:8px;padding:12px;border-bottom:1px solid #48576b}
+.beat:last-child{border:0}.fatal{background:#62373d}.tag{color:#f4ce77}#summary{margin-top:14px;font-weight:bold}
+@media(max-width:600px){.layout{grid-template-columns:1fr}.beat{grid-template-columns:36px 1fr 1fr;font-size:13px}}
+</style>
+</head>
+<body><main>
+<h1>Дуэль — лаборатория постановки</h1>
+<p>Прототип для проверки расчёта боя и порядка движений. Без графических персонажей и подключения к игре.</p>
+<div class="layout">
+<section class="panel"><h2>Игрок слева</h2><label>Здоровье <select id="hp0"></select></label><label>Первое действие <select id="a0"></select></label><label>Второе действие <select id="a1"></select></label></section>
+<section class="panel"><h2>Противник справа</h2><label>Здоровье <select id="hp1"></select></label><label>Первое действие <select id="b0"></select></label><label>Второе действие <select id="b1"></select></label></section>
+</div>
+<button id="run">Рассчитать бой</button><button id="example">Пример взаимной гибели</button><button id="random">Случайный бой</button>
+<div id="summary" aria-live="polite"></div>
+<section class="panel" id="timeline"><h2>Последовательность движений</h2><div id="beats"></div></section>
+</main>
+<script type="module">
+import { ZONES, resolveDuel, planDuel } from '/src/games/Duel/duelEngine.ts'
+const names={head:'голова',chest:'грудь',belly:'живот',legs:'ноги'}
+const actionNames={attack:'Атака',defend:'Защита'}
+const all=ZONES.flatMap(zone=>['attack','defend'].map(kind=>({kind,zone})))
+const ids=['a0','a1','b0','b1']
+const $=id=>document.getElementById(id)
+for(const id of ids)for(let i=0;i<all.length;i++)$(id).add(new Option(actionNames[all[i].kind]+' — '+names[all[i].zone],String(i)))
+for(const id of ['hp0','hp1'])for(let n=1;n<=3;n++)$(id).add(new Option(n+' HP',n))
+function set(actions,hp){ids.forEach((id,i)=>$(id).value=String(all.findIndex(a=>a.kind===actions[i].kind&&a.zone===actions[i].zone)));$('hp0').value=hp[0];$('hp1').value=hp[1]}
+function describe(beat){
+  switch(beat.kind){
+    case 'unused-defense':return [beat.fighter===0?'Щит: '+names[beat.zone]:'',beat.fighter===1?'Щит: '+names[beat.zone]:'']
+    case 'clash':return ['Парирование: '+names[beat.zone],'Парирование: '+names[beat.zone]]
+    case 'shield-block':return [beat.defender===0?'Блок: '+names[beat.zone]:'Удар в щит: '+names[beat.zone],beat.defender===1?'Блок: '+names[beat.zone]:'Удар в щит: '+names[beat.zone]]
+    case 'strike':return [0,1].map(i=>beat.hits.filter(h=>h.source===i).map(h=>(h.reflected?'Отражение':'Удар')+' → '+names[h.zone]).join(' + ')||'Получает '+beat.hits.filter(h=>h.target===i).length+' урона')
+    case 'fall':return [0,1].map(i=>beat.fighters.includes(i)?'Падение':'')
+  }
+}
+function render(){
+  try{
+    const picks=ids.map(id=>all[Number($(id).value)])
+    const hp=[Number($('hp0').value),Number($('hp1').value)]
+    const result=resolveDuel(picks.slice(0,2),picks.slice(2,4),hp)
+    const plan=planDuel(result,hp)
+    const resultNames={continue:'Бой продолжается',left:'Победил игрок слева',right:'Победил противник',draw:'Ничья'}
+    $('summary').textContent=resultNames[result.outcome]+' · HP: '+result.healthAfter.join(' / ')+' · Урон: '+result.damage.join(' / ')+(plan.needsChoreographyReview?' · ⚠ Требуется проверка постановки':'')
+    const root=$('beats');root.replaceChildren()
+    plan.beats.forEach((beat,i)=>{
+      const row=document.createElement('div');row.className='beat'+(beat.kind==='fall'?' fatal':'')
+      const descriptions=describe(beat)
+      for(const t of [String(i+1),...descriptions]){const cell=document.createElement('div');cell.textContent=t;row.append(cell)}
+      root.append(row)
+    })
+  }catch(e){$('summary').textContent='Ошибка: '+e.message;$('beats').replaceChildren()}
+}
+$('run').onclick=render
+$('example').onclick=()=>{set([{kind:'defend',zone:'head'},{kind:'defend',zone:'chest'},{kind:'attack',zone:'chest'},{kind:'attack',zone:'belly'}],[1,1]);render()}
+$('random').onclick=()=>{const pick=()=>{const a=Math.floor(Math.random()*8);let b=Math.floor(Math.random()*7);if(b>=a)b++;return [all[a],all[b]]};set([...pick(),...pick()],[1+Math.floor(Math.random()*3),1+Math.floor(Math.random()*3)]);render()}
+$('example').click()
+</script></body></html>
