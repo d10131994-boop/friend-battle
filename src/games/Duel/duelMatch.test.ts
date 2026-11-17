@@ -37,3 +37,23 @@ test('simultaneous knockout replays round without awarding a win', () => {
   assert.deepEqual(step.match.wins, [0, 0])
   assert.deepEqual(step.match.health, [3, 3])
 })
+
+test('right fighter can win two rounds', () => {
+  let state = newDuelMatch()
+  for (let i = 0; i < 2; i++) {
+    state = advanceDuelMatch(state, idle, winning).match
+    state = advanceDuelMatch(state, idle, winning).match
+  }
+  assert.equal(state.finished, true)
+  assert.equal(state.winner, 1)
+  assert.deepEqual(state.wins, [0, 2])
+})
+
+test('draw at one win each does not decide the match', () => {
+  const state = { ...newDuelMatch(), wins: [1, 1] as const, round: 3, health: [1, 1] as const }
+  const step = advanceDuelMatch(state, [attack('head'), defend('legs')], [attack('chest'), defend('belly')])
+  assert.equal(step.match.finished, false)
+  assert.equal(step.match.round, 3)
+  assert.deepEqual(step.match.wins, [1, 1])
+  assert.deepEqual(step.match.health, [3, 3])
+})
