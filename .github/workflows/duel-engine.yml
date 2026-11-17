@@ -23,4 +23,6 @@ jobs:
       - name: Compile isolated duel tests
         run: npx tsc --target es2022 --module nodenext --moduleResolution nodenext --types node --skipLibCheck --outDir /tmp/duel-tests src/games/Duel/duelEngine.ts src/games/Duel/duelEngine.test.ts
       - name: Run exhaustive combat tests
-        run: node --test /tmp/duel-tests/duelEngine.test.js
+        run: |
+          echo '{"type":"module"}' > /tmp/duel-tests/package.json
+          node --test /tmp/duel-tests/duelEngine.test.js
