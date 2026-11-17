@@ -30,7 +30,6 @@ export function resolveDuel(left: readonly Action[], right: readonly Action[], h
   validateSelection(left)
   validateSelection(right)
   if (health.some(h => !Number.isInteger(h) || h < 1 || h > 3)) throw new Error('Invalid health')
-  const actions = [left, right] as const
   const hits: Hit[] = []
   const clashes: Clash[] = []
   const blocks: Block[] = []
