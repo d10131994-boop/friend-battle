@@ -1,8 +1,8 @@
 import type { Action } from './duelEngine'
+import type { DuelPose } from './duelPresentation'
 import { ZONES } from './duelEngine'
 import type { ChoiceState } from './duelChoice'
 
-export type DuelPose = { kind: 'attacking' | 'defending' | 'hit' | 'fallen' | ''; zone?: Action['zone'] }
 const actions: Action[] = ZONES.flatMap(zone => [{ kind: 'attack' as const, zone }, { kind: 'defend' as const, zone }])
 const zoneNames = { head: 'Голова', chest: 'Грудь', belly: 'Живот', legs: 'Ноги' }
 
