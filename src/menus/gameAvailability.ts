@@ -11,6 +11,10 @@ export type GameAvailability = Record<string, unknown> & {
 }
 
 export const GAME_PRESENTATION = {
+  'duel': {
+    title: 'Дуэль',
+    description: 'Два действия за ход, три HP и победа в двух раундах.',
+  },
   'reaction-rush': {
     title: 'Reaction Rush',
     description: 'Три раунда по 10 секунд.',
