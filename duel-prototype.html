@@ -20,6 +20,25 @@ select{max-width:100%;width:100%}button{cursor:pointer;background:#346c88;margin
 .fighter .sword:after{content:'';position:absolute;bottom:14px;left:-12px;width:33px;height:7px;background:#c39b4f}
 .fighter.defending .shield{transform:translate(20px,-20px) rotate(-20deg)}
 .fighter.attacking .sword{transform:rotate(-100deg)}
+/* Both fighters face inward. A strike lunges toward the opponent rather than into the fighter. */
+.fighter.attacking{translate:26px 0}
+.fighter.right.attacking{translate:-26px 0}
+.fighter{transition:transform .24s,filter .2s,translate .2s}
+.fighter .shield{z-index:3}
+.fighter .sword{z-index:2}
+.fighter.zone-head .sword{transform-origin:50% 92%;rotate:-27deg}
+.fighter.zone-chest .sword{rotate:4deg}
+.fighter.zone-belly .sword{rotate:24deg}
+.fighter.zone-legs .sword{rotate:44deg}
+.fighter.attacking.zone-head .sword{transform:rotate(-108deg)}
+.fighter.attacking.zone-chest .sword{transform:rotate(-89deg)}
+.fighter.attacking.zone-belly .sword{transform:rotate(-70deg)}
+.fighter.attacking.zone-legs .sword{transform:rotate(-50deg)}
+.fighter.defending.zone-head .shield{transform:translate(20px,-66px) rotate(-20deg)}
+.fighter.defending.zone-chest .shield{transform:translate(20px,-35px) rotate(-20deg)}
+.fighter.defending.zone-belly .shield{transform:translate(20px,2px) rotate(-20deg)}
+.fighter.defending.zone-legs .shield{transform:translate(20px,50px) rotate(-20deg)}
+.fighter.fallen{translate:0 0}
 .fighter.attacking{filter:brightness(1.25)}
 .fighter.hit{filter:drop-shadow(0 0 16px #ff3030)}
 .fighter.fallen{transform:rotate(80deg) translateY(26px)}
@@ -34,7 +53,7 @@ select{max-width:100%;width:100%}button{cursor:pointer;background:#346c88;margin
 </head>
 <body><main>
 <h1>Дуэль — лаборатория постановки</h1>
-<p>Прототип для проверки расчёта боя и порядка движений. Без графических персонажей и подключения к игре.</p>
+<p>Прототип для проверки расчёта боя и порядка движений. Схематичные бойцы показывают порядок движений. Пока без подключения к игре.</p>
 <div class="layout">
 <section class="panel"><h2>Игрок слева</h2><label>Здоровье <select id="hp0"></select></label><label>Первое действие <select id="a0"></select></label><label>Второе действие <select id="a1"></select></label></section>
 <section class="panel"><h2>Противник справа</h2><label>Здоровье <select id="hp1"></select></label><label>Первое действие <select id="b0"></select></label><label>Второе действие <select id="b1"></select></label></section>
@@ -70,6 +89,10 @@ function describe(beat){
 let playbackToken=0
 let activePlan=null
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))
+function pose(i,kind,zone){
+  const fighter=$('fighter'+i)
+  fighter.classList.add(kind,'zone-'+zone)
+}
 function resetFighters(){
   for(const i of [0,1])$('fighter'+i).className='fighter'+(i===1?' right':'')
 }
@@ -84,15 +107,15 @@ async function play(){
     resetFighters()
     const text=describe(beat)
     $('arenaStatus').textContent=(index+1)+' / '+activePlan.beats.length+': '+text.filter(Boolean).join(' · ')
-    if(beat.kind==='unused-defense')$('fighter'+beat.fighter).classList.add('defending')
+    if(beat.kind==='unused-defense')pose(beat.fighter,'defending',beat.zone)
     if(beat.kind==='shield-block'){
-      $('fighter'+beat.defender).classList.add('defending')
-      $('fighter'+beat.attacker).classList.add('attacking')
+      pose(beat.defender,'defending',beat.zone)
+      pose(beat.attacker,'attacking',beat.zone)
     }
-    if(beat.kind==='clash')for(const i of [0,1])$('fighter'+i).classList.add('attacking')
+    if(beat.kind==='clash')for(const i of [0,1])pose(i,'attacking',beat.zone)
     if(beat.kind==='strike'){
       for(const hit of beat.hits){
-        $('fighter'+hit.source).classList.add('attacking')
+        pose(hit.source,'attacking',hit.zone)
         $('fighter'+hit.target).classList.add('hit')
         $('fighter'+hit.target).querySelector('.damage').textContent='−'+beat.hits.filter(h=>h.target===hit.target).length
       }
