@@ -1,0 +1,26 @@
+name: Duel engine tests
+on:
+  pull_request:
+    paths:
+      - 'src/games/Duel/**'
+      - '.github/workflows/duel-engine.yml'
+  push:
+    branches:
+      - 'friend-battle-07/duel/**'
+    paths:
+      - 'src/games/Duel/**'
+      - '.github/workflows/duel-engine.yml'
+jobs:
+  duel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Compile isolated duel tests
+        run: npx tsc --target es2022 --module nodenext --moduleResolution nodenext --types node --skipLibCheck --outDir /tmp/duel-tests src/games/Duel/duelEngine.ts src/games/Duel/duelEngine.test.ts
+      - name: Run exhaustive combat tests
+        run: node --test /tmp/duel-tests/duelEngine.test.js
