@@ -42,7 +42,7 @@ button:disabled{opacity:.45;cursor:default}.primary{background:#a66b2b}
 </main>
 <script type="module">
 import { ZONES, planDuel } from '/src/games/Duel/duelEngine.ts'
-import { toggleChoice, lockChoice, randomChoice, choiceRemainingSeconds, CHOICE_SECONDS, WAIT_AFTER_BOTH_READY_MS } from '/src/games/Duel/duelChoice.ts'
+import { toggleChoice, lockChoice, completeChoice, randomChoice, choiceRemainingSeconds, CHOICE_SECONDS, WAIT_AFTER_BOTH_READY_MS } from '/src/games/Duel/duelChoice.ts'
 import { newDuelMatch, advanceDuelMatch } from '/src/games/Duel/duelMatch.ts'
 const $=id=>document.getElementById(id)
 const labels={head:'Голова',chest:'Грудь',belly:'Живот',legs:'Ноги'}
@@ -91,14 +91,7 @@ async function submit(){
   if(phase!=='choice')return
   clearInterval(clock)
   const id=token
-  if(choice.selected.length!==2){
-    // A timed-out selection must not stall the solo game indefinitely.
-    const missing=randomChoice().filter(a=>!choice.selected.some(x=>x.kind===a.kind&&x.zone===a.zone))
-    for(const action of [...missing,...actions]){
-      if(choice.selected.length===2)break
-      choice=toggleChoice(choice,action)
-    }
-  }
+  if(choice.selected.length!==2)choice=completeChoice(choice)
   choice=lockChoice(choice);phase='waiting';refresh()
   $('message').textContent='Выбор принят. Противник готов…'
   await sleep(WAIT_AFTER_BOTH_READY_MS)
