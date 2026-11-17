@@ -4,7 +4,7 @@ import { CHOICE_SECONDS, WAIT_AFTER_BOTH_READY_MS, choiceRemainingSeconds, compl
 import { advanceDuelMatch, newDuelMatch, type MatchState } from './duelMatch'
 import './DuelSolo.css'
 
-const actions: Action[] = ZONES.flatMap(zone => [{ kind: 'attack', zone }, { kind: 'defend', zone }])
+const actions: Action[] = ZONES.flatMap(zone => [{ kind: 'attack' as const, zone }, { kind: 'defend' as const, zone }])
 const zoneNames = { head: 'Голова', chest: 'Грудь', belly: 'Живот', legs: 'Ноги' }
 const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 type Phase = 'idle' | 'choice' | 'waiting' | 'combat' | 'intermission' | 'finished'
