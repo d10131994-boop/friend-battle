@@ -1,7 +1,7 @@
 # Duel — AI development notes (prototype)
 
 ## Scope
-This module now contains pure combat, shared selection/match state, a standalone solo play page (`/duel-play.html`), and a separate choreography lab (`/duel-prototype.html`); it is **not yet registered in Friend Battle menus**. A React solo preview is available in development at `/?duel-preview=1` through `DuelSolo.tsx`. No multiplayer Edge Function, database schema, production animations, or menu registration exists yet. The standalone page is for functional testing and is not a production integration. Do not enable it in game availability.
+This module now contains pure combat, shared selection/match state, a standalone solo play page (`/duel-play.html`), and a separate choreography lab (`/duel-prototype.html`); the solo route is registered in Friend Battle but remains hidden until a matching enabled row is configured in `common_game_availability`. A React solo preview is available in development at `/?duel-preview=1` through `DuelSolo.tsx`. No multiplayer Edge Function, database schema, production animations, or multiplayer routing exists yet. The standalone page is for functional testing and is not a production integration. Do not enable it in game availability.
 
 ## Rules
 - Two fighters, each starting a round with three HP.
@@ -34,4 +34,4 @@ Read `src/ai-readme.md`, `src/games/ai-readme.md`, `src/multiplayer/ai-readme.md
 ## React preview
 - `DuelSolo.tsx` + `DuelSolo.css` provide a dev-only React game screen, currently entered via `/?duel-preview=1` in `App.tsx`.
 - Keep gameplay rules in `duelEngine`, `duelChoice`, `duelMatch`; do not copy the pure rules into the component.
-- This is a visual/functional preview, not evidence of successful browser testing, production routing, or multiplayer support.
+- The same solo component is now routed from the availability-controlled solo menu. It remains hidden unless the database enables the game. This is not evidence of successful browser testing or multiplayer support.
