@@ -11,6 +11,7 @@ type Phase = 'idle' | 'choice' | 'waiting' | 'combat' | 'intermission' | 'finish
 
 export default function DuelSolo({ onBack }: { onBack: () => void }) {
   const [match, setMatch] = useState<MatchState>(newDuelMatch)
+  const [displayHealth, setDisplayHealth] = useState<readonly [number, number]>([3, 3])
   const [choice, setChoice] = useState<ChoiceState>({ selected: [], locked: false })
   const [phase, setPhase] = useState<Phase>('idle')
   const [remaining, setRemaining] = useState(CHOICE_SECONDS)
@@ -39,6 +40,7 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
     const initial = newDuelMatch()
     matchRef.current = initial
     setMatch(initial)
+    setDisplayHealth(initial.health)
     setDuelPoses([{ kind: '' }, { kind: '' }])
     beginChoice()
   }
@@ -57,13 +59,19 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
     matchRef.current = step.match
     setPhaseNow('combat')
     setMessage('Бой!')
+    const animatedHealth: [number, number] = [...before]
     for (const beat of planDuel(step.resolution, before).beats) {
       if (id !== generation.current) return
       setDuelPoses([...posesForBeat(beat)])
+      if (beat.kind === 'strike') {
+        for (const hit of beat.hits) animatedHealth[hit.target] = Math.max(0, animatedHealth[hit.target] - 1)
+        setDisplayHealth([...animatedHealth])
+      }
       await wait(beat.kind === 'fall' ? 650 : 520)
     }
     if (id !== generation.current) return
     setMatch(step.match)
+    setDisplayHealth(step.match.health)
     setPhaseNow(step.match.finished ? 'finished' : 'intermission')
     setMessage(step.match.finished ? (step.match.winner === 0 ? 'Вы выиграли матч!' : 'Противник выиграл матч!') : step.roundResult === 'draw' ? 'Ничья — переигровка раунда' : step.roundEnded ? 'Раунд завершён' : 'Обмен ударами завершён')
     if (!step.match.finished) { await wait(900); if (id === generation.current) beginChoice() }
@@ -83,7 +91,7 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
   }, [])
   return <main className="duel-solo">
     <header><button onClick={onBack}>← Назад</button><h1>⚔ Дуэль</h1></header>
-    <p className="duel-score">Раунд {match.round} · Победы {match.wins.join(' : ')} · HP {match.health.join(' : ')}</p>
+    <p className="duel-score">Раунд {match.round} · Победы {match.wins.join(' : ')} · HP {displayHealth.join(' : ')}</p>
     <DuelBoard poses={poses} choice={choice} canChoose={phase === 'choice'} onChoose={action => setChoiceNow(toggleChoice(choiceRef.current, action))} />
     <p className="duel-message" aria-live="polite">{message}</p>
     {phase === 'choice' && <p className="duel-timer">Осталось {remaining} сек.</p>}
