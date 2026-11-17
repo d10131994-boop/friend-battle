@@ -1,4 +1,4 @@
-import { resolveDuel, type Action, type Resolution } from './duelEngine'
+import { resolveDuel, type Action, type Resolution } from './duelEngine.js'
 
 /**
  * Shared match state machine. No network calls or UI; multiplayer must apply
