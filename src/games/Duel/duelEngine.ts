@@ -75,37 +75,48 @@ export type Beat =
 export type Plan = { beats: Beat[]; synchronizedFatalHits: boolean; needsChoreographyReview: boolean }
 
 /**
- * A shield block is a prerequisite for its reflected strike.
- * Every strike beat contains at most one hit per target. Fatal strikes are
- * scheduled last when feasible, so a fallen fighter never attacks afterward.
- * A synchronized lethal beat is preferred for mutual death.
+ * The rules are simultaneous, while the presentation is sequential.
+ * Nonlethal hits are shown first; all remaining hits to a dying fighter
+ * belong to a single final impact beat. A beat can contain multiple impacts
+ * when necessary to avoid a premature fall.
+ *
+ * A single fighter cannot perform two sword swings at once. When this
+ * constraint conflicts with simultaneous death, we explicitly flag the
+ * choreography for review rather than silently changing combat damage.
  */
 export function planDuel(result: Resolution, health: readonly [number, number]): Plan {
   const beats: Beat[] = result.unusedDefenses.map(x => ({ kind: 'unused-defense', ...x }))
   beats.push(...result.clashes.map(x => ({ kind: 'clash' as const, zone: x.zone })))
+  // A shield impact must always precede any reflected strike it creates.
   beats.push(...result.blocks.map(x => ({ kind: 'shield-block' as const, ...x })))
-  const pending = [...result.hits]
-  const lethal = result.healthAfter.map(h => h === 0)
-  const finalHits: Hit[] = []
+
+  const lethal = ([0, 1] as const).map(i => result.damage[i] >= health[i])
+  const ordinary: Hit[] = []
+  const final: Hit[] = []
   for (const fighter of [0, 1] as const) {
-    if (!lethal[fighter]) continue
-    const candidates = pending.filter(h => h.target === fighter)
-    if (!candidates.length) continue
-    const chosen = candidates[candidates.length - 1]
-    finalHits.push(chosen)
-    pending.splice(pending.indexOf(chosen), 1)
+    const received = result.hits.filter(hit => hit.target === fighter)
+    const safeCount = lethal[fighter] ? Math.max(0, health[fighter] - 1) : received.length
+    ordinary.push(...received.slice(0, safeCount))
+    final.push(...received.slice(safeCount))
   }
-  // Hits preceding the final one must not already exhaust a fighter's HP.
-  const displayedDamage: [number, number] = [0, 0]
-  for (const hit of pending) {
-    displayedDamage[hit.target]++
+  // Alternate nonlethal impacts across fighters, preserving each target's order.
+  const remaining = [...ordinary]
+  while (remaining.length) {
+    const hit = remaining.shift()!
     beats.push({ kind: 'strike', hits: [hit] })
   }
-  const synchronizedFatalHits = lethal[0] && lethal[1] && finalHits.length === 2
-  if (finalHits.length) beats.push({ kind: 'strike', hits: finalHits })
+  if (final.length) beats.push({ kind: 'strike', hits: final })
   const fallen = ([0, 1] as const).filter(i => lethal[i])
   if (fallen.length) beats.push({ kind: 'fall', fighters: [...fallen] })
-  const needsChoreographyReview = pending.some(h => displayedDamage[h.target] >= health[h.target]) ||
-    (synchronizedFatalHits && finalHits.some(h => h.reflected) && result.blocks.length > 1)
+
+  const synchronizedFatalHits = lethal[0] && lethal[1] && final.some(h => h.target === 0) && final.some(h => h.target === 1)
+  const needsChoreographyReview =
+    // A character can swing only once in a simultaneous beat.
+    final.some((hit, i) => final.some((other, j) => j !== i && hit.source === other.source)) ||
+    // An attacker cannot both receive a fatal hit and then deliver a
+    // reflected hit after death; the paired impact needs bespoke staging.
+    final.some(h => h.reflected && final.some(other => other !== h && other.source === h.target)) ||
+    // Multiple impacts on the same target in one frame require choreography.
+    final.some((hit, i) => final.some((other, j) => j !== i && hit.target === other.target))
   return { beats, synchronizedFatalHits, needsChoreographyReview }
 }
