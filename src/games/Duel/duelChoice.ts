@@ -54,5 +54,5 @@ export function completeChoice(state: ChoiceState, random: () => number = Math.r
     const index = Math.min(pool.length - 1, Math.max(0, Math.floor(random() * pool.length)))
     selected.push(...pool.splice(index, 1))
   }
-  return { selected: selected as Selection, locked: true }
+  return { selected: [selected[0], selected[1]] as Selection, locked: true }
 }
