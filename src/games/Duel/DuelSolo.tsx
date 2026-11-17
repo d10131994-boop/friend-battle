@@ -30,6 +30,7 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
     if (!mounted.current || matchRef.current.finished) return
     setChoiceNow({ selected: [], locked: false })
     setDuelPoses([{ kind: '' }, { kind: '' }])
+    setDisplayHealth(matchRef.current.health)
     deadline.current = Date.now()
     setRemaining(CHOICE_SECONDS)
     setPhaseNow('choice')
@@ -71,7 +72,8 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
     }
     if (id !== generation.current) return
     setMatch(step.match)
-    setDisplayHealth(step.match.health)
+    // Keep the knockout visible until the next round begins.
+    if (!step.roundEnded || step.match.finished) setDisplayHealth(step.match.health)
     setPhaseNow(step.match.finished ? 'finished' : 'intermission')
     setMessage(step.match.finished ? (step.match.winner === 0 ? 'Вы выиграли матч!' : 'Противник выиграл матч!') : step.roundResult === 'draw' ? 'Ничья — переигровка раунда' : step.roundEnded ? 'Раунд завершён' : 'Обмен ударами завершён')
     if (!step.match.finished) { await wait(900); if (id === generation.current) beginChoice() }
