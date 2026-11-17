@@ -61,7 +61,7 @@ select{max-width:100%;width:100%}button{cursor:pointer;background:#346c88;margin
 <button id="run">Рассчитать бой</button><button id="example">Пример взаимной гибели</button><button id="random">Случайный бой</button>
 <section class="panel" id="choicePanel">
 <h2>Проверка игрового выбора</h2><p>Общий интерфейс выбора двух действий. Пока локальная демонстрация: второй боец выбирает случайно.</p>
-<div id="choiceButtons"></div><div id="choiceStatus" aria-live="polite">Нажмите «Начать выбор»</div>
+<div id="matchStatus" aria-live="polite">Матч ещё не начат</div><button id="newMatch">Новый матч</button><div id="choiceButtons"></div><div id="choiceStatus" aria-live="polite">Нажмите «Начать выбор»</div>
 <button id="choiceStart">Начать выбор (15 секунд)</button><button id="choiceConfirm" disabled>Подтвердить два действия</button>
 </section>
 <div id="summary" aria-live="polite"></div>
@@ -75,6 +75,7 @@ select{max-width:100%;width:100%}button{cursor:pointer;background:#346c88;margin
 <script type="module">
 import { ZONES, resolveDuel, planDuel } from '/src/games/Duel/duelEngine.ts'
 import { toggleChoice, lockChoice, randomChoice, choiceRemainingSeconds, WAIT_AFTER_BOTH_READY_MS } from '/src/games/Duel/duelChoice.ts'
+import { newDuelMatch, advanceDuelMatch } from '/src/games/Duel/duelMatch.ts'
 const names={head:'голова',chest:'грудь',belly:'живот',legs:'ноги'}
 const actionNames={attack:'Атака',defend:'Защита'}
 const all=ZONES.flatMap(zone=>['attack','defend'].map(kind=>({kind,zone})))
@@ -84,6 +85,22 @@ let choiceState={selected:[],locked:false}
 let choiceStarted=0
 let choiceTimer=null
 let choiceRun=0
+let matchState=newDuelMatch()
+let matchActive=false
+function renderMatchStatus(){
+  $('matchStatus').textContent=matchActive?('Раунд '+matchState.round+' · Победы '+matchState.wins.join(' : ')+' · Здоровье '+matchState.health.join(' : ')+(matchState.finished?' · Матч окончен':'')):'Матч ещё не начат'
+}
+$('newMatch').onclick=()=>{
+  choiceRun++
+  clearInterval(choiceTimer)
+  choiceStarted=0
+  matchState=newDuelMatch()
+  matchActive=true
+  choiceState={selected:[],locked:false}
+  renderChoice()
+  renderMatchStatus()
+  $('choiceStatus').textContent='Новый матч. Начните выбор действий.'
+}
 const choiceButtons=[]
 for(const action of all){
   const button=document.createElement('button')
@@ -105,7 +122,7 @@ function renderChoice(){
   if(choiceStarted&&!choiceState.locked)$('choiceStatus').textContent='Выбрано '+choiceState.selected.length+'/2 · Осталось '+choiceRemainingSeconds(choiceStarted,Date.now())+' сек.'
 }
 function finishChoice(){
-  if(!choiceStarted||choiceState.locked)return
+  if(!choiceStarted||choiceState.locked||!matchActive||matchState.finished)return
   const run=choiceRun
   clearInterval(choiceTimer)
   if(choiceState.selected.length!==2){
@@ -120,15 +137,20 @@ function finishChoice(){
   setTimeout(()=>{
     if(run!==choiceRun)return
     const opponent=randomChoice()
-    set([...choiceState.selected,...opponent],[3,3])
+    const healthBefore=[...matchState.health]
+    const step=advanceDuelMatch(matchState,choiceState.selected,opponent)
+    set([...choiceState.selected,...opponent],healthBefore)
+    matchState=step.match
+    renderMatchStatus()
     choiceStarted=0
     renderChoice()
     render()
-    $('choiceStatus').textContent='Выбор завершён. Противник выбрал два случайных действия.'
+    $('choiceStatus').textContent=matchState.finished?('Матч завершён! '+(matchState.winner===0?'Победил игрок':'Победил противник')):step.roundResult==='draw'?'Оба погибли — переигровка раунда.':step.roundEnded?'Раунд завершён. Начните следующий выбор.':'Обмен ударами завершён. Начните следующий выбор.'
     play()
   },WAIT_AFTER_BOTH_READY_MS)
 }
 $('choiceStart').onclick=()=>{
+  if(!matchActive||matchState.finished){$('choiceStatus').textContent='Сначала начните новый матч.';return}
   choiceRun++
   clearInterval(choiceTimer)
   choiceState={selected:[],locked:false}
