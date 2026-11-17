@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { ZONES, planDuel, type Action } from './duelEngine'
+import { planDuel } from './duelEngine'
+import DuelBoard, { type DuelPose } from './DuelBoard'
 import { CHOICE_SECONDS, WAIT_AFTER_BOTH_READY_MS, choiceRemainingSeconds, completeChoice, lockChoice, randomChoice, toggleChoice, type ChoiceState } from './duelChoice'
 import { advanceDuelMatch, newDuelMatch, type MatchState } from './duelMatch'
 import './DuelSolo.css'
 
-const actions: Action[] = ZONES.flatMap(zone => [{ kind: 'attack' as const, zone }, { kind: 'defend' as const, zone }])
-const zoneNames = { head: 'Голова', chest: 'Грудь', belly: 'Живот', legs: 'Ноги' }
 const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 type Phase = 'idle' | 'choice' | 'waiting' | 'combat' | 'intermission' | 'finished'
-type Pose = { kind: 'attacking' | 'defending' | 'hit' | 'fallen' | ''; zone?: Action['zone'] }
 
 export default function DuelSolo({ onBack }: { onBack: () => void }) {
   const [match, setMatch] = useState<MatchState>(newDuelMatch)
@@ -16,7 +14,7 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [remaining, setRemaining] = useState(CHOICE_SECONDS)
   const [message, setMessage] = useState('Начните новый матч')
-  const [poses, setPoses] = useState<[Pose, Pose]>([{ kind: '' }, { kind: '' }])
+  const [poses, setDuelPoses] = useState<[DuelPose, DuelPose]>([{ kind: '' }, { kind: '' }])
   const generation = useRef(0)
   const mounted = useRef(true)
   const choiceRef = useRef<ChoiceState>({ selected: [], locked: false })
@@ -39,7 +37,7 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
     const initial = newDuelMatch()
     matchRef.current = initial
     setMatch(initial)
-    setPoses([{ kind: '' }, { kind: '' }])
+    setDuelPoses([{ kind: '' }, { kind: '' }])
     beginChoice()
   }
   async function submit() {
@@ -59,13 +57,13 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
     setMessage('Бой!')
     for (const beat of planDuel(step.resolution, before).beats) {
       if (id !== generation.current) return
-      const next: [Pose, Pose] = [{ kind: '' }, { kind: '' }]
+      const next: [DuelPose, DuelPose] = [{ kind: '' }, { kind: '' }]
       if (beat.kind === 'unused-defense') next[beat.fighter] = { kind: 'defending', zone: beat.zone }
       if (beat.kind === 'clash') { next[0] = { kind: 'attacking', zone: beat.zone }; next[1] = { kind: 'attacking', zone: beat.zone } }
       if (beat.kind === 'shield-block') { next[beat.attacker] = { kind: 'attacking', zone: beat.zone }; next[beat.defender] = { kind: 'defending', zone: beat.zone } }
       if (beat.kind === 'strike') for (const hit of beat.hits) { next[hit.source] = { kind: 'attacking', zone: hit.zone }; next[hit.target] = { kind: 'hit' } }
       if (beat.kind === 'fall') for (const fighter of beat.fighters) next[fighter] = { kind: 'fallen' }
-      setPoses(next)
+      setDuelPoses(next)
       await wait(beat.kind === 'fall' ? 650 : 520)
     }
     if (id !== generation.current) return
@@ -90,14 +88,9 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
   return <main className="duel-solo">
     <header><button onClick={onBack}>← Назад</button><h1>⚔ Дуэль</h1></header>
     <p className="duel-score">Раунд {match.round} · Победы {match.wins.join(' : ')} · HP {match.health.join(' : ')}</p>
-    <div className="duel-arena">
-      {poses.map((pose, i) => <div key={i} className={['duel-fighter', i === 1 ? 'right' : '', pose.kind, pose.zone ? 'zone-' + pose.zone : ''].join(' ')}>
-        <div className="duel-head" /><div className="duel-body" /><div className="duel-legs" /><div className="duel-shield" /><div className="duel-sword" />
-      </div>)}
-    </div>
+    <DuelBoard poses={poses} choice={choice} canChoose={phase === 'choice'} onChoose={action => setChoiceNow(toggleChoice(choiceRef.current, action))} />
     <p className="duel-message" aria-live="polite">{message}</p>
     {phase === 'choice' && <p className="duel-timer">Осталось {remaining} сек.</p>}
-    <div className="duel-choices">{actions.map(action => <button key={action.kind + action.zone} disabled={phase !== 'choice'} className={choice.selected.some(selected => selected.kind === action.kind && selected.zone === action.zone) ? 'selected' : ''} onClick={() => setChoiceNow(toggleChoice(choiceRef.current, action))}>{action.kind === 'attack' ? '⚔' : '🛡'} {zoneNames[action.zone]}</button>)}</div>
     <div className="duel-controls"><button onClick={newMatch}>Новый матч</button><button disabled={phase !== 'choice' || choice.selected.length !== 2} onClick={() => void submit()}>Подтвердить</button></div>
   </main>
 }
