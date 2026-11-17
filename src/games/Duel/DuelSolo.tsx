@@ -27,6 +27,7 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
   function beginChoice() {
     if (!mounted.current || matchRef.current.finished) return
     setChoiceNow({ selected: [], locked: false })
+    setDuelPoses([{ kind: '' }, { kind: '' }])
     deadline.current = Date.now()
     setRemaining(CHOICE_SECONDS)
     setPhaseNow('choice')
