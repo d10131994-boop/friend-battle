@@ -18,6 +18,7 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
   const [message, setMessage] = useState('Начните новый матч')
   const [poses, setPoses] = useState<[Pose, Pose]>([{ kind: '' }, { kind: '' }])
   const generation = useRef(0)
+  const mounted = useRef(true)
   const choiceRef = useRef<ChoiceState>({ selected: [], locked: false })
   const matchRef = useRef(match)
   const phaseRef = useRef<Phase>('idle')
@@ -26,7 +27,7 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
   function setPhaseNow(next: Phase) { phaseRef.current = next; setPhase(next) }
   function setChoiceNow(next: ChoiceState) { choiceRef.current = next; setChoice(next) }
   function beginChoice() {
-    if (matchRef.current.finished) return
+    if (!mounted.current || matchRef.current.finished) return
     setChoiceNow({ selected: [], locked: false })
     deadline.current = Date.now()
     setRemaining(CHOICE_SECONDS)
@@ -82,7 +83,10 @@ export default function DuelSolo({ onBack }: { onBack: () => void }) {
     }, 100)
     return () => window.clearInterval(interval)
   }, [phase])
-  useEffect(() => () => { generation.current++ }, [])
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false; generation.current++ }
+  }, [])
   return <main className="duel-solo">
     <header><button onClick={onBack}>← Назад</button><h1>⚔ Дуэль</h1></header>
     <p className="duel-score">Раунд {match.round} · Победы {match.wins.join(' : ')} · HP {match.health.join(' : ')}</p>
