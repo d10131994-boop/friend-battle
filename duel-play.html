@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Дуэль — одиночная игра</title>
+<style>
+:root{font:16px system-ui;color:#fff3df;background:#152436}*{box-sizing:border-box}
+body{margin:0}main{max-width:720px;margin:auto;padding:18px}h1{text-align:center}
+button{font:inherit;border:2px solid #d8b875;border-radius:12px;padding:12px;background:#294b62;color:white;cursor:pointer}
+button:disabled{opacity:.45;cursor:default}.primary{background:#a66b2b}
+#score{text-align:center;font-weight:bold;font-size:18px;margin:14px 0}
+#stage{height:310px;border:3px solid #b49a6c;border-radius:18px;background:linear-gradient(#4d7790 0 70%,#62754b 70%);display:flex;justify-content:center;align-items:flex-end;gap:38px;padding:15px;overflow:hidden}
+.fighter{width:130px;height:220px;position:relative;transform-origin:bottom;transition:transform .25s,translate .2s,filter .2s}
+.fighter.right{transform:scaleX(-1)}.head{position:absolute;left:47px;top:20px;width:43px;height:43px;border:4px solid #26384b;border-radius:50%;background:#e8bb86}
+.body{position:absolute;left:40px;top:68px;width:55px;height:85px;border:4px solid #26384b;border-radius:15px;background:#b6c1ca}
+.legs{position:absolute;left:50px;top:147px;width:40px;height:65px;border-left:12px solid #273b52;border-right:12px solid #273b52}
+.shield{position:absolute;z-index:2;left:3px;top:83px;width:48px;height:65px;border:6px solid #f0cc8d;border-radius:42%;background:#a57537;transition:transform .2s}
+.sword{position:absolute;left:107px;top:48px;width:8px;height:115px;border-radius:5px;background:linear-gradient(90deg,#8b9ca9,#fff,#8b9ca9);transform:rotate(28deg);transform-origin:50% 92%;transition:transform .2s}
+.sword:after{content:'';position:absolute;bottom:15px;left:-12px;width:32px;height:7px;background:#d9ad5c}
+.attacking{translate:24px 0}.right.attacking{translate:-24px 0}
+.attacking .sword{transform:rotate(-92deg)}.defending .shield{transform:translate(20px,-26px) rotate(-20deg)}
+.zone-head.defending .shield{transform:translate(20px,-65px)}.zone-belly.defending .shield{transform:translate(20px,3px)}.zone-legs.defending .shield{transform:translate(20px,45px)}
+.hit{filter:drop-shadow(0 0 16px red)}.fallen{transform:rotate(80deg) translateY(25px)}.right.fallen{transform:scaleX(-1) rotate(80deg) translateY(25px)}
+#message{text-align:center;min-height:52px;margin:15px 0;font-weight:700}
+#choices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+#choices button{font-size:13px;padding:12px 4px}#choices button.chosen{background:#a8792b;border-color:#ffdf8b}
+.controls{display:flex;gap:12px;justify-content:center;margin:15px 0}.controls button{flex:1;max-width:270px}
+#countdown{text-align:center;font-weight:bold;color:#ffd98c}
+@media(max-width:480px){#stage{gap:8px;height:270px}#choices{grid-template-columns:repeat(2,1fr)}.fighter{scale:.83;transform-origin:bottom center}main{padding:10px}}
+</style>
+</head>
+<body><main>
+<h1>⚔ Дуэль</h1>
+<div id="score"></div>
+<div id="stage" aria-label="Боевая арена">
+<div id="fighter0" class="fighter"><div class="head"></div><div class="body"></div><div class="legs"></div><div class="shield"></div><div class="sword"></div></div>
+<div id="fighter1" class="fighter right"><div class="head"></div><div class="body"></div><div class="legs"></div><div class="shield"></div><div class="sword"></div></div>
+</div>
+<div id="message" aria-live="polite">Нажмите «Новый матч», чтобы начать</div>
+<div id="countdown"></div><div id="choices"></div>
+<div class="controls"><button id="start" class="primary">Новый матч</button><button id="confirm" disabled>Подтвердить</button></div>
+</main>
+<script type="module">
+import { ZONES, planDuel } from '/src/games/Duel/duelEngine.ts'
+import { toggleChoice, lockChoice, completeChoice, randomChoice, choiceRemainingSeconds, CHOICE_SECONDS, WAIT_AFTER_BOTH_READY_MS } from '/src/games/Duel/duelChoice.ts'
+import { newDuelMatch, advanceDuelMatch } from '/src/games/Duel/duelMatch.ts'
+const $=id=>document.getElementById(id)
+const labels={head:'Голова',chest:'Грудь',belly:'Живот',legs:'Ноги'}
+const actions=ZONES.flatMap(zone=>[{kind:'attack',zone},{kind:'defend',zone}])
+let state=newDuelMatch(),choice={selected:[],locked:false},phase='idle',startedAt=0,clock=null,token=0
+const sleep=ms=>new Promise(r=>setTimeout(r,ms))
+const buttons=actions.map(action=>{
+  const b=document.createElement('button')
+  b.textContent=(action.kind==='attack'?'⚔ ':'🛡 ')+labels[action.zone]
+  b.onclick=()=>{if(phase!=='choice')return;choice=toggleChoice(choice,action);refresh()}
+  $('choices').append(b);return b
+})
+function refresh(){
+  $('score').textContent='Раунд '+state.round+' · Победы '+state.wins.join(' : ')+' · HP '+state.health.join(' : ')
+  buttons.forEach((b,i)=>{b.disabled=phase!=='choice';b.classList.toggle('chosen',choice.selected.some(a=>a.kind===actions[i].kind&&a.zone===actions[i].zone))})
+  $('confirm').disabled=phase!=='choice'||choice.selected.length!==2
+  $('countdown').textContent=phase==='choice'?'Выбор: '+choiceRemainingSeconds(startedAt,Date.now())+' / '+CHOICE_SECONDS+' сек.':''
+}
+function pose(i,kind,zone){$('fighter'+i).classList.add(kind,'zone-'+zone)}
+function reset(){for(const i of [0,1])$('fighter'+i).className='fighter'+(i?' right':'')}
+async function animate(plan,id){
+  reset()
+  for(const beat of plan.beats){
+    if(id!==token)return
+    reset()
+    if(beat.kind==='unused-defense')pose(beat.fighter,'defending',beat.zone)
+    if(beat.kind==='clash')for(const i of [0,1])pose(i,'attacking',beat.zone)
+    if(beat.kind==='shield-block'){pose(beat.defender,'defending',beat.zone);pose(beat.attacker,'attacking',beat.zone)}
+    if(beat.kind==='strike')for(const hit of beat.hits){pose(hit.source,'attacking',hit.zone);$('fighter'+hit.target).classList.add('hit')}
+    if(beat.kind==='fall')for(const i of beat.fighters)$('fighter'+i).classList.add('fallen')
+    await sleep(beat.kind==='fall'?650:520)
+  }
+}
+function beginChoice(){
+  if(state.finished)return
+  phase='choice';choice={selected:[],locked:false};startedAt=Date.now()
+  $('message').textContent='Выберите два действия'
+  clearInterval(clock);clock=setInterval(()=>{
+    if(phase!=='choice'){clearInterval(clock);return}
+    refresh()
+    if(choiceRemainingSeconds(startedAt,Date.now())===0)submit()
+  },100)
+  refresh()
+}
+async function submit(){
+  if(phase!=='choice')return
+  clearInterval(clock)
+  const id=token
+  if(choice.selected.length!==2)choice=completeChoice(choice)
+  choice=lockChoice(choice);phase='waiting';refresh()
+  $('message').textContent='Выбор принят. Противник готов…'
+  await sleep(WAIT_AFTER_BOTH_READY_MS)
+  if(id!==token)return
+  const opponent=randomChoice()
+  const before=[...state.health]
+  const step=advanceDuelMatch(state,choice.selected,opponent)
+  state=step.match;phase='combat';refresh()
+  $('message').textContent='Бой!'
+  await animate(planDuel(step.resolution,before),id)
+  if(id!==token)return
+  phase=state.finished?'finished':'intermission';refresh()
+  $('message').textContent=state.finished?(state.winner===0?'Вы выиграли матч!':'Противник выиграл матч!'):step.roundResult==='draw'?'Оба бойца погибли — раунд переигрывается':step.roundEnded?'Раунд завершён':'Обмен ударами завершён'
+  if(!state.finished){await sleep(900);if(id===token)beginChoice()}
+}
+$('confirm').onclick=submit
+$('start').onclick=()=>{token++;clearInterval(clock);state=newDuelMatch();reset();beginChoice()}
+refresh()
+</script></body></html>

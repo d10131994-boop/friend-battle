@@ -8,13 +8,14 @@ import ReactionRushSolo from './games/ReactionRush/ReactionRushSolo'
 import BrainBattle from './games/BrainBattle/BrainBattle'
 import RockPaperScissorsSolo from './games/rockPaperScissors/RockPaperScissorsSolo'
 import DemocracyMergeSolo from './games/DemocracyMerge/DemocracyMergeSolo'
+import DuelSolo from './games/Duel/DuelSolo'
 import { MainMenu, MultiplayerRoomMenu, SoloRoomMenu } from './menus'
 import type { GameId } from './menus'
 import BottomNavigation from './components/BottomNavigation/BottomNavigation'
 import PlayerProfile from './components/PlayerProfile/PlayerProfile'
 import { telegramUser, telegramInitData, telegramStartParam } from './services/telegram'
 
-type Screen = 'home' | 'solo-room' | 'reaction-game' | 'brain-game' | 'rock-paper-scissors' | 'democracy-solo' | 'no-count-it-solo' | 'multiplayer-room' | 'profile'
+type Screen = 'home' | 'solo-room' | 'reaction-game' | 'brain-game' | 'rock-paper-scissors' | 'democracy-solo' | 'duel-solo' | 'no-count-it-solo' | 'multiplayer-room' | 'profile'
 
 function getInviteCode(startParam: string | undefined): string | undefined {
   if (!startParam) return undefined
@@ -46,6 +47,8 @@ function AppContent() {
       setScreen('no-count-it-solo')
     } else if (gameId === 'democracy-merge') {
       setScreen('democracy-solo')
+    } else if (gameId === 'duel') {
+      setScreen('duel-solo')
     } else {
       const unreachableGame: never = gameId
       throw new Error(`Solo game route is not implemented: ${unreachableGame}`)
@@ -96,6 +99,8 @@ function AppContent() {
 
       {screen === 'rock-paper-scissors' && <RockPaperScissorsSolo onBack={() => setScreen('solo-room')} />}
 
+      {screen === 'duel-solo' && <DuelSolo onBack={() => setScreen('solo-room')} />}
+
       <div hidden={screen !== 'democracy-solo'}><DemocracyMergeSolo onBack={() => setScreen('solo-room')} /></div>
 
       {screen === 'profile' && (
@@ -122,6 +127,9 @@ function AppContent() {
 
 export default function App() {
   const params = new URLSearchParams(window.location.search)
+  if (import.meta.env.DEV && params.get('duel-preview') === '1') {
+    return <DuelSolo onBack={() => { window.location.href = window.location.pathname }} />
+  }
   if (import.meta.env.DEV && params.get('no-count-it-generator') === '1') {
     return <SceneGeneratorPreview />
   }

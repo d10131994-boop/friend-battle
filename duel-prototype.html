@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duel — choreography lab</title>
+<style>
+:root{font:16px system-ui;color:#f2e9d8;background:#18212d}*{box-sizing:border-box}
+main{max-width:1000px;margin:auto;padding:24px}h1{margin-bottom:4px}p{color:#b7c6d5}
+.panel{background:#273547;border:1px solid #45546a;border-radius:14px;padding:18px}
+.layout{display:grid;grid-template-columns:1fr 1fr;gap:16px}label{display:block;margin:10px 0 4px}
+select,input,button{font:inherit;background:#142030;color:white;border:1px solid #71839a;border-radius:7px;padding:8px}
+select{max-width:100%;width:100%}button{cursor:pointer;background:#346c88;margin:14px 8px 0 0}
+#choicePanel{margin-top:16px}#choiceButtons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}#choiceButtons button{margin:0;padding:10px 4px;font-size:14px}#choiceButtons button.chosen{background:#b37a2d;border-color:#ffe2a0}#choiceButtons button:disabled{opacity:.55}#choiceStatus{margin-top:12px;font-weight:700}#arena{margin-top:18px;position:relative;overflow:hidden;min-height:265px;background:linear-gradient(#385b70 0 66%,#52644d 66%);border:3px solid #a1aab0;border-radius:14px;display:flex;justify-content:center;gap:34px;align-items:flex-end;padding:18px 12px 20px}
+.fighter{position:relative;width:150px;height:205px;transform-origin:bottom center;transition:transform .24s,filter .2s}.fighter.right{transform:scaleX(-1)}
+.fighter .head{position:absolute;width:47px;height:47px;border-radius:50%;background:#e6bd88;left:55px;top:14px;border:4px solid #293341}
+.fighter .body{position:absolute;left:48px;top:63px;width:62px;height:82px;background:#b4bec8;border:5px solid #293341;border-radius:18px}
+.fighter .legs{position:absolute;left:58px;top:140px;width:44px;height:64px;border-left:14px solid #303c51;border-right:14px solid #303c51}
+.fighter .shield{position:absolute;left:9px;top:78px;width:50px;height:64px;border-radius:45% 45% 50% 50%;background:#a47c43;border:6px solid #e7c78a;transform-origin:center;transition:transform .18s}
+.fighter .sword{position:absolute;left:117px;top:36px;width:9px;height:120px;background:linear-gradient(90deg,#71879d,#f6fbff,#71879d);border-radius:7px;transform:rotate(28deg);transform-origin:50% 92%;transition:transform .2s}
+.fighter .sword:after{content:'';position:absolute;bottom:14px;left:-12px;width:33px;height:7px;background:#c39b4f}
+.fighter.defending .shield{transform:translate(20px,-20px) rotate(-20deg)}
+.fighter.attacking .sword{transform:rotate(-100deg)}
+/* Both fighters face inward. A strike lunges toward the opponent rather than into the fighter. */
+.fighter.attacking{translate:26px 0}
+.fighter.right.attacking{translate:-26px 0}
+.fighter{transition:transform .24s,filter .2s,translate .2s}
+.fighter .shield{z-index:3}
+.fighter .sword{z-index:2}
+.fighter.zone-head .sword{transform-origin:50% 92%;rotate:-27deg}
+.fighter.zone-chest .sword{rotate:4deg}
+.fighter.zone-belly .sword{rotate:24deg}
+.fighter.zone-legs .sword{rotate:44deg}
+.fighter.attacking.zone-head .sword{transform:rotate(-108deg)}
+.fighter.attacking.zone-chest .sword{transform:rotate(-89deg)}
+.fighter.attacking.zone-belly .sword{transform:rotate(-70deg)}
+.fighter.attacking.zone-legs .sword{transform:rotate(-50deg)}
+.fighter.defending.zone-head .shield{transform:translate(20px,-66px) rotate(-20deg)}
+.fighter.defending.zone-chest .shield{transform:translate(20px,-35px) rotate(-20deg)}
+.fighter.defending.zone-belly .shield{transform:translate(20px,2px) rotate(-20deg)}
+.fighter.defending.zone-legs .shield{transform:translate(20px,50px) rotate(-20deg)}
+.fighter.fallen{translate:0 0}
+.fighter.attacking{filter:brightness(1.25)}
+.fighter.hit{filter:drop-shadow(0 0 16px #ff3030)}
+.fighter.fallen{transform:rotate(80deg) translateY(26px)}
+.fighter.right.fallen{transform:scaleX(-1) rotate(80deg) translateY(26px)}
+.damage{position:absolute;top:12px;left:25px;font-size:28px;font-weight:900;color:#ff4242;text-shadow:1px 2px #260c0c;opacity:0;transition:opacity .15s,transform .5s}
+.fighter.hit .damage{opacity:1;transform:translateY(-24px)}
+#arenaStatus{text-align:center;font-weight:bold;margin:12px}
+#timeline{margin-top:20px}.beat{display:grid;grid-template-columns:50px 1fr 1fr;gap:8px;padding:12px;border-bottom:1px solid #48576b}
+.beat:last-child{border:0}.fatal{background:#62373d}.tag{color:#f4ce77}#summary{margin-top:14px;font-weight:bold}
+@media(max-width:600px){.layout{grid-template-columns:1fr}.beat{grid-template-columns:36px 1fr 1fr;font-size:13px}}
+</style>
+</head>
+<body><main>
+<h1>Дуэль — лаборатория постановки</h1>
+<p>Прототип для проверки расчёта боя и порядка движений. Схематичные бойцы показывают порядок движений. Пока без подключения к игре.</p>
+<div class="layout">
+<section class="panel"><h2>Игрок слева</h2><label>Здоровье <select id="hp0"></select></label><label>Первое действие <select id="a0"></select></label><label>Второе действие <select id="a1"></select></label></section>
+<section class="panel"><h2>Противник справа</h2><label>Здоровье <select id="hp1"></select></label><label>Первое действие <select id="b0"></select></label><label>Второе действие <select id="b1"></select></label></section>
+</div>
+<button id="run">Рассчитать бой</button><button id="example">Пример взаимной гибели</button><button id="random">Случайный бой</button>
+<section class="panel" id="choicePanel">
+<h2>Проверка игрового выбора</h2><p>Общий интерфейс выбора двух действий. Пока локальная демонстрация: второй боец выбирает случайно.</p>
+<div id="matchStatus" aria-live="polite">Матч ещё не начат</div><button id="newMatch">Новый матч</button><div id="choiceButtons"></div><div id="choiceStatus" aria-live="polite">Нажмите «Начать выбор»</div>
+<button id="choiceStart">Начать выбор (15 секунд)</button><button id="choiceConfirm" disabled>Подтвердить два действия</button>
+</section>
+<div id="summary" aria-live="polite"></div>
+<div id="arena" aria-label="Схематичная анимация дуэли">
+  <div class="fighter" id="fighter0"><div class="head"></div><div class="body"></div><div class="legs"></div><div class="shield"></div><div class="sword"></div><div class="damage">−1</div></div>
+  <div class="fighter right" id="fighter1"><div class="head"></div><div class="body"></div><div class="legs"></div><div class="shield"></div><div class="sword"></div><div class="damage">−1</div></div>
+</div><div id="arenaStatus" aria-live="polite">Готов к бою</div>
+<button id="play">▶ Воспроизвести движения</button><button id="stop">■ Остановить</button>
+<section class="panel" id="timeline"><h2>Последовательность движений</h2><div id="beats"></div></section>
+</main>
+<script type="module">
+import { ZONES, resolveDuel, planDuel } from '/src/games/Duel/duelEngine.ts'
+import { toggleChoice, lockChoice, randomChoice, choiceRemainingSeconds, WAIT_AFTER_BOTH_READY_MS } from '/src/games/Duel/duelChoice.ts'
+import { newDuelMatch, advanceDuelMatch } from '/src/games/Duel/duelMatch.ts'
+const names={head:'голова',chest:'грудь',belly:'живот',legs:'ноги'}
+const actionNames={attack:'Атака',defend:'Защита'}
+const all=ZONES.flatMap(zone=>['attack','defend'].map(kind=>({kind,zone})))
+const ids=['a0','a1','b0','b1']
+const $=id=>document.getElementById(id)
+let choiceState={selected:[],locked:false}
+let choiceStarted=0
+let choiceTimer=null
+let choiceRun=0
+let matchState=newDuelMatch()
+let matchActive=false
+function renderMatchStatus(){
+  $('matchStatus').textContent=matchActive?('Раунд '+matchState.round+' · Победы '+matchState.wins.join(' : ')+' · Здоровье '+matchState.health.join(' : ')+(matchState.finished?' · Матч окончен':'')):'Матч ещё не начат'
+}
+$('newMatch').onclick=()=>{
+  choiceRun++
+  clearInterval(choiceTimer)
+  choiceStarted=0
+  matchState=newDuelMatch()
+  matchActive=true
+  choiceState={selected:[],locked:false}
+  renderChoice()
+  renderMatchStatus()
+  $('choiceStatus').textContent='Новый матч. Начните выбор действий.'
+}
+const choiceButtons=[]
+for(const action of all){
+  const button=document.createElement('button')
+  button.textContent=(action.kind==='attack'?'⚔ ':'🛡 ')+names[action.zone]
+  button.disabled=true
+  button.onclick=()=>{
+    choiceState=toggleChoice(choiceState,action)
+    renderChoice()
+  }
+  $('choiceButtons').append(button)
+  choiceButtons.push(button)
+}
+function renderChoice(){
+  for(let i=0;i<all.length;i++){
+    choiceButtons[i].classList.toggle('chosen',choiceState.selected.some(a=>a.kind===all[i].kind&&a.zone===all[i].zone))
+    choiceButtons[i].disabled=!choiceStarted||choiceState.locked
+  }
+  $('choiceConfirm').disabled=!choiceStarted||choiceState.locked||choiceState.selected.length!==2
+  if(choiceStarted&&!choiceState.locked)$('choiceStatus').textContent='Выбрано '+choiceState.selected.length+'/2 · Осталось '+choiceRemainingSeconds(choiceStarted,Date.now())+' сек.'
+}
+function finishChoice(){
+  if(!choiceStarted||choiceState.locked||!matchActive||matchState.finished)return
+  const run=choiceRun
+  clearInterval(choiceTimer)
+  if(choiceState.selected.length!==2){
+    choiceStarted=0
+    $('choiceStatus').textContent='Время вышло: необходимо выбрать два действия. Попробуйте снова.'
+    renderChoice()
+    return
+  }
+  choiceState=lockChoice(choiceState)
+  renderChoice()
+  $('choiceStatus').textContent='Оба бойца готовы. Начало через 2 секунды…'
+  setTimeout(()=>{
+    if(run!==choiceRun)return
+    const opponent=randomChoice()
+    const healthBefore=[...matchState.health]
+    const step=advanceDuelMatch(matchState,choiceState.selected,opponent)
+    set([...choiceState.selected,...opponent],healthBefore)
+    matchState=step.match
+    renderMatchStatus()
+    choiceStarted=0
+    renderChoice()
+    render()
+    $('choiceStatus').textContent=matchState.finished?('Матч завершён! '+(matchState.winner===0?'Победил игрок':'Победил противник')):step.roundResult==='draw'?'Оба погибли — переигровка раунда.':step.roundEnded?'Раунд завершён. Начните следующий выбор.':'Обмен ударами завершён. Начните следующий выбор.'
+    play()
+  },WAIT_AFTER_BOTH_READY_MS)
+}
+$('choiceStart').onclick=()=>{
+  if(!matchActive||matchState.finished){$('choiceStatus').textContent='Сначала начните новый матч.';return}
+  choiceRun++
+  clearInterval(choiceTimer)
+  choiceState={selected:[],locked:false}
+  choiceStarted=Date.now()
+  renderChoice()
+  choiceTimer=setInterval(()=>{
+    if(!choiceStarted){clearInterval(choiceTimer);return}
+    if(choiceRemainingSeconds(choiceStarted,Date.now())===0)finishChoice()
+    else renderChoice()
+  },100)
+}
+$('choiceConfirm').onclick=finishChoice
+for(const id of ids)for(let i=0;i<all.length;i++)$(id).add(new Option(actionNames[all[i].kind]+' — '+names[all[i].zone],String(i)))
+for(const id of ['hp0','hp1'])for(let n=1;n<=3;n++)$(id).add(new Option(n+' HP',n))
+function set(actions,hp){ids.forEach((id,i)=>$(id).value=String(all.findIndex(a=>a.kind===actions[i].kind&&a.zone===actions[i].zone)));$('hp0').value=hp[0];$('hp1').value=hp[1]}
+function describe(beat){
+  switch(beat.kind){
+    case 'unused-defense':return [beat.fighter===0?'Щит: '+names[beat.zone]:'',beat.fighter===1?'Щит: '+names[beat.zone]:'']
+    case 'clash':return ['Парирование: '+names[beat.zone],'Парирование: '+names[beat.zone]]
+    case 'shield-block':return [beat.defender===0?'Блок: '+names[beat.zone]:'Удар в щит: '+names[beat.zone],beat.defender===1?'Блок: '+names[beat.zone]:'Удар в щит: '+names[beat.zone]]
+    case 'strike':return [0,1].map(i=>beat.hits.filter(h=>h.source===i).map(h=>(h.reflected?'Отражение':'Удар')+' → '+names[h.zone]).join(' + ')||'Получает '+beat.hits.filter(h=>h.target===i).length+' урона')
+    case 'fall':return [0,1].map(i=>beat.fighters.includes(i)?'Падение':'')
+  }
+}
+let playbackToken=0
+let activePlan=null
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))
+function pose(i,kind,zone){
+  const fighter=$('fighter'+i)
+  fighter.classList.add(kind,'zone-'+zone)
+}
+function resetFighters(){
+  for(const i of [0,1])$('fighter'+i).className='fighter'+(i===1?' right':'')
+}
+async function play(){
+  if(!activePlan)return
+  const token=++playbackToken
+  resetFighters()
+  $('arenaStatus').textContent='Подготовка к бою'
+  await sleep(200)
+  for(const [index,beat] of activePlan.beats.entries()){
+    if(token!==playbackToken)return
+    resetFighters()
+    const text=describe(beat)
+    $('arenaStatus').textContent=(index+1)+' / '+activePlan.beats.length+': '+text.filter(Boolean).join(' · ')
+    if(beat.kind==='unused-defense')pose(beat.fighter,'defending',beat.zone)
+    if(beat.kind==='shield-block'){
+      pose(beat.defender,'defending',beat.zone)
+      pose(beat.attacker,'attacking',beat.zone)
+    }
+    if(beat.kind==='clash')for(const i of [0,1])pose(i,'attacking',beat.zone)
+    if(beat.kind==='strike'){
+      for(const hit of beat.hits){
+        pose(hit.source,'attacking',hit.zone)
+        $('fighter'+hit.target).classList.add('hit')
+        $('fighter'+hit.target).querySelector('.damage').textContent='−'+beat.hits.filter(h=>h.target===hit.target).length
+      }
+    }
+    if(beat.kind==='fall')for(const i of beat.fighters)$('fighter'+i).classList.add('fallen')
+    await sleep(beat.kind==='fall'?650:520)
+  }
+  if(token===playbackToken)$('arenaStatus').textContent='Анимация завершена'
+}
+$('play').onclick=play
+$('stop').onclick=()=>{playbackToken++;resetFighters();$('arenaStatus').textContent='Остановлено'}
+function render(){
+  try{
+    const picks=ids.map(id=>all[Number($(id).value)])
+    const hp=[Number($('hp0').value),Number($('hp1').value)]
+    const result=resolveDuel(picks.slice(0,2),picks.slice(2,4),hp)
+    const plan=planDuel(result,hp)
+    playbackToken++
+    activePlan=plan
+    resetFighters()
+    $('arenaStatus').textContent='Нажмите «Воспроизвести движения»'
+    const resultNames={continue:'Бой продолжается',left:'Победил игрок слева',right:'Победил противник',draw:'Ничья'}
+    $('summary').textContent=resultNames[result.outcome]+' · HP: '+result.healthAfter.join(' / ')+' · Урон: '+result.damage.join(' / ')+(plan.needsChoreographyReview?' · ⚠ Требуется проверка постановки':'')
+    const root=$('beats');root.replaceChildren()
+    plan.beats.forEach((beat,i)=>{
+      const row=document.createElement('div');row.className='beat'+(beat.kind==='fall'?' fatal':'')
+      const descriptions=describe(beat)
+      for(const t of [String(i+1),...descriptions]){const cell=document.createElement('div');cell.textContent=t;row.append(cell)}
+      root.append(row)
+    })
+  }catch(e){$('summary').textContent='Ошибка: '+e.message;$('beats').replaceChildren()}
+}
+$('run').onclick=render
+$('example').onclick=()=>{set([{kind:'defend',zone:'head'},{kind:'defend',zone:'chest'},{kind:'attack',zone:'chest'},{kind:'attack',zone:'belly'}],[1,1]);render()}
+$('random').onclick=()=>{const pick=()=>{const a=Math.floor(Math.random()*8);let b=Math.floor(Math.random()*7);if(b>=a)b++;return [all[a],all[b]]};set([...pick(),...pick()],[1+Math.floor(Math.random()*3),1+Math.floor(Math.random()*3)]);render()}
+$('example').click()
+</script></body></html>

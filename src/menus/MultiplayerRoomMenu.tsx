@@ -6,6 +6,7 @@ import {
 import type { MultiplayerRoom } from '../multiplayer'
 import { telegramUser } from '../services/telegram'
 import BrainBattleMatch from '../games/BrainBattle/BrainBattleMatch'
+import DuelMatch from '../games/Duel/DuelMatch'
 import ReactionRushMatch from '../games/ReactionRush/ReactionRushMatch'
 import NoCountItMatch from '../games/NoCountIt/NoCountItMatch'
 import RockPaperScissorsMatch from '../games/rockPaperScissors/RockPaperScissorsMatch'
@@ -310,6 +311,12 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
         onStartRequestHandled={() => setStartRequested(false)}
       />
     )
+  }
+
+  if (gameScreen && room?.gameId === 'duel') {
+    return <DuelMatch initData={initData} room={room} startRequested={startRequested}
+      onStartRequestHandled={() => setStartRequested(false)} onRoomUpdate={acceptRoom}
+      onReturnToRoom={returnToRoom} />
   }
 
   if (gameScreen && room?.gameId === 'brain-battle') {
