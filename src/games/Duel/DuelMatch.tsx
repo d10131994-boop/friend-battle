@@ -16,6 +16,8 @@ type Snapshot = {
   yourChoiceSubmitted: boolean
   opponentReady: boolean
   fighter: 0 | 1
+  deadline: string
+  resolveAfter: string | null
   lastResult: { exchange: number; roundResult: 'continue' | 'left' | 'right' | 'draw'; resolution: Resolution } | null
 }
 
@@ -25,6 +27,8 @@ function parseSnapshot(value: unknown): Snapshot {
   if (typeof s.matchId !== 'string' || !Number.isSafeInteger(s.exchange) || (s.exchange as number) < 1 ||
       (s.fighter !== 0 && s.fighter !== 1) || (s.status !== 'playing' && s.status !== 'completed') ||
       typeof s.yourChoiceSubmitted !== 'boolean' || typeof s.opponentReady !== 'boolean' ||
+      typeof s.deadline !== 'string' || !Number.isFinite(Date.parse(s.deadline)) ||
+      (s.resolveAfter !== null && (typeof s.resolveAfter !== 'string' || !Number.isFinite(Date.parse(s.resolveAfter)))) ||
       !s.match || typeof s.match !== 'object') throw new Error('Некорректное состояние матча')
   const m = s.match as Record<string, unknown>
   if (!Array.isArray(m.health) || m.health.length !== 2 || !m.health.every(x => Number.isInteger(x) && x >= 0 && x <= 3) ||
@@ -62,12 +66,17 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [choice, setChoice] = useState<ChoiceState>({ selected: [], locked: false })
   const [busy, setBusy] = useState(false)
+  const [clock, setClock] = useState(Date.now())
   const exchangeRef = useRef<string | null>(null)
   const animatedExchangeRef = useRef<string | null>(null)
   const [poses, setPoses] = useState<[DuelPose, DuelPose]>([{ kind: '' }, { kind: '' }])
   const [displayHealth, setDisplayHealth] = useState<readonly [number, number] | null>(null)
   const [animating, setAnimating] = useState(false)
   const [message, setMessage] = useState('Подключаемся к матчу…')
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 250)
+    return () => window.clearInterval(timer)
+  }, [])
   useEffect(() => {
     if (!startRequested) return
     onStartRequestHandled()
@@ -170,6 +179,11 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
     {snapshot && <p className="duel-score">Раунд {snapshot.match.round} · Победы {snapshot.match.wins.join(' : ')} · HP {(displayHealth ?? snapshot.match.health).join(' : ')}</p>}
     <DuelBoard poses={poses} choice={choice} canChoose={canChoose} onChoose={action => setChoice(current => toggleChoice(current, action))} />
     {lastResult && <p className="duel-message">Последний обмен №{lastResult.exchange}: урон {lastResult.resolution.damage.join(' : ')} · {lastResult.roundResult === 'draw' ? 'Ничья' : lastResult.roundResult === 'continue' ? 'Бой продолжается' : 'Раунд завершён'}</p>}
+    {snapshot?.status === 'playing' && <p className="duel-timer">
+      {snapshot.resolveAfter
+        ? 'До боя ' + Math.max(0, Math.ceil((Date.parse(snapshot.resolveAfter) - clock) / 1000)) + ' сек.'
+        : 'До завершения выбора ' + Math.max(0, Math.ceil((Date.parse(snapshot.deadline) - clock) / 1000)) + ' сек.'}
+    </p>}
     <p className="duel-message" aria-live="polite">{snapshot?.status === 'completed' ? finishedMessage : message}</p>
     <div className="duel-controls">
       {snapshot?.status === 'completed'

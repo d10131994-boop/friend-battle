@@ -87,12 +87,14 @@ Deno.serve(async request => {
     if (room.status !== "playing" || typeof room.startedAt !== "string") {
       return reply({ error: "Duel match is not active" }, 409)
     }
-    const { error: ensureError } = await client.rpc("duel_ensure_match", {
+    const { data: ensured, error: ensureError } = await client.rpc("duel_ensure_match", {
       p_room_id: body.roomId, p_user_id: String(user.id),
     })
     if (ensureError) return reply({ error: "Duel match could not be initialized" }, 409)
+    const { error: tickError } = await client.rpc("duel_tick", { p_match_id: ensured.matchId })
+    if (tickError) return reply({ error: "Duel clock update failed" }, 503)
     const { data: match, error: matchError } = await client.from("games_duel_matches")
-      .select("id,room_id,started_at,player_ids,status,exchange,match_state,pending,last_result")
+      .select("id,room_id,started_at,player_ids,status,exchange,match_state,pending,last_result,exchange_deadline,both_ready_at")
       .eq("room_id", body.roomId).eq("started_at", room.startedAt).maybeSingle()
     if (matchError) return reply({ error: "Match lookup failed" }, 500)
     if (!match) return reply({ error: "Match has not been initialized" }, 409)
@@ -107,6 +109,8 @@ Deno.serve(async request => {
       opponentReady: Object.prototype.hasOwnProperty.call(match.pending ?? {}, String(2 - fighter)),
       lastResult: match.last_result,
       fighter,
+      deadline: match.exchange_deadline,
+      resolveAfter: match.both_ready_at ? new Date(new Date(match.both_ready_at).getTime() + 2000).toISOString() : null,
     }
     if (body.action === "get_match") return reply(snapshot)
     if (typeof body.matchId !== "string" || body.matchId !== match.id ||
@@ -127,15 +131,10 @@ Deno.serve(async request => {
       p_user_id: String(user.id), p_exchange: body.exchange, p_choices: body.choices,
     })
     if (submitError) return reply({ error: "Duel choice could not be accepted" }, 409)
-    if (submission.status === "both_ready") {
-      const { data: resolved, error: resolveError } = await client.rpc("duel_resolve_exchange", { p_match_id: match.id })
-      if (resolveError) {
-        console.error("Duel resolver failed:", resolveError.code ?? "unknown")
-        return reply({ error: "Duel exchange resolution failed" }, 503)
-      }
-      return reply({ ...submission, resolutionPending: false, resolved })
-    }
-    return reply({ ...submission, resolutionPending: false })
+    const { data: tick, error: tickErrorAfterSubmit } = await client.rpc("duel_tick", { p_match_id: match.id })
+    if (tickErrorAfterSubmit) return reply({ error: "Duel clock update failed" }, 503)
+    return reply({ ...submission, resolutionPending: tick.status === "both_ready", tick })
+
   } catch (error) {
     console.error("Duel request failed:", error instanceof Error ? error.message : "unknown")
     return reply({ error: "Unexpected server error" }, 500)
