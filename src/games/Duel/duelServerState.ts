@@ -1,6 +1,6 @@
-import { advanceDuelMatch, newDuelMatch, type MatchState, type MatchStep } from './duelMatch'
-import { parseDuelSelection } from './duelProtocol'
-import type { Selection } from './duelEngine'
+import { advanceDuelMatch, newDuelMatch, type MatchState, type MatchStep } from './duelMatch.js'
+import { parseDuelSelection } from './duelProtocol.js'
+import type { Selection } from './duelEngine.js'
 
 /**
  * Pure authoritative transition used by the trusted server.
