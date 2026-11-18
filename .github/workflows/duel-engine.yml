@@ -10,6 +10,7 @@ on:
   push:
     branches:
       - 'friend-battle-07/duel/*-AI'
+      - 'friend-battle-07/duel/*-AI-*'
     paths:
       - 'src/games/Duel/**'
       - '.github/workflows/duel-engine.yml'
