@@ -3,7 +3,8 @@ import type { MultiplayerRoom } from '../../multiplayer'
 import { createDuelApi } from './duelApi'
 import { toggleChoice, type ChoiceState } from './duelChoice'
 import DuelBoard from './DuelBoard'
-import type { DuelPose } from './duelPresentation'
+import { posesForBeat, type DuelPose } from './duelPresentation'
+import { planDuel, ZONES, type Resolution } from './duelEngine'
 import type { MatchState } from './duelMatch'
 import './DuelSolo.css'
 
@@ -15,7 +16,7 @@ type Snapshot = {
   yourChoiceSubmitted: boolean
   opponentReady: boolean
   fighter: 0 | 1
-  lastResult: { exchange: number; roundResult: 'continue' | 'left' | 'right' | 'draw'; resolution: { damage: [number, number]; healthAfter: [number, number] } } | null
+  lastResult: { exchange: number; roundResult: 'continue' | 'left' | 'right' | 'draw'; resolution: Resolution } | null
 }
 
 function parseSnapshot(value: unknown): Snapshot {
@@ -36,7 +37,11 @@ function parseSnapshot(value: unknown): Snapshot {
     const resolution = result.resolution as Record<string, unknown> | null
     if (!Number.isSafeInteger(result.exchange) ||
         !['continue', 'left', 'right', 'draw'].includes(String(result.roundResult)) ||
-        !resolution || !Array.isArray(resolution.damage) || resolution.damage.length !== 2 ||
+        !resolution || !Array.isArray(resolution.hits) || !Array.isArray(resolution.clashes) || !Array.isArray(resolution.blocks) ||
+        !resolution.hits.every(hit => hit && (hit.source === 0 || hit.source === 1) && (hit.target === 0 || hit.target === 1) && ZONES.includes(hit.zone) && typeof hit.reflected === 'boolean') ||
+        !resolution.clashes.every(clash => clash && ZONES.includes(clash.zone)) ||
+        !resolution.blocks.every(block => block && (block.attacker === 0 || block.attacker === 1) && (block.defender === 0 || block.defender === 1) && ZONES.includes(block.zone)) ||
+        !Array.isArray(resolution.damage) || resolution.damage.length !== 2 ||
         !resolution.damage.every(x => Number.isInteger(x) && x >= 0 && x <= 2) ||
         !Array.isArray(resolution.healthAfter) || resolution.healthAfter.length !== 2 ||
         !resolution.healthAfter.every(x => Number.isInteger(x) && x >= 0 && x <= 3))
@@ -58,6 +63,10 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
   const [choice, setChoice] = useState<ChoiceState>({ selected: [], locked: false })
   const [busy, setBusy] = useState(false)
   const exchangeRef = useRef<string | null>(null)
+  const animatedExchangeRef = useRef<string | null>(null)
+  const [poses, setPoses] = useState<[DuelPose, DuelPose]>([{ kind: '' }, { kind: '' }])
+  const [displayHealth, setDisplayHealth] = useState<readonly [number, number] | null>(null)
+  const [animating, setAnimating] = useState(false)
   const [message, setMessage] = useState('Подключаемся к матчу…')
   useEffect(() => {
     if (!startRequested) return
@@ -107,6 +116,39 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
     const timer = window.setInterval(() => { void refresh() }, 1500)
     return () => { alive = false; window.clearInterval(timer) }
   }, [api, room.roomId])
+  useEffect(() => {
+    if (!snapshot?.lastResult) return
+    const result = snapshot.lastResult
+    const key = snapshot.matchId + ':' + result.exchange
+    if (animatedExchangeRef.current === key) return
+    animatedExchangeRef.current = key
+    let cancelled = false
+    const before: [number, number] = [
+      Math.min(3, result.resolution.healthAfter[0] + result.resolution.damage[0]),
+      Math.min(3, result.resolution.healthAfter[1] + result.resolution.damage[1]),
+    ]
+    const animated: [number, number] = [...before]
+    setDisplayHealth(before)
+    setAnimating(true)
+    const run = async () => {
+      for (const beat of planDuel({ ...result.resolution, unusedDefenses: result.resolution.unusedDefenses ?? [] }, before).beats) {
+        if (cancelled) return
+        setPoses([...posesForBeat(beat)])
+        if (beat.kind === 'strike') {
+          for (const hit of beat.hits) animated[hit.target] = Math.max(0, animated[hit.target] - 1)
+          setDisplayHealth([...animated])
+        }
+        await new Promise(resolve => window.setTimeout(resolve, beat.kind === 'fall' ? 650 : 520))
+      }
+      if (!cancelled) {
+        setPoses([{ kind: '' }, { kind: '' }])
+        setDisplayHealth(null)
+        setAnimating(false)
+      }
+    }
+    void run()
+    return () => { cancelled = true }
+  }, [snapshot?.matchId, snapshot?.lastResult?.exchange])
   async function submit() {
     if (!api || !snapshot || choice.selected.length !== 2 || busy || snapshot.yourChoiceSubmitted) return
     setBusy(true)
@@ -119,14 +161,13 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
       setMessage(error instanceof Error ? error.message : 'Не удалось подтвердить выбор')
     } finally { setBusy(false) }
   }
-  const poses: [DuelPose, DuelPose] = [{ kind: '' }, { kind: '' }]
-  const canChoose = Boolean(snapshot && snapshot.status === 'playing' && !snapshot.yourChoiceSubmitted && !busy && !choice.locked)
+  const canChoose = Boolean(snapshot && snapshot.status === 'playing' && !snapshot.yourChoiceSubmitted && !busy && !choice.locked && !animating)
   const lastResult = snapshot?.lastResult
   const winner = snapshot?.match.winner
   const finishedMessage = winner === snapshot?.fighter ? 'Вы выиграли матч!' : winner === null || winner === undefined ? 'Матч завершён' : 'Противник выиграл матч!'
   return <main className="duel-solo">
     <header><button onClick={onReturnToRoom}>← Комната</button><h1>⚔ Дуэль</h1></header>
-    {snapshot && <p className="duel-score">Раунд {snapshot.match.round} · Победы {snapshot.match.wins.join(' : ')} · HP {snapshot.match.health.join(' : ')}</p>}
+    {snapshot && <p className="duel-score">Раунд {snapshot.match.round} · Победы {snapshot.match.wins.join(' : ')} · HP {(displayHealth ?? snapshot.match.health).join(' : ')}</p>}
     <DuelBoard poses={poses} choice={choice} canChoose={canChoose} onChoose={action => setChoice(current => toggleChoice(current, action))} />
     {lastResult && <p className="duel-message">Последний обмен №{lastResult.exchange}: урон {lastResult.resolution.damage.join(' : ')} · {lastResult.roundResult === 'draw' ? 'Ничья' : lastResult.roundResult === 'continue' ? 'Бой продолжается' : 'Раунд завершён'}</p>}
     <p className="duel-message" aria-live="polite">{snapshot?.status === 'completed' ? finishedMessage : message}</p>
