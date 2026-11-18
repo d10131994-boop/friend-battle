@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MultiplayerRoom } from '../../multiplayer'
 import { createDuelApi } from './duelApi'
 import { toggleChoice, type ChoiceState } from './duelChoice'
@@ -41,6 +41,7 @@ export default function DuelMatch({ initData, room, onReturnToRoom }: {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [choice, setChoice] = useState<ChoiceState>({ selected: [], locked: false })
   const [busy, setBusy] = useState(false)
+  const exchangeRef = useRef<string | null>(null)
   const [message, setMessage] = useState('Подключаемся к матчу…')
   useEffect(() => {
     if (!api) { setMessage('Откройте игру через Telegram'); return }
@@ -49,11 +50,12 @@ export default function DuelMatch({ initData, room, onReturnToRoom }: {
       try {
         const next = parseSnapshot(await api.getMatch(room.roomId))
         if (!alive) return
-        setSnapshot(previous => {
-          if (previous && (previous.matchId !== next.matchId || previous.exchange !== next.exchange))
-            setChoice({ selected: [], locked: false })
-          return next
-        })
+        const exchangeKey = next.matchId + ':' + next.exchange
+        if (exchangeRef.current !== exchangeKey) {
+          exchangeRef.current = exchangeKey
+          setChoice({ selected: [], locked: false })
+        }
+        setSnapshot(next)
         setMessage(next.status === 'completed' ? 'Матч завершён' : next.yourChoiceSubmitted ? 'Ожидаем соперника…' : 'Выберите два действия')
       } catch (error) {
         if (alive) setMessage(error instanceof Error ? error.message : 'Не удалось получить матч')
@@ -76,7 +78,7 @@ export default function DuelMatch({ initData, room, onReturnToRoom }: {
     } finally { setBusy(false) }
   }
   const poses: [DuelPose, DuelPose] = [{ kind: '' }, { kind: '' }]
-  const canChoose = Boolean(snapshot && snapshot.status === 'playing' && !snapshot.yourChoiceSubmitted && !busy)
+  const canChoose = Boolean(snapshot && snapshot.status === 'playing' && !snapshot.yourChoiceSubmitted && !busy && !choice.locked)
   return <main className="duel-solo">
     <header><button onClick={onReturnToRoom}>← Комната</button><h1>⚔ Дуэль</h1></header>
     {snapshot && <p className="duel-score">Раунд {snapshot.match.round} · Победы {snapshot.match.wins.join(' : ')} · HP {snapshot.match.health.join(' : ')}</p>}
