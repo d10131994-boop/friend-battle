@@ -3,7 +3,6 @@ on:
   pull_request:
     branches:
       - '**'
-      - '!**/*-AI'
     paths:
       - 'src/games/Duel/**'
       - '.github/workflows/duel-engine.yml'
