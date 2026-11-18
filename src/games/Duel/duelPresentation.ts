@@ -1,4 +1,4 @@
-import type { Beat, Fighter, Zone } from './duelEngine'
+import type { Beat, Fighter, Zone } from './duelEngine.js'
 
 export type DuelPose = { kind: 'attacking' | 'defending' | 'hit' | 'fallen' | ''; zone?: Zone }
 export type DuelPoses = readonly [DuelPose, DuelPose]
