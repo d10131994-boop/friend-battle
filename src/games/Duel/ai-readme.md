@@ -1,7 +1,7 @@
 # Duel — AI development notes (prototype)
 
 ## Scope
-This module now contains pure combat, shared selection/match state, a standalone solo play page (`/duel-play.html`), and a separate choreography lab (`/duel-prototype.html`); the solo route is registered in Friend Battle but remains hidden until a matching enabled row is configured in `common_game_availability`. A React solo preview is available in development at `/?duel-preview=1` through `DuelSolo.tsx`. An authenticated, fail-closed multiplayer Edge Function exists, and server-only match persistence with atomic pending-choice submission now exist, but no complete resolution/commit pipeline, production animations, or multiplayer routing exists yet. The function currently responds 503 to authenticated match actions until the full authoritative resolution pipeline is implemented. The standalone page is for functional testing and is not a production integration. Do not enable it in game availability.
+The Duel module contains shared pure combat rules, a shared board, a solo controller, a multiplayer controller, and standalone development pages. Multiplayer uses the deployed `duel` Edge Function and server-only PostgreSQL match storage. The server initializes a match only for an active two-player Duel room, accepts hidden choices and resolves an exchange atomically when both choices are present. The client polls server snapshots and displays the last authoritative result. The current implementation is **not production-ready**: Duel does not yet start or finish the shared room lifecycle, lacks authoritative choice deadlines, automatic timeout actions, and complete combat choreography in multiplayer. The SQL resolver needs parity testing against `duelEngine.ts`. Neither solo nor multiplayer availability should be enabled automatically.
 
 ## Rules
 - Two fighters, each starting a round with three HP.
@@ -28,7 +28,7 @@ Read `src/ai-readme.md`, `src/games/ai-readme.md`, `src/multiplayer/ai-readme.md
 
 ## Multiplayer transport (not yet enabled)
 - `duelProtocol.ts` validates two distinct actions and carries room ID, match ID and exchange number. It never accepts client-computed HP, winner or score.
-- `duelApi.ts` invokes the future `duel` Edge Function through the shared Database facade; it intentionally returns `unknown` until a strict server snapshot parser exists. It does **not** mean the backend is deployed or the multiplayer mode is playable.
+- `duelApi.ts` invokes the deployed `duel` Edge Function through the shared Database facade. `DuelMatch.tsx` parses server snapshots before displaying them. Backend deployment does not imply that the complete multiplayer lifecycle is playable.
 - No availability flags are changed here; the user will enable solo and multiplayer manually after publication. Multiplayer manual testing is explicitly deferred until after merging to main and publication.
 
 ## Standalone test pages
