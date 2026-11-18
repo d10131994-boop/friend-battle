@@ -38,6 +38,8 @@ export function parseSnapshot(value: unknown): Snapshot {
         !resolution.hits.every(hit => hit && (hit.source === 0 || hit.source === 1) && (hit.target === 0 || hit.target === 1) && ZONES.includes(hit.zone) && typeof hit.reflected === 'boolean') ||
         !resolution.clashes.every(clash => clash && ZONES.includes(clash.zone)) ||
         !resolution.blocks.every(block => block && (block.attacker === 0 || block.attacker === 1) && (block.defender === 0 || block.defender === 1) && ZONES.includes(block.zone)) ||
+        !Array.isArray(resolution.unusedDefenses) ||
+        !resolution.unusedDefenses.every(defense => defense && (defense.fighter === 0 || defense.fighter === 1) && ZONES.includes(defense.zone)) ||
         !Array.isArray(resolution.damage) || resolution.damage.length !== 2 ||
         !resolution.damage.every(x => Number.isInteger(x) && x >= 0 && x <= 2) ||
         !Array.isArray(resolution.healthAfter) || resolution.healthAfter.length !== 2 ||
