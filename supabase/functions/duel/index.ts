@@ -93,8 +93,11 @@ Deno.serve(async request => {
       p_room_id: body.roomId, p_user_id: String(user.id),
     })
     if (ensureError) return reply({ error: "Duel match could not be initialized" }, 409)
-    const { error: tickError } = await client.rpc("duel_tick", { p_match_id: ensured.matchId })
+    const { data: clockAdvance, error: tickError } = await client.rpc("duel_tick", { p_match_id: ensured.matchId })
     if (tickError) return reply({ error: "Duel clock update failed" }, 503)
+    if (clockAdvance?.status === "resolved" || clockAdvance?.status === "completed") {
+      await notifyRoom(client, body.roomId, clockAdvance.status === "completed" ? "match_finished" : "round_finished")
+    }
     const { data: match, error: matchError } = await client.from("games_duel_matches")
       .select("id,room_id,started_at,player_ids,status,exchange,match_state,pending,last_result,exchange_deadline,both_ready_at")
       .eq("room_id", body.roomId).eq("started_at", room.startedAt).maybeSingle()
