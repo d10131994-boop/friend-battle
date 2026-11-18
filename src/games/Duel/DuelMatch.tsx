@@ -15,6 +15,7 @@ type Snapshot = {
   yourChoiceSubmitted: boolean
   opponentReady: boolean
   fighter: 0 | 1
+  lastResult: { exchange: number; roundResult: 'continue' | 'left' | 'right' | 'draw'; resolution: { damage: [number, number]; healthAfter: [number, number] } } | null
 }
 
 function parseSnapshot(value: unknown): Snapshot {
@@ -29,6 +30,18 @@ function parseSnapshot(value: unknown): Snapshot {
       !Array.isArray(m.wins) || m.wins.length !== 2 || !m.wins.every(x => Number.isInteger(x) && x >= 0) ||
       !Number.isSafeInteger(m.round) || typeof m.finished !== 'boolean' ||
       (m.winner !== null && m.winner !== 0 && m.winner !== 1)) throw new Error('Некорректное состояние боя')
+  if (s.lastResult != null) {
+    if (typeof s.lastResult !== 'object' || Array.isArray(s.lastResult)) throw new Error('Некорректный результат боя')
+    const result = s.lastResult as Record<string, unknown>
+    const resolution = result.resolution as Record<string, unknown> | null
+    if (!Number.isSafeInteger(result.exchange) ||
+        !['continue', 'left', 'right', 'draw'].includes(String(result.roundResult)) ||
+        !resolution || !Array.isArray(resolution.damage) || resolution.damage.length !== 2 ||
+        !resolution.damage.every(x => Number.isInteger(x) && x >= 0 && x <= 2) ||
+        !Array.isArray(resolution.healthAfter) || resolution.healthAfter.length !== 2 ||
+        !resolution.healthAfter.every(x => Number.isInteger(x) && x >= 0 && x <= 3))
+      throw new Error('Некорректный результат боя')
+  }
   return s as Snapshot
 }
 
@@ -79,11 +92,15 @@ export default function DuelMatch({ initData, room, onReturnToRoom }: {
   }
   const poses: [DuelPose, DuelPose] = [{ kind: '' }, { kind: '' }]
   const canChoose = Boolean(snapshot && snapshot.status === 'playing' && !snapshot.yourChoiceSubmitted && !busy && !choice.locked)
+  const lastResult = snapshot?.lastResult
+  const winner = snapshot?.match.winner
+  const finishedMessage = winner === snapshot?.fighter ? 'Вы выиграли матч!' : winner === null || winner === undefined ? 'Матч завершён' : 'Противник выиграл матч!'
   return <main className="duel-solo">
     <header><button onClick={onReturnToRoom}>← Комната</button><h1>⚔ Дуэль</h1></header>
     {snapshot && <p className="duel-score">Раунд {snapshot.match.round} · Победы {snapshot.match.wins.join(' : ')} · HP {snapshot.match.health.join(' : ')}</p>}
     <DuelBoard poses={poses} choice={choice} canChoose={canChoose} onChoose={action => setChoice(current => toggleChoice(current, action))} />
-    <p className="duel-message" aria-live="polite">{message}</p>
+    {lastResult && <p className="duel-message">Последний обмен №{lastResult.exchange}: урон {lastResult.resolution.damage.join(' : ')} · {lastResult.roundResult === 'draw' ? 'Ничья' : lastResult.roundResult === 'continue' ? 'Бой продолжается' : 'Раунд завершён'}</p>}
+    <p className="duel-message" aria-live="polite">{snapshot?.status === 'completed' ? finishedMessage : message}</p>
     <div className="duel-controls"><button disabled={!canChoose || choice.selected.length !== 2} onClick={() => void submit()}>Подтвердить</button></div>
   </main>
 }
