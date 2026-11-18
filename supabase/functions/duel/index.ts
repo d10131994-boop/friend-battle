@@ -40,7 +40,7 @@ Deno.serve(async request => {
   try {
     const body = await request.json()
     if (!body || typeof body !== "object" || Array.isArray(body)) return reply({ error: "Invalid request" }, 400)
-    if (body.action !== "get_match" && body.action !== "submit_choice") return reply({ error: "Unknown action" }, 400)
+    if (body.action !== "get_match" && body.action !== "submit_choice" && body.action !== "start_match" && body.action !== "return_to_room") return reply({ error: "Unknown action" }, 400)
     if (typeof body.roomId !== "string" || !body.roomId.trim() || body.roomId.length > 80 ||
         typeof body.initData !== "string" || body.initData.length > 10000) return reply({ error: "Invalid request" }, 400)
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")
@@ -58,6 +58,32 @@ Deno.serve(async request => {
     if (!room || room.gameId !== "duel") return reply({ error: "Duel is not selected in this room" }, 409)
     if (!Array.isArray(room.players) || !room.players.some((player: { userId?: string }) => player.userId === String(user.id)))
       return reply({ error: "Not a room member" }, 403)
+    if (body.action === "start_match") {
+      const host = room.players.find((player: { userId?: string; isHost?: boolean }) => player.userId === String(user.id))
+      if (!host?.isHost) return reply({ error: "Only room host can start the match" }, 403)
+      if (room.status !== "waiting" && room.status !== "finished") return reply({ error: "Room cannot start a new match" }, 409)
+      const { data: startedRoom, error: startError } = await client.rpc("multiplayer_execute_action", {
+        p_action: "start_game", p_user_id: "__game_server__", p_display_name: "Game server",
+        p_payload: { roomId: body.roomId, gameId: "duel" },
+      })
+      if (startError) return reply({ error: "Duel room could not start" }, 409)
+      const { error: ensureStartedError } = await client.rpc("duel_ensure_match", {
+        p_room_id: body.roomId, p_user_id: String(user.id),
+      })
+      if (ensureStartedError) return reply({ error: "Duel match could not be initialized" }, 503)
+      return reply({ room: startedRoom })
+    }
+    if (body.action === "return_to_room") {
+      const { data: completedMatch, error: completedError } = await client.from("games_duel_matches")
+        .select("id,status").eq("room_id", body.roomId).eq("started_at", room.startedAt).maybeSingle()
+      if (completedError || completedMatch?.status !== "completed") return reply({ error: "Match is not completed" }, 409)
+      const { data: finishedRoom, error: finishError } = await client.rpc("multiplayer_execute_action", {
+        p_action: "finish_game", p_user_id: "__game_server__", p_display_name: "Game server",
+        p_payload: { roomId: body.roomId, gameId: "duel", startedAt: room.startedAt },
+      })
+      if (finishError) return reply({ error: "Duel room could not finish" }, 409)
+      return reply({ room: finishedRoom })
+    }
     if (room.status !== "playing" || typeof room.startedAt !== "string") {
       return reply({ error: "Duel match is not active" }, 409)
     }

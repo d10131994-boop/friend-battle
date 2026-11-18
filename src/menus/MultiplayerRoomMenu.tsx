@@ -314,7 +314,9 @@ export function MultiplayerRoomMenu({ initData, inviteCode, onBack }: Multiplaye
   }
 
   if (gameScreen && room?.gameId === 'duel') {
-    return <DuelMatch initData={initData} room={room} onReturnToRoom={returnToRoom} />
+    return <DuelMatch initData={initData} room={room} startRequested={startRequested}
+      onStartRequestHandled={() => setStartRequested(false)} onRoomUpdate={acceptRoom}
+      onReturnToRoom={returnToRoom} />
   }
 
   if (gameScreen && room?.gameId === 'brain-battle') {

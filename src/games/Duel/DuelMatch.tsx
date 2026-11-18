@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MultiplayerRoom } from '../../multiplayer'
 import { createDuelApi } from './duelApi'
 import { toggleChoice, type ChoiceState } from './duelChoice'
@@ -15,6 +15,7 @@ type Snapshot = {
   yourChoiceSubmitted: boolean
   opponentReady: boolean
   fighter: 0 | 1
+  lastResult: { exchange: number; roundResult: 'continue' | 'left' | 'right' | 'draw'; resolution: { damage: [number, number]; healthAfter: [number, number] } } | null
 }
 
 function parseSnapshot(value: unknown): Snapshot {
@@ -29,19 +30,61 @@ function parseSnapshot(value: unknown): Snapshot {
       !Array.isArray(m.wins) || m.wins.length !== 2 || !m.wins.every(x => Number.isInteger(x) && x >= 0) ||
       !Number.isSafeInteger(m.round) || typeof m.finished !== 'boolean' ||
       (m.winner !== null && m.winner !== 0 && m.winner !== 1)) throw new Error('Некорректное состояние боя')
+  if (s.lastResult != null) {
+    if (typeof s.lastResult !== 'object' || Array.isArray(s.lastResult)) throw new Error('Некорректный результат боя')
+    const result = s.lastResult as Record<string, unknown>
+    const resolution = result.resolution as Record<string, unknown> | null
+    if (!Number.isSafeInteger(result.exchange) ||
+        !['continue', 'left', 'right', 'draw'].includes(String(result.roundResult)) ||
+        !resolution || !Array.isArray(resolution.damage) || resolution.damage.length !== 2 ||
+        !resolution.damage.every(x => Number.isInteger(x) && x >= 0 && x <= 2) ||
+        !Array.isArray(resolution.healthAfter) || resolution.healthAfter.length !== 2 ||
+        !resolution.healthAfter.every(x => Number.isInteger(x) && x >= 0 && x <= 3))
+      throw new Error('Некорректный результат боя')
+  }
   return s as Snapshot
 }
 
-export default function DuelMatch({ initData, room, onReturnToRoom }: {
+export default function DuelMatch({ initData, room, onReturnToRoom, startRequested, onStartRequestHandled, onRoomUpdate }: {
   initData: string | undefined
   room: MultiplayerRoom
   onReturnToRoom: () => void
+  startRequested: boolean
+  onStartRequestHandled: () => void
+  onRoomUpdate: (room: MultiplayerRoom) => void
 }) {
   const api = useMemo(() => initData ? createDuelApi(initData) : null, [initData])
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [choice, setChoice] = useState<ChoiceState>({ selected: [], locked: false })
   const [busy, setBusy] = useState(false)
+  const exchangeRef = useRef<string | null>(null)
   const [message, setMessage] = useState('Подключаемся к матчу…')
+  useEffect(() => {
+    if (!startRequested) return
+    onStartRequestHandled()
+    if (!api) { setMessage('Откройте игру через Telegram'); return }
+    let active = true
+    setBusy(true)
+    void api.startMatch(room.roomId).then(value => {
+      if (!active) return
+      const response = value as { room?: MultiplayerRoom }
+      if (response?.room) onRoomUpdate(response.room)
+    }).catch(error => {
+      if (active) setMessage(error instanceof Error ? error.message : 'Не удалось начать матч')
+    }).finally(() => { if (active) setBusy(false) })
+    return () => { active = false }
+  }, [api, startRequested, room.roomId, onRoomUpdate, onStartRequestHandled])
+  async function finishAndReturn() {
+    if (!api || busy) return
+    setBusy(true)
+    try {
+      const value = await api.returnToRoom(room.roomId) as { room?: MultiplayerRoom }
+      if (value?.room) onRoomUpdate(value.room)
+      onReturnToRoom()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Не удалось завершить матч')
+    } finally { setBusy(false) }
+  }
   useEffect(() => {
     if (!api) { setMessage('Откройте игру через Telegram'); return }
     let alive = true
@@ -49,11 +92,12 @@ export default function DuelMatch({ initData, room, onReturnToRoom }: {
       try {
         const next = parseSnapshot(await api.getMatch(room.roomId))
         if (!alive) return
-        setSnapshot(previous => {
-          if (previous && (previous.matchId !== next.matchId || previous.exchange !== next.exchange))
-            setChoice({ selected: [], locked: false })
-          return next
-        })
+        const exchangeKey = next.matchId + ':' + next.exchange
+        if (exchangeRef.current !== exchangeKey) {
+          exchangeRef.current = exchangeKey
+          setChoice({ selected: [], locked: false })
+        }
+        setSnapshot(next)
         setMessage(next.status === 'completed' ? 'Матч завершён' : next.yourChoiceSubmitted ? 'Ожидаем соперника…' : 'Выберите два действия')
       } catch (error) {
         if (alive) setMessage(error instanceof Error ? error.message : 'Не удалось получить матч')
@@ -76,12 +120,20 @@ export default function DuelMatch({ initData, room, onReturnToRoom }: {
     } finally { setBusy(false) }
   }
   const poses: [DuelPose, DuelPose] = [{ kind: '' }, { kind: '' }]
-  const canChoose = Boolean(snapshot && snapshot.status === 'playing' && !snapshot.yourChoiceSubmitted && !busy)
+  const canChoose = Boolean(snapshot && snapshot.status === 'playing' && !snapshot.yourChoiceSubmitted && !busy && !choice.locked)
+  const lastResult = snapshot?.lastResult
+  const winner = snapshot?.match.winner
+  const finishedMessage = winner === snapshot?.fighter ? 'Вы выиграли матч!' : winner === null || winner === undefined ? 'Матч завершён' : 'Противник выиграл матч!'
   return <main className="duel-solo">
     <header><button onClick={onReturnToRoom}>← Комната</button><h1>⚔ Дуэль</h1></header>
     {snapshot && <p className="duel-score">Раунд {snapshot.match.round} · Победы {snapshot.match.wins.join(' : ')} · HP {snapshot.match.health.join(' : ')}</p>}
     <DuelBoard poses={poses} choice={choice} canChoose={canChoose} onChoose={action => setChoice(current => toggleChoice(current, action))} />
-    <p className="duel-message" aria-live="polite">{message}</p>
-    <div className="duel-controls"><button disabled={!canChoose || choice.selected.length !== 2} onClick={() => void submit()}>Подтвердить</button></div>
+    {lastResult && <p className="duel-message">Последний обмен №{lastResult.exchange}: урон {lastResult.resolution.damage.join(' : ')} · {lastResult.roundResult === 'draw' ? 'Ничья' : lastResult.roundResult === 'continue' ? 'Бой продолжается' : 'Раунд завершён'}</p>}
+    <p className="duel-message" aria-live="polite">{snapshot?.status === 'completed' ? finishedMessage : message}</p>
+    <div className="duel-controls">
+      {snapshot?.status === 'completed'
+        ? <button disabled={busy} onClick={() => void finishAndReturn()}>Вернуться в комнату</button>
+        : <button disabled={!canChoose || choice.selected.length !== 2} onClick={() => void submit()}>Подтвердить</button>}
+    </div>
   </main>
 }

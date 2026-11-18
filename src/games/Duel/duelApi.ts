@@ -10,6 +10,12 @@ import type { Action } from './duelEngine'
 export function createDuelApi(initData: string) {
   if (!initData.trim()) throw new Error('Telegram authentication is required')
   return {
+    startMatch(roomId: string): Promise<unknown> {
+      return database.invokeFunction('duel', { action: 'start_match', roomId, initData })
+    },
+    returnToRoom(roomId: string): Promise<unknown> {
+      return database.invokeFunction('duel', { action: 'return_to_room', roomId, initData })
+    },
     getMatch(roomId: string): Promise<unknown> {
       if (!roomId.trim()) throw new Error('Missing room identity')
       const request: DuelSnapshotRequest = { action: 'get_match', roomId, initData }
