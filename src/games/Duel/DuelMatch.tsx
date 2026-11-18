@@ -45,10 +45,13 @@ function parseSnapshot(value: unknown): Snapshot {
   return s as Snapshot
 }
 
-export default function DuelMatch({ initData, room, onReturnToRoom }: {
+export default function DuelMatch({ initData, room, onReturnToRoom, startRequested, onStartRequestHandled, onRoomUpdate }: {
   initData: string | undefined
   room: MultiplayerRoom
   onReturnToRoom: () => void
+  startRequested: boolean
+  onStartRequestHandled: () => void
+  onRoomUpdate: (room: MultiplayerRoom) => void
 }) {
   const api = useMemo(() => initData ? createDuelApi(initData) : null, [initData])
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
@@ -56,6 +59,32 @@ export default function DuelMatch({ initData, room, onReturnToRoom }: {
   const [busy, setBusy] = useState(false)
   const exchangeRef = useRef<string | null>(null)
   const [message, setMessage] = useState('Подключаемся к матчу…')
+  useEffect(() => {
+    if (!startRequested) return
+    onStartRequestHandled()
+    if (!api) { setMessage('Откройте игру через Telegram'); return }
+    let active = true
+    setBusy(true)
+    void api.startMatch(room.roomId).then(value => {
+      if (!active) return
+      const response = value as { room?: MultiplayerRoom }
+      if (response?.room) onRoomUpdate(response.room)
+    }).catch(error => {
+      if (active) setMessage(error instanceof Error ? error.message : 'Не удалось начать матч')
+    }).finally(() => { if (active) setBusy(false) })
+    return () => { active = false }
+  }, [api, startRequested, room.roomId, onRoomUpdate, onStartRequestHandled])
+  async function finishAndReturn() {
+    if (!api || busy) return
+    setBusy(true)
+    try {
+      const value = await api.returnToRoom(room.roomId) as { room?: MultiplayerRoom }
+      if (value?.room) onRoomUpdate(value.room)
+      onReturnToRoom()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Не удалось завершить матч')
+    } finally { setBusy(false) }
+  }
   useEffect(() => {
     if (!api) { setMessage('Откройте игру через Telegram'); return }
     let alive = true
@@ -101,6 +130,10 @@ export default function DuelMatch({ initData, room, onReturnToRoom }: {
     <DuelBoard poses={poses} choice={choice} canChoose={canChoose} onChoose={action => setChoice(current => toggleChoice(current, action))} />
     {lastResult && <p className="duel-message">Последний обмен №{lastResult.exchange}: урон {lastResult.resolution.damage.join(' : ')} · {lastResult.roundResult === 'draw' ? 'Ничья' : lastResult.roundResult === 'continue' ? 'Бой продолжается' : 'Раунд завершён'}</p>}
     <p className="duel-message" aria-live="polite">{snapshot?.status === 'completed' ? finishedMessage : message}</p>
-    <div className="duel-controls"><button disabled={!canChoose || choice.selected.length !== 2} onClick={() => void submit()}>Подтвердить</button></div>
+    <div className="duel-controls">
+      {snapshot?.status === 'completed'
+        ? <button disabled={busy} onClick={() => void finishAndReturn()}>Вернуться в комнату</button>
+        : <button disabled={!canChoose || choice.selected.length !== 2} onClick={() => void submit()}>Подтвердить</button>}
+    </div>
   </main>
 }
