@@ -49,4 +49,7 @@ test('accepts a server combat result and rejects malformed choreography', () => 
   assert.throws(() => parseSnapshot({
     ...valid, lastResult: { ...result, resolution: { ...result.resolution, hits: [{ source: 5, target: 1, zone: 'head' }] } },
   }))
+  assert.throws(() => parseSnapshot({
+    ...valid, lastResult: { ...result, resolution: { ...result.resolution, unusedDefenses: undefined } },
+  }))
 })
