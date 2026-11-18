@@ -147,7 +147,7 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
       }
     }
     void run()
-    return () => { cancelled = true; setAnimating(false) }
+    return () => { cancelled = true }
   }, [snapshot?.matchId, snapshot?.lastResult?.exchange])
   async function submit() {
     if (!api || !snapshot || choice.selected.length !== 2 || busy || snapshot.yourChoiceSubmitted) return
