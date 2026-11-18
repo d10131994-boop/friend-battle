@@ -99,7 +99,8 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
     setDisplayHealth(before)
     setAnimating(true)
     const run = async () => {
-      for (const beat of planDuel({ ...result.resolution, unusedDefenses: result.resolution.unusedDefenses ?? [] }, before).beats) {
+      const beats = planDuel({ ...result.resolution, unusedDefenses: result.resolution.unusedDefenses ?? [] }, before).beats
+      for (const beat of beats) {
         if (cancelled) return
         setPoses([...posesForBeat(beat)])
         if (beat.kind === 'strike') {
@@ -109,7 +110,10 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
         await new Promise(resolve => window.setTimeout(resolve, beat.kind === 'fall' ? 650 : 520))
       }
       if (!cancelled) {
-        setPoses([{ kind: '' }, { kind: '' }])
+        const finalBeat = beats.at(-1)
+        if (snapshot.status !== 'completed' || finalBeat?.kind !== 'fall') {
+          setPoses([{ kind: '' }, { kind: '' }])
+        }
         setDisplayHealth(null)
         setAnimating(false)
       }
