@@ -5,6 +5,7 @@ on:
       - '**'
     paths:
       - 'src/games/Duel/**'
+      - 'tsconfig.app.json'
       - '.github/workflows/duel-engine.yml'
   push:
     branches:
