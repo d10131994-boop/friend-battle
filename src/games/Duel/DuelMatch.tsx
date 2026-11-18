@@ -131,12 +131,14 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
   }
   const canChoose = Boolean(snapshot && snapshot.status === 'playing' && !snapshot.yourChoiceSubmitted && !busy && !choice.locked && !animating)
   const lastResult = snapshot?.lastResult
+  const own = snapshot?.fighter ?? 0
+  const enemy = own === 0 ? 1 : 0
   const winner = snapshot?.match.winner
   const finishedMessage = winner === snapshot?.fighter ? 'Вы выиграли матч!' : winner === null || winner === undefined ? 'Матч завершён' : 'Противник выиграл матч!'
   return <main className="duel-solo">
     <header><h1>⚔ Дуэль</h1></header>
-    {snapshot && <p className="duel-score">Раунд {snapshot.match.round} · Победы {snapshot.match.wins.join(' : ')} · HP {(displayHealth ?? snapshot.match.health).join(' : ')}</p>}
-    <DuelBoard poses={poses} choice={choice} canChoose={canChoose} onChoose={action => setChoice(current => toggleChoice(current, action))} />
+    {snapshot && <p className="duel-score">Раунд {snapshot.match.round} · Ваши победы {snapshot.match.wins[own]} : {snapshot.match.wins[enemy]} · HP {(displayHealth ?? snapshot.match.health)[own]} : {(displayHealth ?? snapshot.match.health)[enemy]}</p>}
+    <DuelBoard poses={poses} playerIndex={own} choice={choice} canChoose={canChoose} onChoose={action => setChoice(current => toggleChoice(current, action))} />
     {lastResult && <p className="duel-message">Последний обмен №{lastResult.exchange}: урон {lastResult.resolution.damage.join(' : ')} · {lastResult.roundResult === 'draw' ? 'Ничья' : lastResult.roundResult === 'continue' ? 'Бой продолжается' : 'Раунд завершён'}</p>}
     {snapshot?.status === 'playing' && <p className="duel-timer">
       {snapshot.resolveAfter
