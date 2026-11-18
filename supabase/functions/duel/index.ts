@@ -97,8 +97,15 @@ Deno.serve(async request => {
       p_user_id: String(user.id), p_exchange: body.exchange, p_choices: body.choices,
     })
     if (submitError) return reply({ error: "Duel choice could not be accepted" }, 409)
-    // Do not reveal either choice before a trusted atomic resolver commits the exchange.
-    return reply({ ...submission, resolutionPending: submission.status === "both_ready" })
+    if (submission.status === "both_ready") {
+      const { data: resolved, error: resolveError } = await client.rpc("duel_resolve_exchange", { p_match_id: match.id })
+      if (resolveError) {
+        console.error("Duel resolver failed:", resolveError.code ?? "unknown")
+        return reply({ error: "Duel exchange resolution failed" }, 503)
+      }
+      return reply({ ...submission, resolutionPending: false, resolved })
+    }
+    return reply({ ...submission, resolutionPending: false })
   } catch (error) {
     console.error("Duel request failed:", error instanceof Error ? error.message : "unknown")
     return reply({ error: "Unexpected server error" }, 500)
