@@ -71,6 +71,7 @@ Deno.serve(async request => {
         p_room_id: body.roomId, p_user_id: String(user.id),
       })
       if (ensureStartedError) return reply({ error: "Duel match could not be initialized" }, 503)
+      await notifyRoom(client, body.roomId, "match_started")
       return reply({ room: startedRoom })
     }
     if (body.action === "return_to_room") {
@@ -82,6 +83,7 @@ Deno.serve(async request => {
         p_payload: { roomId: body.roomId, gameId: "duel", startedAt: room.startedAt },
       })
       if (finishError) return reply({ error: "Duel room could not finish" }, 409)
+      await notifyRoom(client, body.roomId, "room_finished")
       return reply({ room: finishedRoom })
     }
     if (room.status !== "playing" || typeof room.startedAt !== "string") {
@@ -133,6 +135,9 @@ Deno.serve(async request => {
     if (submitError) return reply({ error: "Duel choice could not be accepted" }, 409)
     const { data: tick, error: tickErrorAfterSubmit } = await client.rpc("duel_tick", { p_match_id: match.id })
     if (tickErrorAfterSubmit) return reply({ error: "Duel clock update failed" }, 503)
+    if (tick.status === "resolved" || tick.status === "completed") {
+      await notifyRoom(client, body.roomId, tick.status === "completed" ? "match_finished" : "round_finished")
+    }
     return reply({ ...submission, resolutionPending: tick.status === "both_ready", tick })
 
   } catch (error) {
@@ -140,3 +145,16 @@ Deno.serve(async request => {
     return reply({ error: "Unexpected server error" }, 500)
   }
 })
+
+async function notifyRoom(client: ReturnType<typeof createClient>, roomId: string, event: string): Promise<void> {
+  try {
+    const channel = client.channel(`room:${roomId}`, { config: { private: true } })
+    const result = await channel.send({
+      type: "broadcast", event, payload: { roomId, source: "duel" },
+    })
+    if (result !== "ok") console.warn("Duel room notification not acknowledged:", event)
+    await client.removeChannel(channel)
+  } catch (error) {
+    console.warn("Duel room notification failed:", error instanceof Error ? error.message : "unknown")
+  }
+}
