@@ -23,6 +23,7 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
   const [clock, setClock] = useState(Date.now())
   const exchangeRef = useRef<string | null>(null)
   const animatedExchangeRef = useRef<string | null>(null)
+  const refreshInFlight = useRef(false)
   const [poses, setPoses] = useState<[DuelPose, DuelPose]>([{ kind: '' }, { kind: '' }])
   const [displayHealth, setDisplayHealth] = useState<readonly [number, number] | null>(null)
   const [animating, setAnimating] = useState(false)
@@ -61,6 +62,8 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
     if (!api) { setMessage('Откройте игру через Telegram'); return }
     let alive = true
     const refresh = async () => {
+      if (refreshInFlight.current) return
+      refreshInFlight.current = true
       try {
         const next = parseSnapshot(await api.getMatch(room.roomId))
         if (!alive) return
@@ -73,6 +76,8 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
         setMessage(next.status === 'completed' ? 'Матч завершён' : next.yourChoiceSubmitted ? 'Ожидаем соперника…' : 'Выберите два действия')
       } catch (error) {
         if (alive) setMessage(error instanceof Error ? error.message : 'Не удалось получить матч')
+      } finally {
+        refreshInFlight.current = false
       }
     }
     void refresh()
