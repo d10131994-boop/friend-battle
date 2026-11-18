@@ -4,7 +4,7 @@ import { createDuelApi } from './duelApi'
 import { toggleChoice, type ChoiceState } from './duelChoice'
 import DuelBoard from './DuelBoard'
 import { posesForBeat, type DuelPose } from './duelPresentation'
-import { planDuel, type Resolution } from './duelEngine'
+import { planDuel, ZONES, type Resolution } from './duelEngine'
 import type { MatchState } from './duelMatch'
 import './DuelSolo.css'
 
@@ -37,7 +37,11 @@ function parseSnapshot(value: unknown): Snapshot {
     const resolution = result.resolution as Record<string, unknown> | null
     if (!Number.isSafeInteger(result.exchange) ||
         !['continue', 'left', 'right', 'draw'].includes(String(result.roundResult)) ||
-        !resolution || !Array.isArray(resolution.damage) || resolution.damage.length !== 2 ||
+        !resolution || !Array.isArray(resolution.hits) || !Array.isArray(resolution.clashes) || !Array.isArray(resolution.blocks) ||
+        !resolution.hits.every(hit => hit && (hit.source === 0 || hit.source === 1) && (hit.target === 0 || hit.target === 1) && ZONES.includes(hit.zone) && typeof hit.reflected === 'boolean') ||
+        !resolution.clashes.every(clash => clash && ZONES.includes(clash.zone)) ||
+        !resolution.blocks.every(block => block && (block.attacker === 0 || block.attacker === 1) && (block.defender === 0 || block.defender === 1) && ZONES.includes(block.zone)) ||
+        !Array.isArray(resolution.damage) || resolution.damage.length !== 2 ||
         !resolution.damage.every(x => Number.isInteger(x) && x >= 0 && x <= 2) ||
         !Array.isArray(resolution.healthAfter) || resolution.healthAfter.length !== 2 ||
         !resolution.healthAfter.every(x => Number.isInteger(x) && x >= 0 && x <= 3))
@@ -125,7 +129,7 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
     const animated: [number, number] = [...before]
     setDisplayHealth(before)
     const run = async () => {
-      for (const beat of planDuel(result.resolution, before).beats) {
+      for (const beat of planDuel({ ...result.resolution, unusedDefenses: result.resolution.unusedDefenses ?? [] }, before).beats) {
         if (cancelled) return
         setPoses([...posesForBeat(beat)])
         if (beat.kind === 'strike') {
