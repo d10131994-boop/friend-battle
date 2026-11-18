@@ -58,9 +58,47 @@ Deno.serve(async request => {
     if (!room || room.gameId !== "duel") return reply({ error: "Duel is not selected in this room" }, 409)
     if (!Array.isArray(room.players) || !room.players.some((player: { userId?: string }) => player.userId === String(user.id)))
       return reply({ error: "Not a room member" }, 403)
-    // Fail closed until atomic, server-authoritative persistence is deployed.
-    // Never accept or expose a browser-computed combat result.
-    return reply({ error: "Duel multiplayer match storage is not configured yet" }, 503)
+    if (room.status !== "playing" || typeof room.startedAt !== "string") {
+      return reply({ error: "Duel match is not active" }, 409)
+    }
+    const { data: match, error: matchError } = await client.from("games_duel_matches")
+      .select("id,room_id,started_at,player_ids,status,exchange,match_state,pending,last_result")
+      .eq("room_id", body.roomId).eq("started_at", room.startedAt).maybeSingle()
+    if (matchError) return reply({ error: "Match lookup failed" }, 500)
+    if (!match) return reply({ error: "Match has not been initialized" }, 409)
+    const fighter = match.player_ids?.indexOf(String(user.id))
+    if (fighter !== 0 && fighter !== 1) return reply({ error: "Not a duel fighter" }, 403)
+    const snapshot = {
+      matchId: match.id,
+      exchange: match.exchange,
+      match: match.match_state,
+      status: match.status,
+      yourChoiceSubmitted: Object.prototype.hasOwnProperty.call(match.pending ?? {}, String(fighter + 1)),
+      opponentReady: Object.prototype.hasOwnProperty.call(match.pending ?? {}, String(2 - fighter)),
+      lastResult: match.last_result,
+      fighter,
+    }
+    if (body.action === "get_match") return reply(snapshot)
+    if (typeof body.matchId !== "string" || body.matchId !== match.id ||
+        !Number.isSafeInteger(body.exchange) || body.exchange !== match.exchange ||
+        !Array.isArray(body.choices) || body.choices.length !== 2) {
+      return reply({ error: "Invalid or stale duel choice" }, 409)
+    }
+    const valid = body.choices.every((choice: unknown) => {
+      if (!choice || typeof choice !== "object" || Array.isArray(choice)) return false
+      const item = choice as Record<string, unknown>
+      return (item.kind === "attack" || item.kind === "defend") &&
+        ["head", "chest", "belly", "legs"].includes(String(item.zone))
+    })
+    if (!valid || (body.choices[0].kind === body.choices[1].kind &&
+        body.choices[0].zone === body.choices[1].zone)) return reply({ error: "Invalid duel actions" }, 400)
+    const { data: submission, error: submitError } = await client.rpc("duel_submit_pending", {
+      p_room_id: body.roomId, p_match_id: match.id,
+      p_user_id: String(user.id), p_exchange: body.exchange, p_choices: body.choices,
+    })
+    if (submitError) return reply({ error: "Duel choice could not be accepted" }, 409)
+    // Do not reveal either choice before a trusted atomic resolver commits the exchange.
+    return reply({ ...submission, resolutionPending: submission.status === "both_ready" })
   } catch (error) {
     console.error("Duel request failed:", error instanceof Error ? error.message : "unknown")
     return reply({ error: "Unexpected server error" }, 500)
