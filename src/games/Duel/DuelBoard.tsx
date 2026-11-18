@@ -11,13 +11,14 @@ type Props = {
   choice: ChoiceState
   canChoose: boolean
   onChoose: (action: Action) => void
+  playerIndex?: 0 | 1
 }
 
 /** Shared, non-authoritative presentation for solo and future server-driven multiplayer. */
-export default function DuelBoard({ poses, choice, canChoose, onChoose }: Props) {
+export default function DuelBoard({ poses, choice, canChoose, onChoose, playerIndex = 0 }: Props) {
   return <>
     <div className="duel-arena" aria-label="Арена дуэли">
-      {poses.map((pose, i) => <div key={i} aria-label={i === 0 ? 'Ваш боец' : 'Противник'} className={['duel-fighter', i === 1 ? 'right' : '', pose.kind, pose.zone ? 'zone-' + pose.zone : ''].join(' ')}>
+      {poses.map((pose, i) => <div key={i} aria-label={i === playerIndex ? 'Ваш боец' : 'Противник'} className={['duel-fighter', i === 1 ? 'right' : '', pose.kind, pose.zone ? 'zone-' + pose.zone : ''].join(' ')}>
         <div className="duel-head" /><div className="duel-body" /><div className="duel-legs" /><div className="duel-shield" /><div className="duel-sword" />
       </div>)}
     </div>
