@@ -61,6 +61,10 @@ Deno.serve(async request => {
     if (room.status !== "playing" || typeof room.startedAt !== "string") {
       return reply({ error: "Duel match is not active" }, 409)
     }
+    const { error: ensureError } = await client.rpc("duel_ensure_match", {
+      p_room_id: body.roomId, p_user_id: String(user.id),
+    })
+    if (ensureError) return reply({ error: "Duel match could not be initialized" }, 409)
     const { data: match, error: matchError } = await client.from("games_duel_matches")
       .select("id,room_id,started_at,player_ids,status,exchange,match_state,pending,last_result")
       .eq("room_id", body.roomId).eq("started_at", room.startedAt).maybeSingle()
