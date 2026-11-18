@@ -66,6 +66,7 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
   const animatedExchangeRef = useRef<string | null>(null)
   const [poses, setPoses] = useState<[DuelPose, DuelPose]>([{ kind: '' }, { kind: '' }])
   const [displayHealth, setDisplayHealth] = useState<readonly [number, number] | null>(null)
+  const [animating, setAnimating] = useState(false)
   const [message, setMessage] = useState('Подключаемся к матчу…')
   useEffect(() => {
     if (!startRequested) return
@@ -128,6 +129,7 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
     ]
     const animated: [number, number] = [...before]
     setDisplayHealth(before)
+    setAnimating(true)
     const run = async () => {
       for (const beat of planDuel({ ...result.resolution, unusedDefenses: result.resolution.unusedDefenses ?? [] }, before).beats) {
         if (cancelled) return
@@ -141,10 +143,11 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
       if (!cancelled) {
         setPoses([{ kind: '' }, { kind: '' }])
         setDisplayHealth(null)
+        setAnimating(false)
       }
     }
     void run()
-    return () => { cancelled = true }
+    return () => { cancelled = true; setAnimating(false) }
   }, [snapshot?.matchId, snapshot?.lastResult?.exchange])
   async function submit() {
     if (!api || !snapshot || choice.selected.length !== 2 || busy || snapshot.yourChoiceSubmitted) return
@@ -158,7 +161,7 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
       setMessage(error instanceof Error ? error.message : 'Не удалось подтвердить выбор')
     } finally { setBusy(false) }
   }
-  const canChoose = Boolean(snapshot && snapshot.status === 'playing' && !snapshot.yourChoiceSubmitted && !busy && !choice.locked)
+  const canChoose = Boolean(snapshot && snapshot.status === 'playing' && !snapshot.yourChoiceSubmitted && !busy && !choice.locked && !animating)
   const lastResult = snapshot?.lastResult
   const winner = snapshot?.match.winner
   const finishedMessage = winner === snapshot?.fighter ? 'Вы выиграли матч!' : winner === null || winner === undefined ? 'Матч завершён' : 'Противник выиграл матч!'
