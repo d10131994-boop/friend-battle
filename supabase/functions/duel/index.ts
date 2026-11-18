@@ -95,7 +95,7 @@ Deno.serve(async request => {
     if (ensureError) return reply({ error: "Duel match could not be initialized" }, 409)
     const { data: clockAdvance, error: tickError } = await client.rpc("duel_tick", { p_match_id: ensured.matchId })
     if (tickError) return reply({ error: "Duel clock update failed" }, 503)
-    if (clockAdvance?.status === "resolved" || clockAdvance?.status === "completed") {
+    if (clockAdvance?.status === "resolved" || (clockAdvance?.status === "completed" && clockAdvance?.result)) {
       await notifyRoom(client, body.roomId, clockAdvance.status === "completed" ? "match_finished" : "round_finished")
     }
     const { data: match, error: matchError } = await client.from("games_duel_matches")
@@ -138,7 +138,7 @@ Deno.serve(async request => {
     if (submitError) return reply({ error: "Duel choice could not be accepted" }, 409)
     const { data: tick, error: tickErrorAfterSubmit } = await client.rpc("duel_tick", { p_match_id: match.id })
     if (tickErrorAfterSubmit) return reply({ error: "Duel clock update failed" }, 503)
-    if (tick.status === "resolved" || tick.status === "completed") {
+    if (tick.status === "resolved" || (tick.status === "completed" && tick.result)) {
       await notifyRoom(client, body.roomId, tick.status === "completed" ? "match_finished" : "round_finished")
     }
     return reply({ ...submission, resolutionPending: tick.status === "both_ready", tick })
