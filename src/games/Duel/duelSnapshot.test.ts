@@ -39,6 +39,7 @@ test('accepts a server combat result and rejects malformed choreography', () => 
       hits: [{ source: 0, target: 1, zone: 'head', reflected: false }],
       clashes: [],
       blocks: [],
+      unusedDefenses: [],
       damage: [0, 1],
       healthAfter: [3, 2],
       outcome: 'continue',

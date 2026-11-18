@@ -134,7 +134,7 @@ export default function DuelMatch({ initData, room, onReturnToRoom, startRequest
   const winner = snapshot?.match.winner
   const finishedMessage = winner === snapshot?.fighter ? 'Вы выиграли матч!' : winner === null || winner === undefined ? 'Матч завершён' : 'Противник выиграл матч!'
   return <main className="duel-solo">
-    <header><button onClick={onReturnToRoom}>← Комната</button><h1>⚔ Дуэль</h1></header>
+    <header><h1>⚔ Дуэль</h1></header>
     {snapshot && <p className="duel-score">Раунд {snapshot.match.round} · Победы {snapshot.match.wins.join(' : ')} · HP {(displayHealth ?? snapshot.match.health).join(' : ')}</p>}
     <DuelBoard poses={poses} choice={choice} canChoose={canChoose} onChoose={action => setChoice(current => toggleChoice(current, action))} />
     {lastResult && <p className="duel-message">Последний обмен №{lastResult.exchange}: урон {lastResult.resolution.damage.join(' : ')} · {lastResult.roundResult === 'draw' ? 'Ничья' : lastResult.roundResult === 'continue' ? 'Бой продолжается' : 'Раунд завершён'}</p>}

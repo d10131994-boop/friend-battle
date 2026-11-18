@@ -44,7 +44,8 @@ export function choiceRemainingSeconds(startedAt: number, now: number): number {
 
 /** Solo timeout fallback. Preserve deliberate choices and fill only missing slots. */
 export function completeChoice(state: ChoiceState, random: () => number = Math.random): ChoiceState {
-  if (state.locked || state.selected.length === 2) return lockChoice(state)
+  if (state.locked) return state
+  if (state.selected.length === 2) return lockChoice(state)
   const pool: Action[] = ZONES.flatMap(zone => [
     { kind: 'attack' as const, zone },
     { kind: 'defend' as const, zone },

@@ -11,7 +11,7 @@ declare
  damage integer[] := array[0,0]; hp integer[]; wins integer[];
  outcome text := 'continue'; winner integer := null;
  round_no integer; exchange_count integer; finished boolean;
- hits jsonb := '[]'::jsonb; clashes jsonb := '[]'::jsonb; blocks jsonb := '[]'::jsonb;
+ hits jsonb := '[]'::jsonb; clashes jsonb := '[]'::jsonb; blocks jsonb := '[]'::jsonb; unused_defenses jsonb := '[]'::jsonb;
  state jsonb; result jsonb; next_exchange integer;
 begin
  select * into m from public.games_duel_matches where id=p_match_id for update;
@@ -56,6 +56,8 @@ begin
        end if;
      end if;
    end if;
+   if d0 and not a1 then unused_defenses:=unused_defenses || jsonb_build_array(jsonb_build_object('fighter',0,'zone',zone)); end if;
+   if d1 and not a0 then unused_defenses:=unused_defenses || jsonb_build_array(jsonb_build_object('fighter',1,'zone',zone)); end if;
  end loop;
  state:=m.match_state;
  hp:=array[greatest(0,(state->'health'->>0)::integer-damage[1]),greatest(0,(state->'health'->>1)::integer-damage[2])];
@@ -69,7 +71,7 @@ begin
  if wins[1]>=2 then winner:=0; elsif wins[2]>=2 then winner:=1; end if;
  finished:=winner is not null;
  result:=jsonb_build_object('exchange',m.exchange,'roundResult',outcome,'roundEnded',outcome<>'continue',
-   'resolution',jsonb_build_object('hits',hits,'clashes',clashes,'blocks',blocks,'damage',jsonb_build_array(damage[1],damage[2]),'healthAfter',jsonb_build_array(hp[1],hp[2]),'outcome',outcome));
+   'resolution',jsonb_build_object('hits',hits,'clashes',clashes,'blocks',blocks,'unusedDefenses',unused_defenses,'damage',jsonb_build_array(damage[1],damage[2]),'healthAfter',jsonb_build_array(hp[1],hp[2]),'outcome',outcome));
  if outcome<>'continue' and not finished then
    if outcome<>'draw' then round_no:=round_no+1; end if;
    hp:=array[3,3];

@@ -1,4 +1,4 @@
-import { ZONES, type Action, type Selection } from './duelEngine'
+import { ZONES, type Action, type Selection } from './duelEngine.js'
 
 /**
  * Game-specific wire contract. Server responses are untrusted until parsed.
