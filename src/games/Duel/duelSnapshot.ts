@@ -1,5 +1,5 @@
-import { ZONES, type Resolution } from './duelEngine'
-import type { MatchState } from './duelMatch'
+import { ZONES, type Resolution } from './duelEngine.js'
+import type { MatchState } from './duelMatch.js'
 
 export type Snapshot = {
   matchId: string
