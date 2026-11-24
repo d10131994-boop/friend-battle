@@ -38,12 +38,7 @@ const toolLabels: Record<ToolType, string> = {
   swap: 'Перестановка',
   replace: 'Замена',
 }
-const toolIcons: Record<ToolType, string> = {
-  saw: '🪚',
-  storage: '📦',
-  swap: '🔀',
-  replace: '🔄',
-}
+
 const toolDescriptions: Record<ToolType, string> = {
   saw: 'Удаляет персонажа бесплатно; камень — за 50 монет.',
   storage: 'Переносит персонажа в хранилище. Инструмент расходуется только при возврате персонажа.',
@@ -85,7 +80,7 @@ export default function DemocracyMergeMatch({
   const [snapshot, setSnapshot] = useState<DemocracyMergeSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [now, setNow] = useState(0)
+  const [now, setNow] = useState(Date.now)
   const [selectedTool, setSelectedTool] = useState<ToolType | null>(null)
   const [swapFirstCell, setSwapFirstCell] = useState<number | null>(null)
   const [shopOpen, setShopOpen] = useState(false)
@@ -472,7 +467,7 @@ export default function DemocracyMergeMatch({
             <p>Баланс: 🪙 {me.coins}</p>
             {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
               <div className="dm-shop-row" key={tool}>
-                <span>{toolIcons[tool]} {toolLabels[tool]}</span>
+                <span><img className="dm-v3-shop-tool-icon" src={`/democracy-merge/picture/v3/tool-${tool}.webp`} alt="" /> {toolLabels[tool]}</span>
                 <small>{me.inventory[tool]}/3 · 🪙 {toolPrices[tool]}</small>
                 {(me.inventory[tool] >= 3 || me.coins < toolPrices[tool]) && (
                   <small className="dm-purchase-reason">{me.inventory[tool] >= 3 ? 'Инвентарь заполнен' : 'Недостаточно монет'}</small>
