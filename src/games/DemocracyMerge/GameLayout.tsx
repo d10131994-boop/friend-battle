@@ -38,15 +38,15 @@ export function LevelGuide({onClose}: {onClose: () => void}) { return (
         </div>
 
 ) }
-type Props = { state: {board: Board; score: number; coins: number; turnNumber: number; inventory: ToolInventory}; current: number | null; remaining: number; timerLabel: string; record: number; recordLabel: string; selectedTool: ToolType | null; swapFirstCell: number | null; lastPlacedCell: number | null; obstacleCell: number | null; mergeEvents: MergeEvent[]; animationDelay: number; canAct: boolean; onHome: () => void; onShop: () => void; selectTool: (tool: ToolType) => void; clickCell: (index: number) => void }
-export function GameLayout({state,current,remaining,timerLabel,record,recordLabel,selectedTool,swapFirstCell,lastPlacedCell,obstacleCell,mergeEvents,animationDelay,canAct,onHome,onShop,selectTool,clickCell}: Props) { return (
+type Props = { state: {board: Board; score: number; coins: number; turnNumber: number; inventory: ToolInventory}; current: number | null; remaining: number; timerLabel: string; record: number; recordLabel: string; highlightRecord?: boolean; selectedTool: ToolType | null; swapFirstCell: number | null; lastPlacedCell: number | null; obstacleCell: number | null; mergeEvents: MergeEvent[]; animationDelay: number; canAct: boolean; onHome: () => void; onShop: () => void; selectTool: (tool: ToolType) => void; clickCell: (index: number) => void }
+export function GameLayout({state,current,remaining,timerLabel,record,recordLabel,highlightRecord,selectedTool,swapFirstCell,lastPlacedCell,obstacleCell,mergeEvents,animationDelay,canAct,onHome,onShop,selectTool,clickCell}: Props) { return (
         <div className="dm-layout dm-solo-layout">
           <aside className="dm-side-panel">
             <div className="dm-current-card"><div className="dm-next-character"><strong className="dm-v3-next-character-frame">{current !== null ? <CharacterPortrait level={current} /> : '—'}</strong><div className={`dm-timer ${remaining <= 300000 ? 'dm-timer-warning' : ''}`}><small>ОСТАЛОСЬ</small><strong>{timerLabel}</strong></div></div><small>ПЕРСОНАЖ · ХОД {state.turnNumber + 1}</small></div>
             <div className="dm-stats">
               <div><small>ОЧКИ</small><strong>{state.score}</strong></div>
               <div><small>МОНЕТЫ</small><strong>🪙 {state.coins}</strong></div>
-              <div className={state.score > record ? 'dm-record-highlight' : ''}><small>{recordLabel}</small><strong>{record}</strong></div>
+              <div className={highlightRecord ? 'dm-record-highlight' : ''}><small>{recordLabel}</small><strong>{record}</strong></div>
             </div>
             <div className="dm-tools">
               <button className="dm-home-icon-button" type="button" onClick={() => onHome()} aria-label="В главное меню" title="В главное меню"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 11.5 12 3l10 8.5h-2.5V22h-6v-7h-3v7h-6V11.5H2Z" fill="currentColor" /></svg></button>
