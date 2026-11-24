@@ -28,13 +28,13 @@ Deno.test('each merge rolls bag and tool rewards independently', () => {
   }
 })
 
-Deno.test('obstacle event is low-frequency and uses equal type slots', () => {
+Deno.test('obstacle event is low-frequency and produces only rocks', () => {
   if (generateObstacleSequence(1, () => 0.5)[0] !== null) throw new Error('A roll above 5% must not produce an obstacle.')
-  const values = [0, 0, 0.01, 0.34, 0.01, 0.67]
+  const values = [0, 0.01, 0.049]
   let index = 0
   const sequence = generateObstacleSequence(3, () => values[index++])
-  if (sequence[0] !== 'barricade' || sequence[1] !== 'police' || sequence[2] !== 'rock') {
-    throw new Error('Obstacle type slots must be equally distributed.')
+  if (sequence.some((event) => event !== 'rock')) {
+    throw new Error('Every obstacle event must produce a rock.')
   }
 })
 
