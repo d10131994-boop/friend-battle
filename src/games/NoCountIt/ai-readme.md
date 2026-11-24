@@ -27,6 +27,10 @@ Browser database transport must use `src/database`. Do not create another Supaba
 - Lowest accumulated error wins; a tie has no winner.
 - A real player departure is distinct from `excluded_not_ready`. The agreed rule is to end the match early and award the remaining player a win when all other players have actually left.
 
+## Shared solo/multiplayer presentation
+
+`NoCountItKeypad.tsx`, `NoCountItAnswerHeader.tsx` and `NoCountItRevealHeader.tsx` are presentation-only components used by both `NoCountItSolo.tsx` and `NoCountItMatch.tsx`. Keep answer submission, round timing, readiness and score authority in their respective mode controllers; do not move multiplayer server decisions into shared UI. The solo and multiplayer result scales currently remain mode-specific.
+
 ## 3. Scene generator
 
 Version 1 generates a candy jar from a prepared visual template:

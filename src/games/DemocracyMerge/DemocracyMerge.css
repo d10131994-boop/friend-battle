@@ -851,29 +851,34 @@
   background-repeat:no-repeat;
 }
 
-/* Issue 008: fit the entire character inside one grass tile without cropping. */
+/* Board portraits: show the upper half of the original art, clipped to the tile. */
 .dm-solo-screen .dm-solo-layout .dm-cell > .dm-character {
-  width:74%;
-  height:74%;
-  max-width:74%;
-  max-height:74%;
-  overflow:visible;
+  width:100%;
+  height:100%;
+  max-width:100%;
+  max-height:100%;
+  overflow:hidden;
   padding:0;
+  border-radius:0;
 }
 .dm-solo-screen .dm-solo-layout .dm-cell .dm-character-portrait {
   width:100%;
   height:100%;
   min-width:0;
   min-height:0;
+  overflow:hidden;
 }
 .dm-solo-screen .dm-solo-layout .dm-cell .dm-character-portrait img {
+  position:absolute;
+  top:0;
+  left:0;
   display:block;
-  width:100%;
-  height:100%;
-  max-width:100%;
-  max-height:100%;
+  max-width:none;
+  max-height:none;
   object-fit:contain;
-  object-position:center;
+  object-position:top center;
+  transform:scale(1.4);
+  transform-origin:top center;
 }
 
 /* Issue 008: approved floral log frame, independent from the grass grid.
@@ -1086,3 +1091,26 @@
   left:2.5%;
   bottom:3%;
 }
+
+/* Pre-game character progression guide. */
+.dm-solo-screen .dm-level-guide {
+  box-sizing:border-box;
+  width:min(440px,100%);
+  max-height:calc(100dvh - 32px);
+  overflow:auto;
+  padding:18px 14px;
+  border:5px solid #8b4d25;
+  border-radius:18px;
+  background:linear-gradient(#fff4d7,#efd39a);
+  color:#49301f;
+  box-shadow:0 5px 0 #5d301b,0 12px 28px #0006;
+  text-align:center;
+}
+.dm-level-guide h2{margin:0 0 8px;font-size:clamp(18px,5vw,24px);color:#693b20}
+.dm-level-guide p{margin:0 0 12px;font-size:14px;line-height:1.4}
+.dm-level-guide-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 14px}
+.dm-level-guide-list li{position:relative;min-width:0;display:grid;gap:4px;justify-items:center;font-size:12px}
+.dm-level-guide-art{display:block;width:100%;aspect-ratio:1;overflow:hidden;border:2px solid #a66b36;border-radius:10px;background:#d6e8a0 url('/democracy-merge/picture/v3/grass-01.webp') center/cover}
+.dm-level-guide-arrow{position:absolute;right:-13px;top:35%;font-size:19px;font-weight:900;color:#8b4d25}
+.dm-level-guide-list li:nth-child(3) .dm-level-guide-arrow{top:auto;bottom:-14px;right:0;transform:rotate(90deg)}
+.dm-level-guide-close{margin-top:16px;padding:10px 28px;border:2px solid #37661c;border-radius:10px;background:linear-gradient(#7dbe35,#43871f);color:white;font:inherit;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #37661c}
