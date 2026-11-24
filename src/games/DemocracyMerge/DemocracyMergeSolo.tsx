@@ -37,7 +37,7 @@ const toolLabels: Record<ToolType, string> = {
   replace: 'Замена',
 }
 const toolDescriptions: Record<ToolType, string> = {
-  saw: 'Удаляет персонажа, заграждение или полицейского бесплатно; камень — за 50 монет.',
+  saw: 'Удаляет персонажа бесплатно; камень — за 50 монет.',
   storage: 'Переносит персонажа в хранилище. Инструмент расходуется только при возврате персонажа.',
   swap: 'Меняет местами двух обычных персонажей. Препятствия выбирать нельзя.',
   replace: 'Заменяет текущего персонажа случайным персонажем того же уровня.',
@@ -109,6 +109,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
   const [game, setGame] = useState<SoloGameState | null>(null)
   const [loading, setLoading] = useState(true)
   const [resumePrompt, setResumePrompt] = useState(false)
+  const [instructionOpen, setInstructionOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [now, setNow] = useState(0)
   const [selectedTool, setSelectedTool] = useState<ToolType | null>(null)
@@ -150,6 +151,13 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
           if (validStoredData(parsed)) {
             nextProfile = parsed.profile
             nextCheckpoint = parsed.checkpoint
+            if (nextCheckpoint?.status === 'active') {
+              nextCheckpoint = {
+                ...nextCheckpoint,
+                board: nextCheckpoint.board.map((cell) => cell?.kind === 'obstacle' && cell.obstacleType !== 'rock' ? null : cell),
+                obstacleSequence: nextCheckpoint.obstacleSequence.map((event) => event === null ? null : 'rock'),
+              }
+            }
           }
         }
       } catch {
@@ -213,8 +221,13 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
     if (animationTimeoutRef.current !== null) window.clearTimeout(animationTimeoutRef.current)
   }, [])
 
-  const startNewGame = useCallback(() => {
-    const created = createSoloGameState(Date.now())
+  const startNewGame = useCallback(() => setInstructionOpen(true), [])
+
+  const beginNewGame = useCallback(() => {
+    setInstructionOpen(false)
+    const started = Date.now()
+    setNow(started)
+    const created = createSoloGameState(started)
     setCheckpoint(created)
     setGame(created)
     setRecordBroken(false)
@@ -445,6 +458,29 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
 
   if (loading) {
     return <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}><div className="dm-waiting">Загружаем одиночную игру…</div></main>
+  }
+
+  if (instructionOpen) {
+    return (
+      <main className="app dm-match-shell dm-solo-screen">
+        <div className="dm-modal-backdrop">
+          <section className="dm-level-guide" role="dialog" aria-modal="true" aria-labelledby="dm-level-guide-title">
+            <h2 id="dm-level-guide-title">УРОВНИ ПЕРСОНАЖЕЙ</h2>
+            <p>Соединяй три или больше одинаковых персонажей, чтобы получить следующий уровень.</p>
+            <ol className="dm-level-guide-list">
+              {[1, 2, 3, 4, 5, 6].map((level) => (
+                <li key={level}>
+                  <span className="dm-level-guide-art"><CharacterPortrait level={level} /></span>
+                  <strong>Уровень {level}</strong>
+                  {level < 6 && <span className="dm-level-guide-arrow" aria-hidden="true">→</span>}
+                </li>
+              ))}
+            </ol>
+            <button type="button" className="dm-level-guide-close" onClick={beginNewGame}>ЗАКРЫТЬ</button>
+          </section>
+        </div>
+      </main>
+    )
   }
 
   if (!game && resumePrompt && checkpoint) {
