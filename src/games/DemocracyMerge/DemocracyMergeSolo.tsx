@@ -570,7 +570,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
           <button className="dm-secondary-button" onClick={leaveToMenu}>В ГЛАВНОЕ МЕНЮ</button>
         </section>
       ) : (
-        <GameLayout state={game} current={current} remaining={remaining} timerLabel={formatTime(remaining)} record={Math.max(profile.bestScore, game.score)} recordLabel="РЕКОРД" selectedTool={selectedTool} swapFirstCell={swapFirstCell} lastPlacedCell={lastPlacedCell} obstacleCell={obstacleCell} mergeEvents={mergeEvents} animationDelay={500} canAct={canAct} onHome={() => setLeaveConfirm(true)} onShop={() => setShopOpen(true)} selectTool={selectTool} clickCell={clickCell} />
+        <GameLayout state={game} current={current} remaining={remaining} timerLabel={formatTime(remaining)} record={Math.max(profile.bestScore, game.score)} recordLabel="РЕКОРД" highlightRecord={game.score > profile.bestScore} selectedTool={selectedTool} swapFirstCell={swapFirstCell} lastPlacedCell={lastPlacedCell} obstacleCell={obstacleCell} mergeEvents={mergeEvents} animationDelay={500} canAct={canAct} onHome={() => setLeaveConfirm(true)} onShop={() => setShopOpen(true)} selectTool={selectTool} clickCell={clickCell} />
       )}
 
       {shopOpen && (
