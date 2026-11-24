@@ -57,8 +57,7 @@ export function rollMergeRewards(
 
 export function rollObstacleEvent(random: () => number = Math.random): ObstacleType | null {
   if (randomUnit(random) >= 0.05) return null
-  const types: ObstacleType[] = ['barricade', 'police', 'rock']
-  return types[Math.floor(randomUnit(random) * types.length)]
+  return 'rock'
 }
 
 export function generateObstacleSequence(
