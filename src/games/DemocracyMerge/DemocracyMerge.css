@@ -877,7 +877,7 @@
   max-height:none;
   object-fit:contain;
   object-position:top center;
-  transform:scale(2);
+  transform:scale(1.4);
   transform-origin:top center;
 }
 
