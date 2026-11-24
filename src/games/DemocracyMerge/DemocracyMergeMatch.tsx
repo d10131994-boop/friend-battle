@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react'
+import { GameLayout, LevelGuide } from './GameLayout'
 import { telegramUser } from '../../services/telegram'
 import type { MultiplayerRoom } from '../../multiplayer'
 import {
@@ -45,7 +45,7 @@ const toolIcons: Record<ToolType, string> = {
   replace: '🔄',
 }
 const toolDescriptions: Record<ToolType, string> = {
-  saw: 'Удаляет персонажа, заграждение или полицейского бесплатно; камень — за 50 монет.',
+  saw: 'Удаляет персонажа бесплатно; камень — за 50 монет.',
   storage: 'Переносит персонажа в хранилище. Инструмент расходуется только при возврате персонажа.',
   swap: 'Меняет местами двух обычных персонажей. Препятствия выбирать нельзя.',
   replace: 'Заменяет текущего персонажа случайным персонажем того же уровня.',
@@ -62,11 +62,7 @@ const obstacleLabels = {
   police: 'Полицейский',
   rock: 'Камень',
 }
-const obstacleIcons = {
-  barricade: '🧱',
-  police: '👮',
-  rock: '🪨',
-}
+
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Не удалось выполнить действие.'
@@ -102,12 +98,7 @@ export default function DemocracyMergeMatch({
   const [selectedHistoryRecord, setSelectedHistoryRecord] = useState<DemocracyMergeHistoryResponse['history'][number] | null>(null)
   const [deleteHistoryId, setDeleteHistoryId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [boardZoom, setBoardZoom] = useState(1)
-  const pinchStartDistanceRef = useRef<number | null>(null)
-  const pinchStartZoomRef = useRef(1)
-  const dragStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null)
-  const dragMovedRef = useRef(false)
-  const suppressClickRef = useRef(false)
+  const [guideOpen, setGuideOpen] = useState(true)
   const [visualEvents, setVisualEvents] = useState<DemocracyMergeActionResponse['visualEvents']>(null)
   const [rewardToast, setRewardToast] = useState<string[]>([])
   const visualEventTimeoutRef = useRef<number | null>(null)
@@ -393,63 +384,9 @@ export default function DemocracyMergeMatch({
 
   const animationClasses = `${settings.animationsEnabled ? '': 'dm-animations-off'} ${settings.animationSpeed === 'fast' ? 'dm-animation-fast' : ''}`
 
-  const touchDistance = (touches: ReactTouchEvent<HTMLDivElement>['touches']) => Math.hypot(
-    touches[0].clientX - touches[1].clientX,
-    touches[0].clientY - touches[1].clientY,
-  )
-  const handleBoardTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
-    if (event.touches.length === 2) {
-      pinchStartDistanceRef.current = touchDistance(event.touches)
-      pinchStartZoomRef.current = boardZoom
-    }
-  }
-  const handleBoardTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
-    if (event.touches.length === 2 && pinchStartDistanceRef.current) {
-      event.preventDefault()
-      const factor = touchDistance(event.touches) / pinchStartDistanceRef.current
-      setBoardZoom(Math.min(1.6, Math.max(0.7, pinchStartZoomRef.current * factor)))
-    }
-  }
-  const handleBoardTouchEnd = () => { pinchStartDistanceRef.current = null }
-  const handleBoardMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (boardZoom <= 1 || event.button !== 0) return
-    dragStartRef.current = {
-      x: event.clientX, y: event.clientY,
-      scrollLeft: event.currentTarget.scrollLeft,
-      scrollTop: event.currentTarget.scrollTop,
-    }
-    dragMovedRef.current = false
-    event.currentTarget.style.cursor = 'grabbing'
-  }
-  const handleBoardMouseMove = (event: ReactMouseEvent<HTMLDivElement>) => {
-    const start = dragStartRef.current
-    if (!start) return
-    const dx = event.clientX - start.x
-    const dy = event.clientY - start.y
-    if (Math.abs(dx) + Math.abs(dy) > 3) {
-      dragMovedRef.current = true
-      event.preventDefault()
-      event.currentTarget.scrollLeft = start.scrollLeft - dx
-      event.currentTarget.scrollTop = start.scrollTop - dy
-    }
-  }
-  const handleBoardMouseUp = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (dragMovedRef.current) suppressClickRef.current = true
-    dragStartRef.current = null
-    event.currentTarget.style.cursor = boardZoom > 1 ? 'grab' : 'auto'
-  }
-  const handleBoardClickCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (!suppressClickRef.current) return
-    suppressClickRef.current = false
-    event.preventDefault()
-    event.stopPropagation()
-  }
-
-
-
   if (!match || !me) {
     return (
-      <main className={`app dm-match-shell ${animationClasses}`}>
+      <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}>
         <header className="topbar"><div className="logo">DEMOCRACY <span>MERGE</span></div></header>
         <section className="dm-waiting">
           <h1>DEMOCRACY MERGE</h1>
@@ -462,19 +399,12 @@ export default function DemocracyMergeMatch({
   }
 
   const ownRank = match.finalResults?.find((player) => player.userId === telegramId)?.rank ?? null
-  const board = me.board
 
   return (
-    <main className={`app dm-match-shell ${animationClasses}`}>
-      <header className="dm-header">
-        <button className="dm-secondary-button" onClick={() => setLeaveConfirm(true)} disabled={!canAct}>ВЫЙТИ ИЗ МАТЧА</button>
-        <div><div className="dm-eyebrow">FRIEND BATTLE</div><h1>DEMOCRACY <span>MERGE</span></h1><button className="dm-secondary-button dm-settings-trigger" onClick={() => setSettingsOpen(true)}>НАСТРОЙКИ</button></div>
-        <div className={`dm-timer ${remaining <= 300_000 ? 'dm-timer-warning' : ''}`}>
-          <small>ОСТАЛОСЬ</small><strong>{timerLabel}</strong>
-        </div>
-      </header>
+    <main className={`app dm-match-shell dm-solo-screen ${animationClasses}`}>
 
-      {isCountdown && (
+
+      {isCountdown && !guideOpen && (
         <div className="dm-countdown"><span>{countdown > 0 ? countdown : 'СТАРТ!'}</span></div>
       )}
       {oneMinuteNotice && <div className="dm-toast">До окончания матча осталась 1 минута</div>}
@@ -531,101 +461,10 @@ export default function DemocracyMergeMatch({
             : <p className="dm-waiting-note">Твоя партия завершена. Ожидаем остальных игроков. Результат уже сохранён.</p>}
         </section>
       ) : (
-        <div className="dm-layout">
-          <aside className="dm-side-panel">
-            <div className="dm-current-card">
-              <small>ТЕКУЩИЙ ПЕРСОНАЖ · ХОД {me.turnNumber + 1}</small>
-              <strong>{match.currentCharacter ?? '—'}</strong>
-              <span>Следующий: {match.nextCharacter ?? '—'}</span>
-            </div>
-            <div className="dm-stats">
-              <div><small>ОЧКИ</small><strong>{me.score}</strong></div>
-              <div><small>МАКС. УРОВЕНЬ</small><strong>{me.maxLevel}</strong></div>
-              <div><small>МОНЕТЫ</small><strong>🪙 {me.coins}</strong></div>
-            </div>
-            <button className="dm-primary-button" onClick={() => setShopOpen(true)} disabled={!canAct}>МАГАЗИН</button>
-            <div className="dm-tools">
-              <h3>ИНСТРУМЕНТЫ</h3>
-              {(['saw', 'storage', 'swap', 'replace'] as ToolType[]).map((tool) => (
-                <button
-                  key={tool}
-                  title={toolDescriptions[tool]}
-                  className={`dm-tool-button ${selectedTool === tool ? 'dm-tool-selected' : ''}`}
-                  onClick={() => selectTool(tool)}
-                  disabled={!canAct || me.inventory[tool] < 1}
-                >
-                  <span>{toolIcons[tool]} {toolLabels[tool]}</span>
-                  <strong>{me.inventory[tool]}/3</strong>
-                </button>
-              ))}
-              {me.storage && <p className="dm-storage-note">В хранилище: персонаж уровня {me.storage.level}</p>}
-              {!me.storage && <p className="dm-storage-note">Хранилище пусто</p>}
-            </div>
-            {me.status === 'active' && (
-              <button className="dm-danger-button" onClick={() => setSurrenderConfirm(true)} disabled={!canAct}>СДАТЬСЯ</button>
-            )}
-          </aside>
-
-          <section className="dm-board-section">
-            <div className="dm-board-zoom-controls">
-              <button onClick={() => setBoardZoom((zoom) => Math.max(0.7, Math.round((zoom - 0.1) * 10) / 10))} aria-label="Уменьшить поле">−</button>
-              <span>{Math.round(boardZoom * 100)}%</span>
-              <button onClick={() => setBoardZoom((zoom) => Math.min(1.6, Math.round((zoom + 0.1) * 10) / 10))} aria-label="Увеличить поле">+</button>
-              <button onClick={() => setBoardZoom(1)}>СБРОС</button>
-            </div>
-            <div className="dm-board-viewport" style={{ cursor: boardZoom > 1 ? 'grab' : 'auto' }} onTouchStart={handleBoardTouchStart} onTouchMove={handleBoardTouchMove} onTouchEnd={handleBoardTouchEnd} onMouseDown={handleBoardMouseDown} onMouseMove={handleBoardMouseMove} onMouseUp={handleBoardMouseUp} onMouseLeave={handleBoardMouseUp} onClickCapture={handleBoardClickCapture}>
-            <div className="dm-board" style={{ transform: `scale(${boardZoom})` }} aria-label="Игровое поле 6 на 6">
-              {board.map((cell, index) => {
-                const mergeIndex = visualEvents?.kind === 'placement'
-                  ? visualEvents.merges?.findIndex((merge) => merge.cells.includes(index)) ?? -1
-                  : -1
-                const placed = visualEvents?.kind === 'placement' && visualEvents.placementCellIndex === index
-                const obstacle = visualEvents?.kind === 'placement' && visualEvents.obstacleCellIndex === index
-                return (
-                <button
-                  key={index}
-                  className={`dm-cell ${cell?.kind === 'obstacle' ? 'dm-obstacle' : ''} ${swapFirstCell === index ? 'dm-cell-selected' : ''} ${placed ? 'dm-cell-placed' : ''} ${mergeIndex >= 0 ? 'dm-cell-merge' : ''} ${obstacle ? 'dm-cell-obstacle' : ''}`}
-                  style={mergeIndex >= 0 ? { animationDelay: `${mergeIndex * (settings.animationSpeed === 'fast' ? 250 : 500)}ms` } : undefined}
-                  onClick={() => void clickCell(index)}
-                  disabled={!canAct}
-                  aria-label={cell === null ? `Свободная клетка ${index + 1}` : cell.kind === 'character'
-                    ? `Персонаж уровня ${cell.level}`
-                    : obstacleLabels[cell.obstacleType]}
-                >
-                  {cell === null ? '' : cell.kind === 'character'
-                    ? <span className={`dm-character dm-level-${cell.level}`}>{cell.level}</span>
-                    : <span className="dm-obstacle-icon" title={obstacleLabels[cell.obstacleType]}>{obstacleIcons[cell.obstacleType]}</span>}
-                </button>
-                )
-              })}
-            </div>
-            </div>
-            <div className="dm-board-footer">
-              {me.status !== 'active'
-                ? 'Твоя партия завершена. Ожидаем остальных игроков.'
-                : selectedTool
-                  ? `Выбран инструмент: ${toolLabels[selectedTool]}`
-                  : 'Выбери свободную клетку для размещения персонажа.'}
-            </div>
-          </section>
-
-          <aside className="dm-side-panel dm-opponents">
-            <h3>ИГРОКИ</h3>
-            {match.players.map((player) => (
-              <div className="dm-opponent" key={player.userId}>
-                <span>{player.displayName}</span>
-                <strong>{player.score}</strong>
-                <small>ур. {player.maxLevel}</small>
-              </div>
-            ))}
-            <div className="dm-personal-mini">
-              <strong>{me.displayName} (ты)</strong>
-              <span>{me.score} очков · ур. {me.maxLevel}</span>
-            </div>
-          </aside>
-        </div>
+        <><GameLayout state={me} current={match.currentCharacter} remaining={remaining} timerLabel={timerLabel} record={me.maxLevel} recordLabel="МАКС. УРОВЕНЬ" selectedTool={selectedTool} swapFirstCell={swapFirstCell} lastPlacedCell={visualEvents?.placementCellIndex ?? null} obstacleCell={visualEvents?.obstacleCellIndex ?? null} mergeEvents={visualEvents?.merges ?? []} animationDelay={settings.animationSpeed === 'fast' ? 250 : 500} canAct={canAct && !guideOpen} onHome={() => setLeaveConfirm(true)} onShop={() => setShopOpen(true)} selectTool={selectTool} clickCell={clickCell} /><aside className="dm-opponents">{match.players.map(player => <div className="dm-opponent" key={player.userId}><span>{player.displayName}</span><strong>{player.score}</strong></div>)}</aside></>
       )}
 
+      {guideOpen && match.status === 'playing' && me.status === 'active' && <LevelGuide onClose={() => setGuideOpen(false)} />}
       {shopOpen && (
         <div className="dm-modal-backdrop" role="presentation" onClick={() => setShopOpen(false)}>
           <section className="dm-shop-modal" role="dialog" aria-modal="true" aria-label="Магазин инструментов" onClick={(event) => event.stopPropagation()}>
@@ -755,7 +594,7 @@ export default function DemocracyMergeMatch({
           <section className="dm-confirm-modal" role="dialog" aria-modal="true">
             <h2>Выйти из матча?</h2>
             <p>Твой результат не будет учтён. Вернуться в этот матч будет нельзя.</p>
-            <div><button onClick={() => setLeaveConfirm(false)}>ОСТАТЬСЯ</button><button className="dm-danger-button" onClick={() => void leaveMatch()} disabled={loading}>ВЫЙТИ</button></div>
+            <div><button onClick={() => setLeaveConfirm(false)}>ОСТАТЬСЯ</button><button onClick={() => { setLeaveConfirm(false); setSettingsOpen(true) }}>НАСТРОЙКИ</button><button onClick={() => { setLeaveConfirm(false); setSurrenderConfirm(true) }}>СДАТЬСЯ</button><button className="dm-danger-button" onClick={() => void leaveMatch()} disabled={loading}>ВЫЙТИ</button></div>
           </section>
         </div>
       )}
