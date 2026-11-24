@@ -472,7 +472,7 @@ export default function DemocracyMergeSolo({ onBack }: Props) {
                 <li key={level}>
                   <span className="dm-level-guide-art"><CharacterPortrait level={level} /></span>
                   <strong>Уровень {level}</strong>
-                  {level < 6 && <span className="dm-level-guide-arrow" aria-hidden="true">→</span>}
+                  {level < 6 && level !== 3 && <span className="dm-level-guide-arrow" aria-hidden="true">→</span>}
                 </li>
               ))}
             </ol>
